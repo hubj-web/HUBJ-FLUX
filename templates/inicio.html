@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Início · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:640px;margin:60px auto">
+  <header class="panel-head">
+    <h1>Olá, {{ usuario.nome or usuario.email }}</h1>
+    <p>
+      Papel: <strong>{{ usuario.papel }}</strong>
+      {% if organizacao %} · Organização: <strong>{{ organizacao.nome }}</strong>{% endif %}
+    </p>
+  </header>
+
+  <div class="review-summary">
+    <div class="summary-cell"><span class="label">Status</span><span class="value" style="font-size:15px">{{ usuario.status }}</span></div>
+    <div class="summary-cell"><span class="label">E-mail</span><span class="value" style="font-size:15px">{{ usuario.email }}</span></div>
+  </div>
+
+  {% if usuario.papel == 'super_admin' %}
+    <p style="margin-top:24px"><a class="btn btn-primary" href="{{ url_for('admin.listar_organizacoes') }}">Gestão de Clientes</a></p>
+  {% endif %}
+
+  <p style="margin-top:30px"><a href="{{ url_for('auth.logout') }}" class="btn btn-ghost">Sair</a></p>
+
+  <p style="margin-top:40px;color:var(--graphite);font-size:12.5px">
+    Esta é a Fase 1 (autenticação + estrutura multi-tenant) — o dashboard completo
+    (Fase 2: Início de verdade, Novo Lançamento, Extrato) ainda está por vir.
+  </p>
+</div>
+{% endblock %}
