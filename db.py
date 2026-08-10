@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-import psycopg2
-import psycopg2.extras
+import psycopg
+from psycopg.rows import dict_row
 from flask import g
 from config import Config
 
@@ -8,7 +8,7 @@ from config import Config
 def get_conn():
     """Uma conexão por requisição, guardada em flask.g e fechada ao final."""
     if "db_conn" not in g:
-        g.db_conn = psycopg2.connect(Config.DATABASE_URL, sslmode="require")
+        g.db_conn = psycopg.connect(Config.DATABASE_URL, sslmode="require", row_factory=dict_row)
     return g.db_conn
 
 
@@ -20,21 +20,21 @@ def close_conn(exception=None):
 
 def query_one(sql, params=None):
     conn = get_conn()
-    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+    with conn.cursor() as cur:
         cur.execute(sql, params or ())
         return cur.fetchone()
 
 
 def query_all(sql, params=None):
     conn = get_conn()
-    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+    with conn.cursor() as cur:
         cur.execute(sql, params or ())
         return cur.fetchall()
 
 
 def execute(sql, params=None):
     conn = get_conn()
-    with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+    with conn.cursor() as cur:
         cur.execute(sql, params or ())
         conn.commit()
         if cur.description:
