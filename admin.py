@@ -2,6 +2,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g
 
 import db
+import email_service
 from auth import login_required, requer_papel
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -48,7 +49,12 @@ def criar_organizacao():
            VALUES (%s, %s, 'admin_cliente', 'pendente', %s, now())""",
         (org["id"], email_admin, g.usuario_atual["id"]),
     )
-    flash(f"Organização \"{nome}\" criada. {email_admin} já pode fazer login com o Google.", "ok")
+
+    if email_service.enviar_convite_admin_cliente(email_admin, nome):
+        flash(f"Organização \"{nome}\" criada. E-mail de convite enviado para {email_admin}.", "ok")
+    else:
+        flash(f"Organização \"{nome}\" criada. {email_admin} já pode fazer login com o Google "
+              f"(e-mail automático não configurado — avise a pessoa manualmente).", "ok")
     return redirect(url_for("admin.listar_organizacoes"))
 
 
