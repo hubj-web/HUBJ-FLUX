@@ -13,6 +13,7 @@ RESEND_URL = "https://api.resend.com/emails"
 
 def _enviar(destinatario, assunto, html):
     if not Config.RESEND_API_KEY:
+        print(f"[email_service] RESEND_API_KEY não configurada — pulando envio para {destinatario}")
         return False
     resp = requests.post(
         RESEND_URL,
@@ -25,6 +26,10 @@ def _enviar(destinatario, assunto, html):
         },
         timeout=10,
     )
+    if resp.status_code >= 300:
+        print(f"[email_service] Falha ao enviar para {destinatario}: HTTP {resp.status_code} — {resp.text}")
+    else:
+        print(f"[email_service] E-mail enviado com sucesso para {destinatario}")
     return resp.status_code < 300
 
 
