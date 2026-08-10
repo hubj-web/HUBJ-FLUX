@@ -44,6 +44,34 @@
                 {{ 'Suspender' if org.status == 'ativo' else 'Reativar' }}
               </button>
             </form>
+            <form method="post" action="{{ url_for('admin.excluir_organizacao', org_id=org.id) }}" style="display:inline"
+                  onsubmit="return confirm('Excluir \'{{ org.nome }}\' PERMANENTEMENTE? Isso apaga todos os usuários, categorias e lançamentos dessa organização. Essa ação não pode ser desfeita.');">
+              <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;color:var(--brick);border-color:var(--brick)">Excluir</button>
+            </form>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="5" style="padding:0 14px 14px">
+            <details>
+              <summary style="cursor:pointer;color:var(--graphite);font-size:12px">
+                Ver e-mails cadastrados ({{ org.usuarios|length }})
+              </summary>
+              <table class="data-table" style="margin-top:8px">
+                <thead><tr><th>E-mail</th><th>Nome</th><th>Papel</th><th>Status</th></tr></thead>
+                <tbody>
+                {% for u in org.usuarios %}
+                  <tr>
+                    <td class="mono">{{ u.email }}</td>
+                    <td>{{ u.nome or '—' }}</td>
+                    <td class="mono">{{ u.papel }}</td>
+                    <td class="mono">{{ u.status }}</td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="4" style="color:var(--graphite)">Nenhum usuário cadastrado ainda.</td></tr>
+                {% endfor %}
+                </tbody>
+              </table>
+            </details>
           </td>
         </tr>
       {% endfor %}

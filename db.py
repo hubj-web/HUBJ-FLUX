@@ -78,3 +78,11 @@ def contar_usuarios_ativos(organizacao_id):
         (organizacao_id,),
     )
     return row["n"] if row else 0
+
+
+def listar_usuarios_por_organizacao(organizacao_id):
+    return query_all(
+        """SELECT id, email, nome, papel, status, criado_em
+           FROM usuarios WHERE organizacao_id = %s ORDER BY criado_em""",
+        (organizacao_id,),
+    )

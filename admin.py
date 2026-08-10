@@ -17,6 +17,8 @@ def listar_organizacoes():
                   (SELECT COUNT(*) FROM usuarios u WHERE u.organizacao_id = o.id AND u.status != 'bloqueado') AS usuarios_atuais
            FROM organizacoes o ORDER BY o.criado_em DESC"""
     )
+    for org in organizacoes:
+        org["usuarios"] = db.listar_usuarios_por_organizacao(org["id"])
     return render_template("organizacoes.html", organizacoes=organizacoes)
 
 
@@ -31,6 +33,11 @@ def criar_organizacao():
 
     if not nome or tipo not in ("familia", "empresa") or not email_admin:
         flash("Preencha nome, tipo e e-mail do administrador.", "erro")
+        return redirect(url_for("admin.listar_organizacoes"))
+
+    if db.buscar_usuario_por_email(email_admin):
+        flash(f"O e-mail {email_admin} já está cadastrado no sistema "
+              f"(cada e-mail só pode pertencer a um usuário). Use outro e-mail.", "erro")
         return redirect(url_for("admin.listar_organizacoes"))
 
     org = db.execute(
@@ -76,4 +83,19 @@ def alternar_status(org_id):
     novo_status = "suspenso" if org["status"] == "ativo" else "ativo"
     db.execute("UPDATE organizacoes SET status = %s WHERE id = %s", (novo_status, org_id))
     flash(f"Organização marcada como {novo_status}.", "ok")
+    return redirect(url_for("admin.listar_organizacoes"))
+
+
+@admin_bp.route("/organizacoes/<int:org_id>/excluir", methods=["POST"])
+@login_required
+@requer_papel("super_admin")
+def excluir_organizacao(org_id):
+    org = db.query_one("SELECT nome FROM organizacoes WHERE id = %s", (org_id,))
+    if org is None:
+        flash("Organização não encontrada.", "erro")
+        return redirect(url_for("admin.listar_organizacoes"))
+    # ON DELETE CASCADE no banco já remove usuários, categorias, lançamentos
+    # etc. dessa organização junto - é uma exclusão definitiva e completa.
+    db.execute("DELETE FROM organizacoes WHERE id = %s", (org_id,))
+    flash(f"Organização \"{org['nome']}\" e todos os dados associados foram excluídos definitivamente.", "ok")
     return redirect(url_for("admin.listar_organizacoes"))
