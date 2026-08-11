@@ -20,6 +20,8 @@
       <span class="value {{ 'val-receita' if totais.saldo >= 0 else 'val-despesa' }}">R$ {{ '%.2f'|format(totais.saldo)|replace('.', ',') }}</span></div>
   </div>
 
+  <p style="color:var(--ink-soft);font-size:13.5px;margin:-8px 0 20px">{{ frase_saldo }}</p>
+
   <div class="filters" style="margin:24px 0">
     <a href="{{ url_for('lanc.novo', tipo='despesa') }}" class="btn btn-primary">+ Despesa</a>
     <a href="{{ url_for('lanc.novo', tipo='receita') }}" class="btn btn-primary">+ Receita</a>

@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, g, request
 
 import db
 from auth import login_required
+import regras_negocio
 
 inicio_bp = Blueprint("inicio", __name__)
 
@@ -26,6 +27,7 @@ def index():
 
     totais = db.totais_mes(usuario["organizacao_id"], mes_referencia)
     ultimos = db.ultimos_lancamentos(usuario["organizacao_id"], limite=5)
+    frase_saldo = regras_negocio.frase_saldo_mes(totais["saldo"])
 
     return render_template(
         "inicio.html",
@@ -36,4 +38,5 @@ def index():
         mes_seguinte=mes_seguinte,
         totais=totais,
         ultimos=ultimos,
+        frase_saldo=frase_saldo,
     )

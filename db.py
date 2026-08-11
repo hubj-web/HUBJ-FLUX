@@ -150,19 +150,22 @@ def listar_pessoas(organizacao_id):
 
 
 def sugerir_categoria_por_descricao(organizacao_id, descricao):
-    """Sugestão simples: procura a descrição nas palavras-chave cadastradas
-    em cada categoria (campo palavras_chave, separado por vírgula)."""
+    """Sugestão automática: procura a descrição nas palavras-chave de cada
+    categoria. Só preenche sozinho se EXATAMENTE UMA categoria bater - se
+    mais de uma bater, não arrisca escolher errado (fica em branco pra
+    seleção manual). Regra vinda da especificação técnica, seção 5.3."""
     if not descricao:
         return None
     categorias = listar_categorias(organizacao_id)
     desc = descricao.lower()
+    encontradas = []
     for cat in categorias:
         if not cat["palavras_chave"]:
             continue
         palavras = [p.strip().lower() for p in cat["palavras_chave"].split(",") if p.strip()]
         if any(p in desc for p in palavras):
-            return cat["id"]
-    return None
+            encontradas.append(cat["id"])
+    return encontradas[0] if len(encontradas) == 1 else None
 
 
 # ---------- Lançamentos ----------

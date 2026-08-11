@@ -1,26 +1,52 @@
 :root{
-  --paper: #EDEFEA; --paper-raised: #F7F8F4; --ink: #1B2430; --ink-soft: #3C4552;
-  --graphite: #6B7280; --line: #D6D9CF; --green: #1F6F4F; --green-soft: #E4EEE7;
-  --brick: #A3402C; --brick-soft: #F5E6E1; --gold: #B9862E; --radius: 3px;
+  /* HUB-J — paleta oficial do Brand Book institucional */
+  --roxo-estrategico: #3E007B;   /* predominante - institucional, cabeçalhos, estrutura */
+  --roxo-horizonte: #C182FF;     /* auxiliar - realces suaves */
+  --laranja-evolucao: #FF751F;   /* chamadas de ação, destaques, indicadores de crescimento */
+  --laranja-impulso: #FFAE7A;    /* auxiliar - fundos suaves de destaque */
+  --preto-intenso: #000000;      /* usar com moderação */
+  --branco-puro: #FFFFFF;
+
+  /* cores funcionais para dados financeiros - não fazem parte do Brand
+     Book institucional (que não define isso), mas seguem a convenção
+     universal de apps financeiros: verde = positivo, vermelho = negativo */
+  --success-dark: #1E6B3C; --success-light: #D4EDDA;
+  --danger-dark: #8B1A1A; --danger-light: #FDECEA;
+  --warning-dark: #856404; --warning-light: #FFF8E1;
+  --gray-dark: #333333; --gray-medium: #888888; --gray-light: #F2F2F2; --gray-border: #CCCCCC;
+
+  /* aliases usados no restante do CSS/templates */
+  --paper: var(--branco-puro);
+  --paper-raised: var(--gray-light);
+  --ink: var(--roxo-estrategico);
+  --ink-soft: var(--gray-dark);
+  --graphite: var(--gray-medium);
+  --line: var(--gray-border);
+  --green: var(--laranja-evolucao);      /* ação primária (botões, links) = laranja, por regra do Brand Book */
+  --green-soft: var(--laranja-impulso);  /* fundo suave de destaque/hover */
+  --brick: var(--danger-dark);
+  --brick-soft: var(--danger-light);
+  --gold: var(--roxo-horizonte);         /* realces sobre fundo escuro */
+  --radius: 3px;
 }
 *{ box-sizing:border-box; }
 body{ margin:0; background:var(--paper); color:var(--ink); font-family:'Inter',system-ui,sans-serif; font-size:14.5px; }
-h1,h3{ font-family:'Source Serif 4',Georgia,serif; font-weight:600; margin:0; }
+h1,h3{ font-family:'Baloo 2', 'Inter', sans-serif; font-weight:700; margin:0; }
 .mono{ font-family:'IBM Plex Mono',monospace; }
 
 .home-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--ink); padding:24px; }
 .home-wrap{ max-width:420px; width:100%; }
 .home-header{ text-align:center; margin-bottom:36px; }
-.home-mark{ font-family:'Source Serif 4',serif; font-size:34px; font-weight:700; width:64px; height:64px;
-  display:inline-flex; align-items:center; justify-content:center; border:2px solid var(--gold); border-radius:50%;
-  color:var(--gold); margin-bottom:20px; }
-.home-header h1{ font-size:32px; color:#F2F0E6; margin-bottom:10px; }
-.home-header h1 span{ color:var(--gold); font-weight:400; }
-.home-header p{ color:#A9AFA0; font-size:14px; font-family:'Inter',sans-serif; }
+.home-mark{ font-family:'Baloo 2',sans-serif; font-size:22px; font-weight:700; width:64px; height:64px;
+  display:inline-flex; align-items:center; justify-content:center; border:2px solid var(--roxo-horizonte); border-radius:50%;
+  color:var(--roxo-horizonte); margin-bottom:20px; }
+.home-header h1{ font-size:32px; color:#fff; margin-bottom:10px; }
+.home-header h1 span{ color:var(--laranja-evolucao); font-weight:400; }
+.home-header p{ color:#D9BEF5; font-size:14px; font-family:'Inter',sans-serif; }
 
 .btn-google{
   display:flex; align-items:center; justify-content:center; gap:10px;
-  background:#fff; color:#1B2430; text-decoration:none; font-weight:600;
+  background:#fff; color:var(--roxo-estrategico); text-decoration:none; font-weight:600;
   padding:13px 20px; border-radius:6px; font-size:14.5px;
 }
 .btn-google:hover{ background:#F0F0F0; }
@@ -38,8 +64,8 @@ h1,h3{ font-family:'Source Serif 4',Georgia,serif; font-weight:600; margin:0; }
 
 .btn{ font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; padding:10px 18px; border-radius:var(--radius);
   border:1px solid transparent; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
-.btn-primary{ background:var(--green); color:#fff; }
-.btn-primary:hover{ background:#195C41; }
+.btn-primary{ background:var(--laranja-evolucao); color:#fff; }
+.btn-primary:hover{ background:#D9600E; }
 .btn-ghost{ background:transparent; border-color:var(--line); color:var(--ink-soft); }
 .btn-ghost:hover{ border-color:var(--ink); color:var(--ink); }
 
@@ -54,11 +80,11 @@ h1,h3{ font-family:'Source Serif 4',Georgia,serif; font-weight:600; margin:0; }
 
 .flash-wrap{ position:fixed; top:16px; right:16px; z-index:50; display:flex; flex-direction:column; gap:8px; max-width:360px; }
 .flash{ padding:12px 16px; border-radius:var(--radius); font-size:13.5px; border:1px solid var(--line); background:var(--paper-raised); }
-.flash-erro{ background:var(--brick-soft); border-color:var(--brick); color:#7A2C1D; }
-.flash-ok{ background:var(--green-soft); border-color:var(--green); color:#154A34; }
+.flash-erro{ background:var(--danger-light); border-color:var(--danger-dark); color:var(--danger-dark); }
+.flash-ok{ background:var(--success-light); border-color:var(--success-dark); color:var(--success-dark); }
 
-.val-receita{ color:var(--green); }
-.val-despesa{ color:var(--brick); }
+.val-receita{ color:var(--success-dark); }
+.val-despesa{ color:var(--danger-dark); }
 
 .form-grid{ display:flex; flex-direction:column; gap:14px; max-width:480px; }
 .form-row label{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:5px; }
@@ -66,7 +92,7 @@ h1,h3{ font-family:'Source Serif 4',Georgia,serif; font-weight:600; margin:0; }
   width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius);
   font: inherit; font-size:14px; background:var(--paper-raised);
 }
-.form-row input:focus, .form-row select:focus, .form-row textarea:focus{ outline:none; border-color:var(--green); }
+.form-row input:focus, .form-row select:focus, .form-row textarea:focus{ outline:none; border-color:var(--laranja-evolucao); }
 
 .view-toggle{ display:flex; gap:8px; }
 .view-toggle-btn{
@@ -74,3 +100,10 @@ h1,h3{ font-family:'Source Serif 4',Georgia,serif; font-weight:600; margin:0; }
   padding:8px 18px; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none;
 }
 .view-toggle-btn.active{ background:var(--ink); border-color:var(--ink); color:#fff; }
+
+/* Chip de status (semáforo) - usado quando Planejamento/Controle forem construídos */
+.chip-status{ display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; }
+.chip-status.verde{ background:var(--success-light); color:var(--success-dark); }
+.chip-status.amarelo{ background:var(--warning-light); color:var(--warning-dark); }
+.chip-status.vermelho{ background:var(--danger-light); color:var(--danger-dark); }
+.chip-status.cinza{ background:var(--gray-light); color:var(--gray-medium); }

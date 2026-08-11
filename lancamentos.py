@@ -65,17 +65,23 @@ def novo():
 
     if parcelado and num_parcelas > 1:
         grupo_id = str(uuid.uuid4())
+        # Regra de arredondamento: divide igualmente e a 1ª parcela absorve
+        # a diferença de centavos que sobrar (ex: R$100 em 3x -> 33,34 + 33,33 + 33,33,
+        # nunca perde 1 centavo por arredondamento acumulado).
         valor_parcela = round(valor_total / num_parcelas, 2)
+        diferenca_centavos = round(valor_total - (valor_parcela * num_parcelas), 2)
         for i in range(num_parcelas):
+            valor_desta = valor_parcela + (diferenca_centavos if i == 0 else 0)
             db.criar_lancamento(org_id, {
                 **base,
                 "data": data_lanc + relativedelta(months=i),
-                "valor": valor_parcela,
+                "valor": valor_desta,
                 "grupo_parcelamento_id": grupo_id,
                 "parcela_atual": i + 1,
                 "parcela_total": num_parcelas,
             }, g.usuario_atual["id"])
-        flash(f"Lançamento parcelado em {num_parcelas}x de {_fmt_moeda(valor_parcela)} criado.", "ok")
+        flash(f"Lançamento parcelado em {num_parcelas}x (1ª parcela {_fmt_moeda(valor_parcela + diferenca_centavos)}, "
+              f"demais {_fmt_moeda(valor_parcela)}) criado.", "ok")
     else:
         db.criar_lancamento(org_id, {
             **base, "data": data_lanc, "valor": valor_total,
