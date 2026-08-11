@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Início · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:640px;margin:60px auto">
+  <header class="panel-head">
+    <h1>Olá, {{ usuario.nome or usuario.email }}</h1>
+    <p>Papel: <strong>super_admin</strong></p>
+  </header>
+  <p><a class="btn btn-primary" href="{{ url_for('admin.listar_organizacoes') }}">Gestão de Clientes</a></p>
+  <p style="margin-top:30px"><a href="{{ url_for('auth.logout') }}" class="btn btn-ghost">Sair</a></p>
+</div>
+{% endblock %}

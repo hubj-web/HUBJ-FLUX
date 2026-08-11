@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Extrato · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:1000px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Extrato</h1>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a>
+       <a href="{{ url_for('lanc.novo') }}" class="btn btn-primary" style="padding:4px 10px;font-size:12px">+ Novo Lançamento</a></p>
+  </header>
+
+  <form method="get" class="filters" style="flex-wrap:wrap">
+    <input type="text" name="busca" placeholder="Buscar na descrição..." value="{{ filtros.busca or '' }}">
+    <select name="tipo">
+      <option value="">Tipo — todos</option>
+      <option value="despesa" {{ 'selected' if filtros.tipo == 'despesa' }}>Despesa</option>
+      <option value="receita" {{ 'selected' if filtros.tipo == 'receita' }}>Receita</option>
+    </select>
+    <select name="categoria_id">
+      <option value="">Categoria — todas</option>
+      {% for c in categorias %}<option value="{{ c.id }}" {{ 'selected' if filtros.categoria_id == c.id|string }}>{{ c.nome }}</option>{% endfor %}
+    </select>
+    <select name="forma_pagamento_id">
+      <option value="">Forma — todas</option>
+      {% for f in formas_pagamento %}<option value="{{ f.id }}" {{ 'selected' if filtros.forma_pagamento_id == f.id|string }}>{{ f.nome }}</option>{% endfor %}
+    </select>
+    <input type="date" name="data_inicio" value="{{ filtros.data_inicio or '' }}">
+    <input type="date" name="data_fim" value="{{ filtros.data_fim or '' }}">
+    <button class="btn btn-primary">Filtrar</button>
+    <a href="{{ url_for('lanc.extrato') }}" class="btn btn-ghost">Limpar</a>
+  </form>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Forma</th><th>Pessoa</th><th class="num">Valor</th><th></th></tr></thead>
+      <tbody>
+      {% for l in lancamentos %}
+        <tr>
+          <td class="mono">{{ l.data }}</td>
+          <td>{{ l.descricao or '—' }}{% if l.parcela_atual %}<span style="color:var(--graphite);font-size:11px"> ({{ l.parcela_atual }}/{{ l.parcela_total }})</span>{% endif %}</td>
+          <td>{{ l.categoria_nome or '—' }}</td>
+          <td>{{ l.forma_pagamento_nome or '—' }}</td>
+          <td>{{ l.pessoa_nome or '—' }}</td>
+          <td class="num {{ 'val-receita' if l.tipo == 'receita' else 'val-despesa' }}">
+            {{ '+' if l.tipo == 'receita' else '-' }} R$ {{ '%.2f'|format(l.valor)|replace('.', ',') }}
+          </td>
+          <td style="white-space:nowrap">
+            <form method="post" action="{{ url_for('lanc.duplicar', lid=l.id) }}" style="display:inline">
+              <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px">Duplicar</button>
+            </form>
+            <form method="post" action="{{ url_for('lanc.excluir', lid=l.id) }}" style="display:inline"
+                  onsubmit="return confirm('Excluir este lançamento?');">
+              <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;color:var(--brick)">Excluir</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" style="text-align:center;color:var(--graphite);padding:24px">Nenhum lançamento encontrado.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

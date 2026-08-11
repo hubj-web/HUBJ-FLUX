@@ -122,3 +122,14 @@ def requer_papel(*papeis_permitidos):
             return f(*args, **kwargs)
         return wrapper
     return decorator
+
+
+def requer_organizacao(f):
+    """Bloqueia rotas que só fazem sentido dentro de uma organização (ex:
+    lançamentos, extrato) - o Super Admin não pertence a nenhuma."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if g.usuario_atual["organizacao_id"] is None:
+            return "Esta área é específica de uma organização. O Super Admin não tem acesso direto aqui.", 403
+        return f(*args, **kwargs)
+    return wrapper

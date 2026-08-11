@@ -49,6 +49,7 @@ def criar_organizacao():
         """INSERT INTO organizacoes_preferencias (organizacao_id) VALUES (%s)""",
         (org["id"],),
     )
+    db.seed_organizacao(org["id"])
     # cria o primeiro Admin do Cliente como 'pendente' — ele conclui o
     # cadastro sozinho no primeiro login com Google
     db.execute(

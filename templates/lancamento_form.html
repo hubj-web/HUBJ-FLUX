@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Novo Lançamento · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:620px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Novo Lançamento</h1>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a>
+       <a href="{{ url_for('lanc.extrato') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Ver Extrato</a>
+       <a href="{{ url_for('lanc.recorrentes') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Recorrentes</a></p>
+  </header>
+
+  <div class="view-toggle" style="margin-bottom:22px">
+    <a href="{{ url_for('lanc.novo', tipo='despesa') }}" class="view-toggle-btn {{ 'active' if tipo_inicial == 'despesa' }}">Despesa</a>
+    <a href="{{ url_for('lanc.novo', tipo='receita') }}" class="view-toggle-btn {{ 'active' if tipo_inicial == 'receita' }}">Receita</a>
+  </div>
+
+  <form method="post" class="form-grid">
+    <input type="hidden" name="tipo" value="{{ tipo_inicial }}">
+
+    <div class="form-row">
+      <label>Data</label>
+      <input type="date" name="data" value="{{ hoje }}" required>
+    </div>
+
+    <div class="form-row">
+      <label>Valor (R$)</label>
+      <input type="text" name="valor" placeholder="0,00" required>
+    </div>
+
+    <div class="form-row">
+      <label>Descrição</label>
+      <input type="text" name="descricao" placeholder="Ex: Supermercado, Salário...">
+    </div>
+
+    <div class="form-row">
+      <label>Categoria</label>
+      <select name="categoria_id">
+        <option value="">— selecione —</option>
+        {% for c in categorias %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Forma de pagamento</label>
+      <select name="forma_pagamento_id" id="sel-forma">
+        <option value="">— selecione —</option>
+        {% for f in formas_pagamento %}<option value="{{ f.id }}" data-nome="{{ f.nome }}">{{ f.nome }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row" id="linha-cartao" style="display:none">
+      <label>Cartão</label>
+      <select name="cartao_id">
+        <option value="">— selecione —</option>
+        {% for c in cartoes %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
+      </select>
+    </div>
+
+    {% if pessoas %}
+    <div class="form-row">
+      <label>Pessoa</label>
+      <select name="pessoa_id">
+        <option value="">— selecione —</option>
+        {% for p in pessoas %}<option value="{{ p.id }}">{{ p.nome }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    <div class="form-row">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:normal">
+        <input type="checkbox" name="parcelado" id="chk-parcelado" style="width:auto">
+        Parcelado?
+      </label>
+    </div>
+    <div class="form-row" id="linha-parcelas" style="display:none">
+      <label>Número de parcelas</label>
+      <input type="number" name="num_parcelas" min="2" max="60" value="2">
+    </div>
+
+    <div class="form-row">
+      <label>Observação (opcional)</label>
+      <textarea name="observacao" rows="2"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="margin-top:10px">Salvar lançamento</button>
+  </form>
+</div>
+
+<script>
+  const selForma = document.getElementById('sel-forma');
+  const linhaCartao = document.getElementById('linha-cartao');
+  selForma.addEventListener('change', () => {
+    const opt = selForma.options[selForma.selectedIndex];
+    linhaCartao.style.display = (opt.dataset.nome === 'Cartão de Crédito') ? 'block' : 'none';
+  });
+  const chkParcelado = document.getElementById('chk-parcelado');
+  const linhaParcelas = document.getElementById('linha-parcelas');
+  chkParcelado.addEventListener('change', () => {
+    linhaParcelas.style.display = chkParcelado.checked ? 'block' : 'none';
+  });
+</script>
+{% endblock %}

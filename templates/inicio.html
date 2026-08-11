@@ -1,29 +1,61 @@
 {% extends "base.html" %}
 {% block title %}Início · HUB-J FLUX{% endblock %}
 {% block content %}
-<div class="content" style="max-width:640px;margin:60px auto">
+<div class="content" style="max-width:780px;margin:0 auto">
   <header class="panel-head">
     <h1>Olá, {{ usuario.nome or usuario.email }}</h1>
-    <p>
-      Papel: <strong>{{ usuario.papel }}</strong>
-      {% if organizacao %} · Organização: <strong>{{ organizacao.nome }}</strong>{% endif %}
-    </p>
+    <p>{{ organizacao.nome if organizacao else '' }} · papel: <strong>{{ usuario.papel }}</strong></p>
   </header>
 
-  <div class="review-summary">
-    <div class="summary-cell"><span class="label">Status</span><span class="value" style="font-size:15px">{{ usuario.status }}</span></div>
-    <div class="summary-cell"><span class="label">E-mail</span><span class="value" style="font-size:15px">{{ usuario.email }}</span></div>
+  <div class="filters" style="align-items:center;margin-bottom:20px">
+    <a href="{{ url_for('inicio.index', mes=mes_anterior) }}" class="btn btn-ghost" style="padding:6px 12px">← Mês anterior</a>
+    <strong class="mono" style="font-size:15px">{{ mes_referencia }}</strong>
+    <a href="{{ url_for('inicio.index', mes=mes_seguinte) }}" class="btn btn-ghost" style="padding:6px 12px">Mês seguinte →</a>
   </div>
 
-  {% if usuario.papel == 'super_admin' %}
-    <p style="margin-top:24px"><a class="btn btn-primary" href="{{ url_for('admin.listar_organizacoes') }}">Gestão de Clientes</a></p>
-  {% endif %}
+  <div class="review-summary">
+    <div class="summary-cell"><span class="label">Receitas do mês</span><span class="value val-receita">R$ {{ '%.2f'|format(totais.receitas)|replace('.', ',') }}</span></div>
+    <div class="summary-cell"><span class="label">Despesas do mês</span><span class="value val-despesa">R$ {{ '%.2f'|format(totais.despesas)|replace('.', ',') }}</span></div>
+    <div class="summary-cell"><span class="label">Saldo do mês</span>
+      <span class="value {{ 'val-receita' if totais.saldo >= 0 else 'val-despesa' }}">R$ {{ '%.2f'|format(totais.saldo)|replace('.', ',') }}</span></div>
+  </div>
 
-  <p style="margin-top:30px"><a href="{{ url_for('auth.logout') }}" class="btn btn-ghost">Sair</a></p>
+  <div class="filters" style="margin:24px 0">
+    <a href="{{ url_for('lanc.novo', tipo='despesa') }}" class="btn btn-primary">+ Despesa</a>
+    <a href="{{ url_for('lanc.novo', tipo='receita') }}" class="btn btn-primary">+ Receita</a>
+    <a href="{{ url_for('lanc.extrato') }}" class="btn btn-ghost">Ver Extrato</a>
+    <a href="{{ url_for('lanc.recorrentes') }}" class="btn btn-ghost">Recorrentes</a>
+  </div>
 
-  <p style="margin-top:40px;color:var(--graphite);font-size:12.5px">
-    Esta é a Fase 1 (autenticação + estrutura multi-tenant) — o dashboard completo
-    (Fase 2: Início de verdade, Novo Lançamento, Extrato) ainda está por vir.
+  <h3>Últimos lançamentos</h3>
+  <div class="table-wrap" style="margin-bottom:24px">
+    <table class="data-table">
+      <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th class="num">Valor</th></tr></thead>
+      <tbody>
+      {% for l in ultimos %}
+        <tr>
+          <td class="mono">{{ l.data }}</td>
+          <td>{{ l.descricao or '—' }}</td>
+          <td>{{ l.categoria_nome or '—' }}</td>
+          <td class="num {{ 'val-receita' if l.tipo == 'receita' else 'val-despesa' }}">
+            {{ '+' if l.tipo == 'receita' else '-' }} R$ {{ '%.2f'|format(l.valor)|replace('.', ',') }}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" style="text-align:center;color:var(--graphite);padding:20px">Nenhum lançamento ainda — comece com "+ Despesa" ou "+ Receita" acima.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p style="color:var(--graphite);font-size:12.5px">
+    % do orçamento consumido e lembretes de vencimento aparecem aqui assim que os módulos de
+    Planejamento e Lembretes forem construídos (próximas fases).
   </p>
+
+  {% if usuario.papel == 'super_admin' %}
+  <p style="margin-top:20px"><a href="{{ url_for('admin.listar_organizacoes') }}" class="btn btn-ghost">Gestão de Clientes</a></p>
+  {% endif %}
+  <p style="margin-top:10px"><a href="{{ url_for('auth.logout') }}" class="btn btn-ghost">Sair</a></p>
 </div>
 {% endblock %}

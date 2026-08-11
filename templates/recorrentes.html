@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Recorrentes · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:700px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Lançamentos Recorrentes</h1>
+    <p><a href="{{ url_for('lanc.novo') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Novo Lançamento</a></p>
+  </header>
+
+  <h3>Modelos salvos</h3>
+  <div class="table-wrap" style="margin-bottom:30px">
+    <table class="data-table">
+      <thead><tr><th>Nome</th><th>Categoria</th><th>Forma</th><th class="num">Valor</th><th></th></tr></thead>
+      <tbody>
+      {% for t in templates %}
+        <tr>
+          <td>{{ t.nome }}</td>
+          <td>{{ t.categoria_nome or '—' }}</td>
+          <td>{{ t.forma_pagamento_nome or '—' }}</td>
+          <td class="num">R$ {{ '%.2f'|format(t.valor)|replace('.', ',') }}</td>
+          <td style="white-space:nowrap">
+            <form method="post" action="{{ url_for('lanc.lancar_recorrente', tid=t.id) }}" style="display:inline">
+              <button class="btn btn-primary" style="padding:4px 10px;font-size:12px">Lançar hoje</button>
+            </form>
+            <form method="post" action="{{ url_for('lanc.excluir_recorrente', tid=t.id) }}" style="display:inline"
+                  onsubmit="return confirm('Remover este modelo?');">
+              <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">Remover</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" style="text-align:center;color:var(--graphite);padding:20px">Nenhum modelo criado ainda.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Novo modelo</h3>
+  <form method="post" class="form-grid">
+    <div class="form-row"><label>Nome</label><input type="text" name="nome" required placeholder="Ex: Aluguel, Netflix..."></div>
+    <div class="form-row"><label>Valor (R$)</label><input type="text" name="valor" required placeholder="0,00"></div>
+    <div class="form-row"><label>Categoria</label>
+      <select name="categoria_id"><option value="">— selecione —</option>
+        {% for c in categorias %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="form-row"><label>Forma de pagamento</label>
+      <select name="forma_pagamento_id"><option value="">— selecione —</option>
+        {% for f in formas_pagamento %}<option value="{{ f.id }}">{{ f.nome }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="form-row"><label>Frequência</label>
+      <select name="frequencia"><option value="mensal">Mensal</option><option value="anual">Anual</option></select>
+    </div>
+    <button type="submit" class="btn btn-primary" style="margin-top:8px">Criar modelo</button>
+  </form>
+</div>
+{% endblock %}
