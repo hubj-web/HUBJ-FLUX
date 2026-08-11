@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Transações do Cartão · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:1000px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Transações do cartão</h1>
+    <p><a href="{{ url_for('cartao.importar') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">+ Importar fatura</a></p>
+  </header>
+
+  <form method="get" class="filters" style="flex-wrap:wrap">
+    <input type="text" name="busca" placeholder="Buscar na descrição..." value="{{ filtros.busca or '' }}">
+    <select name="cartao_id">
+      <option value="">Cartão — todos</option>
+      {% for c in cartoes %}<option value="{{ c.id }}" {{ 'selected' if filtros.cartao_id == c.id|string }}>{{ c.nome }}</option>{% endfor %}
+    </select>
+    <select name="pessoa_id">
+      <option value="">Pessoa — todas</option>
+      {% for p in pessoas %}<option value="{{ p.id }}" {{ 'selected' if filtros.pessoa_id == p.id|string }}>{{ p.nome }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary">Filtrar</button>
+    <a href="{{ url_for('cartao.transacoes') }}" class="btn btn-ghost">Limpar</a>
+  </form>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Data</th><th>Cartão</th><th>Pessoa</th><th>Descrição</th><th>Categoria</th><th>Parcela</th><th class="num">Valor</th></tr></thead>
+      <tbody>
+      {% for l in lancamentos %}
+        <tr>
+          <td class="mono">{{ l.data_iso }}</td>
+          <td>{{ l.cartao_nome }}</td>
+          <td>{{ l.pessoa_nome or '—' }}</td>
+          <td>{{ l.descricao }}</td>
+          <td>{{ l.categoria_nome or '—' }}</td>
+          <td class="mono">{{ (l.parcela_atual ~ '/' ~ l.parcela_total) if l.parcela_atual else '—' }}</td>
+          <td class="num {{ 'val-despesa' if l.sinal == 'D' else 'val-receita' }}">
+            {{ '' if l.sinal == 'D' else '-' }} R$ {{ '%.2f'|format(l.valor)|replace('.', ',') }}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" style="text-align:center;color:var(--graphite);padding:24px">Nenhuma transação encontrada.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

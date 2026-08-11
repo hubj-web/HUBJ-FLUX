@@ -314,3 +314,128 @@ def excluir_template_recorrente(template_id, organizacao_id):
         "DELETE FROM lancamentos_recorrentes_templates WHERE id = %s AND organizacao_id = %s",
         (template_id, organizacao_id),
     )
+
+
+# ---------- Cartão de Crédito (importação de fatura) ----------
+
+def encontrar_ou_criar_pessoa(organizacao_id, nome):
+    p = query_one("SELECT * FROM pessoas WHERE organizacao_id = %s AND nome = %s", (organizacao_id, nome))
+    if p:
+        return p
+    return execute(
+        "INSERT INTO pessoas (organizacao_id, nome, criado_em) VALUES (%s, %s, now()) RETURNING *",
+        (organizacao_id, nome),
+    )
+
+
+def encontrar_ou_criar_cartao_por_nome(organizacao_id, nome):
+    c = query_one("SELECT * FROM cartoes WHERE organizacao_id = %s AND nome = %s", (organizacao_id, nome))
+    if c:
+        return c
+    return execute(
+        "INSERT INTO cartoes (organizacao_id, nome, ativo) VALUES (%s, %s, true) RETURNING *",
+        (organizacao_id, nome),
+    )
+
+
+def buscar_categoria_por_nome(organizacao_id, nome):
+    return query_one("SELECT id FROM categorias WHERE organizacao_id = %s AND nome = %s", (organizacao_id, nome))
+
+
+def salvar_fatura(cartao_id, dados, importado_por):
+    """Cria ou atualiza a fatura (cartao_id + mes_referencia é único). Se já
+    existir (reimportação do mesmo mês), apaga os lançamentos antigos dela
+    antes de inserir os novos, pra não duplicar."""
+    existente = query_one(
+        "SELECT id FROM faturas WHERE cartao_id = %s AND mes_referencia = %s",
+        (cartao_id, dados["mes_referencia"]),
+    )
+    if existente:
+        execute("DELETE FROM lancamentos_cartao WHERE fatura_id = %s", (existente["id"],))
+        execute(
+            """UPDATE faturas SET vencimento=%(vencimento)s, valor_total=%(valor_total)s,
+                 valor_minimo=%(valor_minimo)s, limite_total=%(limite_total)s,
+                 limite_utilizado=%(limite_utilizado)s, limite_disponivel=%(limite_disponivel)s,
+                 arquivo_origem=%(arquivo_origem)s, importado_por=%(importado_por)s, importado_em=now()
+               WHERE id=%(id)s""",
+            {**dados, "importado_por": importado_por, "id": existente["id"]},
+        )
+        return existente["id"]
+    row = execute(
+        """INSERT INTO faturas (cartao_id, mes_referencia, vencimento, valor_total, valor_minimo,
+             limite_total, limite_utilizado, limite_disponivel, arquivo_origem, importado_por, importado_em)
+           VALUES (%(cartao_id)s, %(mes_referencia)s, %(vencimento)s, %(valor_total)s, %(valor_minimo)s,
+                   %(limite_total)s, %(limite_utilizado)s, %(limite_disponivel)s, %(arquivo_origem)s,
+                   %(importado_por)s, now())
+           RETURNING id""",
+        {**dados, "cartao_id": cartao_id, "importado_por": importado_por},
+    )
+    return row["id"]
+
+
+def inserir_lancamento_cartao(fatura_id, dados):
+    execute(
+        """INSERT INTO lancamentos_cartao
+             (fatura_id, data_iso, descricao, cidade, valor, sinal, parcela_atual,
+              parcela_total, parcelada, tipo, categoria_id, pessoa_id)
+           VALUES (%(fatura_id)s, %(data_iso)s, %(descricao)s, %(cidade)s, %(valor)s, %(sinal)s,
+                   %(parcela_atual)s, %(parcela_total)s, %(parcelada)s, %(tipo)s,
+                   %(categoria_id)s, %(pessoa_id)s)""",
+        {**dados, "fatura_id": fatura_id},
+    )
+
+
+def listar_faturas_organizacao(organizacao_id):
+    return query_all(
+        """SELECT f.*, c.nome AS cartao_nome,
+                  (SELECT COUNT(*) FROM lancamentos_cartao lc WHERE lc.fatura_id = f.id) AS n_transacoes
+           FROM faturas f JOIN cartoes c ON c.id = f.cartao_id
+           WHERE c.organizacao_id = %s ORDER BY f.mes_referencia DESC, f.id DESC""",
+        (organizacao_id,),
+    )
+
+
+def excluir_fatura(fatura_id, organizacao_id):
+    fat = query_one(
+        """SELECT f.id FROM faturas f JOIN cartoes c ON c.id = f.cartao_id
+           WHERE f.id = %s AND c.organizacao_id = %s""",
+        (fatura_id, organizacao_id),
+    )
+    if fat:
+        execute("DELETE FROM faturas WHERE id = %s", (fatura_id,))
+
+
+def ultima_fatura_organizacao(organizacao_id):
+    return query_one(
+        """SELECT f.*, c.nome AS cartao_nome
+           FROM faturas f JOIN cartoes c ON c.id = f.cartao_id
+           WHERE c.organizacao_id = %s ORDER BY f.mes_referencia DESC, f.id DESC LIMIT 1""",
+        (organizacao_id,),
+    )
+
+
+def listar_lancamentos_cartao(organizacao_id, filtros=None):
+    filtros = filtros or {}
+    sql = """SELECT lc.*, f.mes_referencia, c.nome AS cartao_nome, cat.nome AS categoria_nome,
+                    p.nome AS pessoa_nome
+             FROM lancamentos_cartao lc
+             JOIN faturas f ON f.id = lc.fatura_id
+             JOIN cartoes c ON c.id = f.cartao_id
+             LEFT JOIN categorias cat ON cat.id = lc.categoria_id
+             LEFT JOIN pessoas p ON p.id = lc.pessoa_id
+             WHERE c.organizacao_id = %(organizacao_id)s"""
+    params = {"organizacao_id": organizacao_id}
+    if filtros.get("mes_referencia"):
+        sql += " AND f.mes_referencia = %(mes_referencia)s"
+        params["mes_referencia"] = filtros["mes_referencia"]
+    if filtros.get("cartao_id"):
+        sql += " AND c.id = %(cartao_id)s"
+        params["cartao_id"] = filtros["cartao_id"]
+    if filtros.get("pessoa_id"):
+        sql += " AND lc.pessoa_id = %(pessoa_id)s"
+        params["pessoa_id"] = filtros["pessoa_id"]
+    if filtros.get("busca"):
+        sql += " AND lc.descricao ILIKE %(busca)s"
+        params["busca"] = f"%{filtros['busca']}%"
+    sql += " ORDER BY lc.data_iso DESC, lc.id DESC"
+    return query_all(sql, params)

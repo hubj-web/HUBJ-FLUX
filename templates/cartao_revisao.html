@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Revisar Fatura · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:820px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Revisar fatura</h1>
+    <p>{{ arquivo }} · vencimento {{ vencimento or '—' }}</p>
+  </header>
+
+  <div class="review-summary">
+    <div class="summary-cell"><span class="label">Valor total da fatura</span><span class="value">R$ {{ '%.2f'|format(conferencia.valor_total_fatura or 0)|replace('.', ',') }}</span></div>
+    <div class="summary-cell"><span class="label">Soma dos lançamentos</span><span class="value">R$ {{ '%.2f'|format(conferencia.soma_transacoes)|replace('.', ',') }}</span></div>
+    <div class="summary-cell">
+      <span class="label">Conferência</span>
+      <span class="chip-status {{ 'verde' if conferencia.bate else 'vermelho' }}">{{ '✓ CONFERE' if conferencia.bate else '✗ DIVERGE' }}</span>
+    </div>
+    <div class="summary-cell"><span class="label">Cartões identificados</span><span class="value">{{ grupos|length }}</span></div>
+  </div>
+
+  <form method="post" action="{{ url_for('cartao.confirmar') }}">
+    <input type="hidden" name="token" value="{{ token }}">
+    <div class="form-row" style="max-width:220px;margin-bottom:24px">
+      <label>Mês de referência</label>
+      <input type="text" name="mes_referencia" value="{{ mes_referencia }}" class="mono">
+    </div>
+
+    {% for chave, grupo in grupos.items() %}
+    <h3>{{ grupo.titular }}{% if grupo.cartao %} · cartão final {{ grupo.cartao }}{% endif %}
+      <span class="pill mono" style="font-size:12px;color:var(--graphite)">{{ grupo.transacoes|length }} lançamentos · R$ {{ '%.2f'|format(grupo.soma)|replace('.', ',') }}</span>
+    </h3>
+    <div class="table-wrap" style="margin-bottom:26px">
+      <table class="data-table">
+        <thead><tr><th>Data</th><th>Descrição</th><th>Cidade</th><th>Categoria sugerida</th><th>Parcela</th><th class="num">Valor</th></tr></thead>
+        <tbody>
+        {% for t in grupo.transacoes %}
+          <tr>
+            <td class="mono">{{ t.data_iso or t.data }}</td>
+            <td>{{ t.descricao }}</td>
+            <td>{{ t.cidade or '—' }}</td>
+            <td>{{ t.categoria_sugerida or '—' }}</td>
+            <td class="mono">{{ (t.parcela_atual ~ '/' ~ t.parcela_total) if t.parcela_atual else '—' }}</td>
+            <td class="num {{ 'val-despesa' if t.sinal == 'D' else 'val-receita' }}">
+              {{ '' if t.sinal == 'D' else '-' }} R$ {{ '%.2f'|format(t.valor)|replace('.', ',') }}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endfor %}
+
+    <div class="filters">
+      <a href="{{ url_for('cartao.importar') }}" class="btn btn-ghost">Descartar</a>
+      <button type="submit" class="btn btn-primary">Confirmar e lançar</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

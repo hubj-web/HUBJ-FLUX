@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Importar Fatura · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:560px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Cartão de Crédito · Importar Fatura</h1>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a>
+       <a href="{{ url_for('cartao.faturas') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Faturas importadas</a>
+       <a href="{{ url_for('cartao.painel') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Painel do cartão</a>
+       <a href="{{ url_for('cartao.transacoes') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Transações</a></p>
+  </header>
+  <p style="color:var(--ink-soft)">Hoje o sistema lê faturas <strong>Cartões CAIXA</strong> em PDF. Se a fatura tiver mais de um cartão (ex: titular + adicional), cada um vira um cartão separado automaticamente.</p>
+  <form method="post" enctype="multipart/form-data" class="form-grid">
+    <div class="form-row">
+      <label>Arquivo PDF da fatura</label>
+      <input type="file" name="pdf" accept="application/pdf" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Ler fatura</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Painel do Cartão · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:640px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Painel do cartão</h1>
+    <p>Situação da fatura mais recente importada.</p>
+  </header>
+  {% if fatura %}
+  <div class="review-summary">
+    <div class="summary-cell"><span class="label">Cartão</span><span class="value" style="font-size:15px">{{ fatura.cartao_nome }}</span></div>
+    <div class="summary-cell"><span class="label">Mês de referência</span><span class="value">{{ fatura.mes_referencia }}</span></div>
+    <div class="summary-cell"><span class="label">Vencimento</span><span class="value">{{ fatura.vencimento }}</span></div>
+    <div class="summary-cell"><span class="label">Valor total</span><span class="value">R$ {{ '%.2f'|format(fatura.valor_total or 0)|replace('.', ',') }}</span></div>
+    <div class="summary-cell"><span class="label">Limite utilizado</span><span class="value">R$ {{ '%.2f'|format(fatura.limite_utilizado or 0)|replace('.', ',') }}</span></div>
+    <div class="summary-cell"><span class="label">Limite disponível</span><span class="value">R$ {{ '%.2f'|format(fatura.limite_disponivel or 0)|replace('.', ',') }}</span></div>
+  </div>
+  {% else %}
+  <p style="color:var(--graphite)">Nenhuma fatura importada ainda.</p>
+  {% endif %}
+  <p><a href="{{ url_for('cartao.importar') }}" class="btn btn-primary">Importar fatura</a>
+     <a href="{{ url_for('cartao.faturas') }}" class="btn btn-ghost">Ver todas as faturas</a></p>
+</div>
+{% endblock %}

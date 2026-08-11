@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Faturas Importadas · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:900px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Faturas importadas</h1>
+    <p><a href="{{ url_for('cartao.importar') }}" class="btn btn-primary" style="padding:4px 10px;font-size:12px">+ Importar fatura</a></p>
+  </header>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Mês ref.</th><th>Cartão</th><th>Vencimento</th><th class="num">Valor total</th><th class="num">Lançamentos</th><th></th></tr></thead>
+      <tbody>
+      {% for f in faturas %}
+        <tr>
+          <td class="mono">{{ f.mes_referencia }}</td>
+          <td>{{ f.cartao_nome }}</td>
+          <td class="mono">{{ f.vencimento }}</td>
+          <td class="num">R$ {{ '%.2f'|format(f.valor_total or 0)|replace('.', ',') }}</td>
+          <td class="num mono">{{ f.n_transacoes }}</td>
+          <td>
+            <form method="post" action="{{ url_for('cartao.excluir_fatura', fatura_id=f.id) }}" style="display:inline"
+                  onsubmit="return confirm('Excluir esta fatura e seus lançamentos?');">
+              <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;color:var(--brick)">Excluir</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" style="text-align:center;color:var(--graphite);padding:24px">Nenhuma fatura importada ainda.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

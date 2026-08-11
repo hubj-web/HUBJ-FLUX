@@ -8,6 +8,7 @@ from auth import auth_bp, init_oauth
 from inicio import inicio_bp
 from admin import admin_bp
 from lancamentos import lanc_bp
+from cartao import cartao_bp
 
 
 def create_app():
@@ -29,6 +30,7 @@ def create_app():
     app.register_blueprint(inicio_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(lanc_bp)
+    app.register_blueprint(cartao_bp)
 
     app.teardown_appcontext(db.close_conn)
 
