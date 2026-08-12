@@ -439,3 +439,95 @@ def listar_lancamentos_cartao(organizacao_id, filtros=None):
         params["busca"] = f"%{filtros['busca']}%"
     sql += " ORDER BY lc.data_iso DESC, lc.id DESC"
     return query_all(sql, params)
+
+
+# ---------- Planejamento / Controle ----------
+
+def buscar_preferencias(organizacao_id):
+    return query_one("SELECT * FROM organizacoes_preferencias WHERE organizacao_id = %s", (organizacao_id,))
+
+
+def salvar_renda_mensal(organizacao_id, renda_mensal):
+    execute(
+        "UPDATE organizacoes_preferencias SET renda_mensal = %s WHERE organizacao_id = %s",
+        (renda_mensal, organizacao_id),
+    )
+
+
+def listar_planejamento_mes(organizacao_id, mes_referencia):
+    """Todas as categorias ativas, com o valor planejado daquele mês (0 se
+    ainda não foi definido)."""
+    return query_all(
+        """SELECT c.id AS categoria_id, c.nome AS categoria_nome,
+                  COALESCE(p.valor_limite, 0) AS valor_limite
+           FROM categorias c
+           LEFT JOIN planejamentos p ON p.categoria_id = c.id AND p.mes_referencia = %(mes)s
+           WHERE c.organizacao_id = %(org)s AND c.ativa = true
+           ORDER BY c.ordem, c.nome""",
+        {"org": organizacao_id, "mes": mes_referencia},
+    )
+
+
+def salvar_planejamento_categoria(organizacao_id, mes_referencia, categoria_id, valor_limite):
+    execute(
+        """INSERT INTO planejamentos (organizacao_id, mes_referencia, categoria_id, valor_limite)
+           VALUES (%s, %s, %s, %s)
+           ON CONFLICT (organizacao_id, mes_referencia, categoria_id)
+           DO UPDATE SET valor_limite = excluded.valor_limite""",
+        (organizacao_id, mes_referencia, categoria_id, valor_limite),
+    )
+
+
+def copiar_planejamento(organizacao_id, mes_origem, mes_destino):
+    origem = query_all(
+        "SELECT categoria_id, valor_limite FROM planejamentos WHERE organizacao_id = %s AND mes_referencia = %s",
+        (organizacao_id, mes_origem),
+    )
+    for row in origem:
+        salvar_planejamento_categoria(organizacao_id, mes_destino, row["categoria_id"], row["valor_limite"])
+    return len(origem)
+
+
+def realizado_por_categoria_mes(organizacao_id, mes_referencia):
+    """{categoria_id: valor_realizado} somando lancamentos (geral) + lancamentos_cartao
+    (cartão), só despesas, do mês."""
+    rows = query_all(
+        """SELECT categoria_id, SUM(valor) AS total FROM (
+             SELECT categoria_id, valor FROM lancamentos
+               WHERE organizacao_id = %(org)s AND tipo = 'despesa'
+                 AND to_char(data, 'YYYY-MM') = %(mes)s
+             UNION ALL
+             SELECT lc.categoria_id, lc.valor FROM lancamentos_cartao lc
+               JOIN faturas f ON f.id = lc.fatura_id
+               JOIN cartoes c ON c.id = f.cartao_id
+               WHERE c.organizacao_id = %(org)s AND lc.sinal = 'D' AND f.mes_referencia = %(mes)s
+           ) t
+           GROUP BY categoria_id""",
+        {"org": organizacao_id, "mes": mes_referencia},
+    )
+    return {r["categoria_id"]: float(r["total"]) for r in rows if r["categoria_id"] is not None}
+
+
+def lancamentos_por_categoria_mes(organizacao_id, categoria_id, mes_referencia):
+    """Para o drill-down do Controle: todos os lançamentos (gerais + cartão)
+    daquela categoria naquele mês."""
+    gerais = query_all(
+        """SELECT data, descricao, valor, forma_pagamento_id, pessoa_id, 'geral' AS origem
+           FROM lancamentos
+           WHERE organizacao_id = %(org)s AND categoria_id = %(cat)s AND tipo = 'despesa'
+             AND to_char(data, 'YYYY-MM') = %(mes)s
+           ORDER BY data DESC""",
+        {"org": organizacao_id, "cat": categoria_id, "mes": mes_referencia},
+    )
+    cartao = query_all(
+        """SELECT lc.data_iso AS data, lc.descricao, lc.valor, NULL AS forma_pagamento_id,
+                  lc.pessoa_id, 'cartao' AS origem
+           FROM lancamentos_cartao lc
+           JOIN faturas f ON f.id = lc.fatura_id
+           JOIN cartoes c ON c.id = f.cartao_id
+           WHERE c.organizacao_id = %(org)s AND lc.categoria_id = %(cat)s
+             AND lc.sinal = 'D' AND f.mes_referencia = %(mes)s
+           ORDER BY lc.data_iso DESC""",
+        {"org": organizacao_id, "cat": categoria_id, "mes": mes_referencia},
+    )
+    return list(gerais) + list(cartao)

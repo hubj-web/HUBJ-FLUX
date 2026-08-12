@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Controle · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:820px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Controle</h1>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a>
+       <a href="{{ url_for('plan.index', mes=mes_referencia) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Ajustar Planejamento</a></p>
+  </header>
+
+  <div class="filters" style="align-items:center;margin-bottom:20px">
+    <a href="{{ url_for('controle.index', mes=mes_anterior) }}" class="btn btn-ghost" style="padding:6px 12px">← Mês anterior</a>
+    <strong class="mono" style="font-size:15px">{{ mes_referencia }}</strong>
+    <a href="{{ url_for('controle.index', mes=mes_seguinte) }}" class="btn btn-ghost" style="padding:6px 12px">Mês seguinte →</a>
+  </div>
+
+  <div class="review-summary">
+    <div class="summary-cell"><span class="label">Receitas</span><span class="value val-receita">R$ {{ '%.2f'|format(totais.receitas)|replace('.', ',') }}</span></div>
+    <div class="summary-cell"><span class="label">Despesas</span><span class="value val-despesa">R$ {{ '%.2f'|format(totais.despesas)|replace('.', ',') }}</span></div>
+    <div class="summary-cell"><span class="label">Saldo</span><span class="value {{ 'val-receita' if totais.saldo >= 0 else 'val-despesa' }}">R$ {{ '%.2f'|format(totais.saldo)|replace('.', ',') }}</span></div>
+  </div>
+
+  {% if frase %}<p style="color:var(--ink-soft);font-size:13.5px;margin:-8px 0 20px">{{ frase }}</p>{% endif %}
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Categoria</th><th class="num">Planejado</th><th class="num">Realizado</th><th class="num">Diferença</th><th class="num">%</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for l in linhas %}
+        <tr>
+          <td><a href="{{ url_for('controle.drill_down', categoria_id=l.categoria_id, mes=mes_referencia) }}">{{ l.categoria_nome }}</a></td>
+          <td class="num">R$ {{ '%.2f'|format(l.planejado)|replace('.', ',') }}</td>
+          <td class="num">R$ {{ '%.2f'|format(l.realizado)|replace('.', ',') }}</td>
+          <td class="num {{ 'val-receita' if l.diferenca >= 0 else 'val-despesa' }}">R$ {{ '%.2f'|format(l.diferenca)|replace('.', ',') }}</td>
+          <td class="num mono">{{ l.percentual if l.percentual is not none else '—' }}{{ '%' if l.percentual is not none }}</td>
+          <td><span class="chip-status {{ l.cor }}">{{ l.estado.replace('_', ' ') }}</span></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" style="text-align:center;color:var(--graphite);padding:24px">Nenhuma categoria planejada este mês — <a href="{{ url_for('plan.index', mes=mes_referencia) }}">defina limites no Planejamento</a>.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

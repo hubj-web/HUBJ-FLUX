@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ categoria.nome if categoria else 'Categoria' }} · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:760px;margin:0 auto">
+  <header class="panel-head">
+    <h1>{{ categoria.nome if categoria else 'Categoria' }} · {{ mes_referencia }}</h1>
+    <p><a href="{{ url_for('controle.index', mes=mes_referencia) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Controle</a></p>
+  </header>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Data</th><th>Descrição</th><th>Origem</th><th class="num">Valor</th></tr></thead>
+      <tbody>
+      {% for l in lancamentos %}
+        <tr>
+          <td class="mono">{{ l.data }}</td>
+          <td>{{ l.descricao or '—' }}</td>
+          <td class="mono">{{ 'Cartão' if l.origem == 'cartao' else 'Lançamento' }}</td>
+          <td class="num val-despesa">R$ {{ '%.2f'|format(l.valor)|replace('.', ',') }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" style="text-align:center;color:var(--graphite);padding:24px">Nenhum lançamento nessa categoria este mês.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
