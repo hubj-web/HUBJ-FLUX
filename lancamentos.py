@@ -2,7 +2,7 @@
 import uuid
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g
+from flask import Blueprint, render_template, request, redirect, url_for, flash, g, Response, abort
 
 import db
 from auth import login_required, requer_organizacao
@@ -57,6 +57,15 @@ def novo():
     if not categoria_id and descricao:
         categoria_id = db.sugerir_categoria_por_descricao(org_id, descricao)
 
+    # anexo (comprovante, cupom fiscal ou foto tirada na hora) - opcional
+    arquivo_anexo = request.files.get("anexo")
+    tem_anexo = arquivo_anexo and arquivo_anexo.filename
+    if tem_anexo:
+        conteudo_anexo = arquivo_anexo.read()
+        if len(conteudo_anexo) > 8 * 1024 * 1024:
+            flash("O arquivo anexado passou de 8 MB - tente uma foto com menos resolução.", "erro")
+            return redirect(url_for("lanc.novo", tipo=tipo))
+
     base = {
         "tipo": tipo, "descricao": descricao, "categoria_id": categoria_id,
         "subcategoria_id": subcategoria_id, "forma_pagamento_id": forma_pagamento_id,
@@ -72,7 +81,7 @@ def novo():
         diferenca_centavos = round(valor_total - (valor_parcela * num_parcelas), 2)
         for i in range(num_parcelas):
             valor_desta = valor_parcela + (diferenca_centavos if i == 0 else 0)
-            db.criar_lancamento(org_id, {
+            lanc = db.criar_lancamento(org_id, {
                 **base,
                 "data": data_lanc + relativedelta(months=i),
                 "valor": valor_desta,
@@ -80,16 +89,37 @@ def novo():
                 "parcela_atual": i + 1,
                 "parcela_total": num_parcelas,
             }, g.usuario_atual["id"])
+            # o comprovante físico é de uma compra só - anexa apenas na 1ª parcela
+            if tem_anexo and i == 0:
+                db.salvar_anexo(lanc["id"], arquivo_anexo.filename, arquivo_anexo.mimetype, conteudo_anexo)
         flash(f"Lançamento parcelado em {num_parcelas}x (1ª parcela {_fmt_moeda(valor_parcela + diferenca_centavos)}, "
               f"demais {_fmt_moeda(valor_parcela)}) criado.", "ok")
     else:
-        db.criar_lancamento(org_id, {
+        lanc = db.criar_lancamento(org_id, {
             **base, "data": data_lanc, "valor": valor_total,
             "grupo_parcelamento_id": None, "parcela_atual": None, "parcela_total": None,
         }, g.usuario_atual["id"])
+        if tem_anexo:
+            db.salvar_anexo(lanc["id"], arquivo_anexo.filename, arquivo_anexo.mimetype, conteudo_anexo)
         flash("Lançamento criado com sucesso.", "ok")
 
     return redirect(url_for("lanc.novo", tipo=tipo))
+
+
+@lanc_bp.route("/lancamentos/anexo/<int:anexo_id>")
+@login_required
+@requer_organizacao
+def ver_anexo(anexo_id):
+    org_id = g.usuario_atual["organizacao_id"]
+    anexo = db.buscar_anexo(anexo_id, org_id)
+    if not anexo:
+        abort(404)
+    return Response(
+        bytes(anexo["conteudo"]), mimetype=anexo["mimetype"] or "application/octet-stream",
+        headers={"Content-Disposition": f"inline; filename=\"{anexo['nome_arquivo']}\""},
+    )
+
+
 
 
 def _fmt_moeda(v):
@@ -114,8 +144,10 @@ def extrato():
         "busca": request.args.get("busca") or None,
     }
     lancamentos = db.listar_lancamentos(org_id, filtros)
+    anexos_por_lancamento = db.anexo_id_por_lancamento([l["id"] for l in lancamentos])
     ctx = _contexto_formulario(org_id)
-    return render_template("extrato.html", lancamentos=lancamentos, filtros=filtros, **ctx)
+    return render_template("extrato.html", lancamentos=lancamentos, filtros=filtros,
+                            anexos_por_lancamento=anexos_por_lancamento, **ctx)
 
 
 @lanc_bp.route("/extrato/<int:lid>/excluir", methods=["POST"])

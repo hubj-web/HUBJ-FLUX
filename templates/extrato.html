@@ -36,7 +36,9 @@
       {% for l in lancamentos %}
         <tr>
           <td class="mono">{{ l.data }}</td>
-          <td>{{ l.descricao or '—' }}{% if l.parcela_atual %}<span style="color:var(--graphite);font-size:11px"> ({{ l.parcela_atual }}/{{ l.parcela_total }})</span>{% endif %}</td>
+          <td>{{ l.descricao or '—' }}{% if l.parcela_atual %}<span style="color:var(--graphite);font-size:11px"> ({{ l.parcela_atual }}/{{ l.parcela_total }})</span>{% endif %}
+            {% if anexos_por_lancamento.get(l.id) %}<a href="{{ url_for('lanc.ver_anexo', anexo_id=anexos_por_lancamento[l.id]) }}" title="Ver anexo" style="text-decoration:none">📎</a>{% endif %}
+          </td>
           <td>{{ l.categoria_nome or '—' }}</td>
           <td>{{ l.forma_pagamento_nome or '—' }}</td>
           <td>{{ l.pessoa_nome or '—' }}</td>

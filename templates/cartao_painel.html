@@ -18,7 +18,7 @@
   {% else %}
   <p style="color:var(--graphite)">Nenhuma fatura importada ainda.</p>
   {% endif %}
-  <p><a href="{{ url_for('cartao.importar') }}" class="btn btn-primary">Importar fatura</a>
+  <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost">← Início</a> <a href="{{ url_for('cartao.importar') }}" class="btn btn-primary">Importar fatura</a>
      <a href="{{ url_for('cartao.faturas') }}" class="btn btn-ghost">Ver todas as faturas</a></p>
 </div>
 {% endblock %}

@@ -531,3 +531,48 @@ def lancamentos_por_categoria_mes(organizacao_id, categoria_id, mes_referencia):
         {"org": organizacao_id, "cat": categoria_id, "mes": mes_referencia},
     )
     return list(gerais) + list(cartao)
+
+
+# ---------- Anexos de lançamento (comprovantes, cupons, fotos) ----------
+
+def salvar_anexo(lancamento_id, nome_arquivo, mimetype, conteudo_bytes):
+    return execute(
+        """INSERT INTO lancamentos_anexos (lancamento_id, nome_arquivo, mimetype, conteudo, tamanho_bytes, criado_em)
+           VALUES (%s, %s, %s, %s, %s, now()) RETURNING id""",
+        (lancamento_id, nome_arquivo, mimetype, conteudo_bytes, len(conteudo_bytes)),
+    )
+
+
+def listar_anexos_lancamento(lancamento_id):
+    return query_all(
+        "SELECT id, nome_arquivo, mimetype, tamanho_bytes, criado_em FROM lancamentos_anexos "
+        "WHERE lancamento_id = %s ORDER BY criado_em",
+        (lancamento_id,),
+    )
+
+
+def buscar_anexo(anexo_id, organizacao_id):
+    """Sempre confere que o anexo pertence a um lançamento da própria
+    organização, antes de servir o arquivo - evita um usuário de um cliente
+    acessar o comprovante de outro só sabendo o id."""
+    return query_one(
+        """SELECT a.* FROM lancamentos_anexos a
+           JOIN lancamentos l ON l.id = a.lancamento_id
+           WHERE a.id = %s AND l.organizacao_id = %s""",
+        (anexo_id, organizacao_id),
+    )
+
+
+def anexo_id_por_lancamento(lancamento_ids):
+    """{lancamento_id: anexo_id} do primeiro anexo de cada lançamento -
+    usado no Extrato pra mostrar o clipe só nas linhas que têm anexo, com
+    o link já pronto, sem 1 consulta por linha."""
+    if not lancamento_ids:
+        return {}
+    rows = query_all(
+        """SELECT DISTINCT ON (lancamento_id) lancamento_id, id AS anexo_id
+           FROM lancamentos_anexos WHERE lancamento_id = ANY(%s)
+           ORDER BY lancamento_id, criado_em""",
+        (list(lancamento_ids),),
+    )
+    return {r["lancamento_id"]: r["anexo_id"] for r in rows}

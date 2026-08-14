@@ -14,7 +14,7 @@
     <a href="{{ url_for('lanc.novo', tipo='receita') }}" class="view-toggle-btn {{ 'active' if tipo_inicial == 'receita' }}">Receita</a>
   </div>
 
-  <form method="post" class="form-grid">
+  <form method="post" class="form-grid" enctype="multipart/form-data">
     <input type="hidden" name="tipo" value="{{ tipo_inicial }}">
 
     <div class="form-row">
@@ -82,11 +82,44 @@
       <textarea name="observacao" rows="2"></textarea>
     </div>
 
+    <div class="form-row">
+      <label>Anexar comprovante (extrato, cupom fiscal, foto) — opcional</label>
+      <input type="file" name="anexo" accept="image/*,.pdf" id="input-anexo-arquivo" style="display:none">
+      <input type="file" name="anexo_camera" accept="image/*" capture="environment" id="input-anexo-camera" style="display:none">
+      <div class="filters" style="margin-top:4px">
+        <button type="button" class="btn btn-ghost" id="btn-escolher-arquivo" style="padding:8px 14px;font-size:12.5px">📎 Escolher arquivo</button>
+        <button type="button" class="btn btn-ghost" id="btn-tirar-foto" style="padding:8px 14px;font-size:12.5px">📷 Tirar foto</button>
+      </div>
+      <span id="nome-anexo-escolhido" style="display:block;margin-top:6px;font-size:12.5px;color:var(--graphite)"></span>
+    </div>
+
     <button type="submit" class="btn btn-primary" style="margin-top:10px">Salvar lançamento</button>
   </form>
 </div>
 
 <script>
+  const inputArquivo = document.getElementById('input-anexo-arquivo');
+  const inputCamera = document.getElementById('input-anexo-camera');
+  const nomeAnexo = document.getElementById('nome-anexo-escolhido');
+
+  document.getElementById('btn-escolher-arquivo').addEventListener('click', () => inputArquivo.click());
+  document.getElementById('btn-tirar-foto').addEventListener('click', () => inputCamera.click());
+
+  function mostrarNomeAnexo(input) {
+    if (input.files.length) {
+      nomeAnexo.textContent = '✓ ' + input.files[0].name;
+      // o backend só lê o campo "anexo" - se veio da câmera, copiamos o
+      // arquivo pro input principal antes de enviar o formulário
+      if (input === inputCamera) {
+        const dt = new DataTransfer();
+        dt.items.add(input.files[0]);
+        inputArquivo.files = dt.files;
+      }
+    }
+  }
+  inputArquivo.addEventListener('change', () => mostrarNomeAnexo(inputArquivo));
+  inputCamera.addEventListener('change', () => mostrarNomeAnexo(inputCamera));
+
   const selForma = document.getElementById('sel-forma');
   const linhaCartao = document.getElementById('linha-cartao');
   selForma.addEventListener('change', () => {
