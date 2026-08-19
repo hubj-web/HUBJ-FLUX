@@ -10,10 +10,10 @@ from auth import login_required, requer_organizacao
 lanc_bp = Blueprint("lanc", __name__)
 
 
-def _contexto_formulario(org_id):
+def _contexto_formulario(org_id, tipo=None):
     return {
-        "categorias": db.listar_categorias(org_id),
-        "formas_pagamento": db.listar_formas_pagamento(org_id),
+        "categorias": db.listar_categorias(org_id, tipo=tipo),
+        "formas_pagamento": db.listar_formas_pagamento(org_id, tipo=tipo),
         "cartoes": db.listar_cartoes(org_id),
         "pessoas": db.listar_pessoas(org_id),
     }
@@ -27,7 +27,7 @@ def novo():
 
     if request.method == "GET":
         tipo_inicial = request.args.get("tipo", "despesa")
-        ctx = _contexto_formulario(org_id)
+        ctx = _contexto_formulario(org_id, tipo=tipo_inicial)
         return render_template("lancamento_form.html", tipo_inicial=tipo_inicial, hoje=date.today().isoformat(), **ctx)
 
     tipo = request.form.get("tipo")
@@ -42,6 +42,15 @@ def novo():
     data_str = request.form.get("data") or date.today().isoformat()
     parcelado = request.form.get("parcelado") == "on"
     num_parcelas = int(request.form.get("num_parcelas") or 1) if parcelado else 1
+    com_juros = parcelado and request.form.get("com_juros") == "on"
+    taxa_juros_mensal = None
+    if com_juros:
+        try:
+            taxa_juros_mensal = float((request.form.get("taxa_juros_mensal") or "0").replace(",", "."))
+        except ValueError:
+            taxa_juros_mensal = 0
+        if taxa_juros_mensal <= 0:
+            com_juros = False
 
     try:
         valor_total = float(valor_str)
@@ -74,30 +83,45 @@ def novo():
 
     if parcelado and num_parcelas > 1:
         grupo_id = str(uuid.uuid4())
-        # Regra de arredondamento: divide igualmente e a 1ª parcela absorve
-        # a diferença de centavos que sobrar (ex: R$100 em 3x -> 33,34 + 33,33 + 33,33,
-        # nunca perde 1 centavo por arredondamento acumulado).
-        valor_parcela = round(valor_total / num_parcelas, 2)
-        diferenca_centavos = round(valor_total - (valor_parcela * num_parcelas), 2)
-        for i in range(num_parcelas):
-            valor_desta = valor_parcela + (diferenca_centavos if i == 0 else 0)
+        if com_juros:
+            # Parcela fixa com juros compostos (tabela Price) - a mesma
+            # fórmula usada em financiamentos: PMT = PV * i / (1 - (1+i)^-n)
+            i = taxa_juros_mensal / 100
+            valor_parcela = round(valor_total * i / (1 - (1 + i) ** -num_parcelas), 2)
+            diferenca_centavos = 0
+        else:
+            # Regra de arredondamento sem juros: divide igualmente e a 1ª
+            # parcela absorve a diferença de centavos que sobrar (ex: R$100
+            # em 3x -> 33,34 + 33,33 + 33,33, nunca perde 1 centavo).
+            valor_parcela = round(valor_total / num_parcelas, 2)
+            diferenca_centavos = round(valor_total - (valor_parcela * num_parcelas), 2)
+
+        for i_parcela in range(num_parcelas):
+            valor_desta = valor_parcela + (diferenca_centavos if i_parcela == 0 else 0)
             lanc = db.criar_lancamento(org_id, {
                 **base,
-                "data": data_lanc + relativedelta(months=i),
+                "data": data_lanc + relativedelta(months=i_parcela),
                 "valor": valor_desta,
                 "grupo_parcelamento_id": grupo_id,
-                "parcela_atual": i + 1,
+                "parcela_atual": i_parcela + 1,
                 "parcela_total": num_parcelas,
+                "taxa_juros_mensal": taxa_juros_mensal if com_juros else None,
             }, g.usuario_atual["id"])
             # o comprovante físico é de uma compra só - anexa apenas na 1ª parcela
-            if tem_anexo and i == 0:
+            if tem_anexo and i_parcela == 0:
                 db.salvar_anexo(lanc["id"], arquivo_anexo.filename, arquivo_anexo.mimetype, conteudo_anexo)
-        flash(f"Lançamento parcelado em {num_parcelas}x (1ª parcela {_fmt_moeda(valor_parcela + diferenca_centavos)}, "
-              f"demais {_fmt_moeda(valor_parcela)}) criado.", "ok")
+
+        if com_juros:
+            flash(f"Lançamento parcelado em {num_parcelas}x de {_fmt_moeda(valor_parcela)} "
+                  f"(com juros de {taxa_juros_mensal}% a.m., total {_fmt_moeda(valor_parcela * num_parcelas)}).", "ok")
+        else:
+            flash(f"Lançamento parcelado em {num_parcelas}x (1ª parcela {_fmt_moeda(valor_parcela + diferenca_centavos)}, "
+                  f"demais {_fmt_moeda(valor_parcela)}) criado.", "ok")
     else:
         lanc = db.criar_lancamento(org_id, {
             **base, "data": data_lanc, "valor": valor_total,
             "grupo_parcelamento_id": None, "parcela_atual": None, "parcela_total": None,
+            "taxa_juros_mensal": None,
         }, g.usuario_atual["id"])
         if tem_anexo:
             db.salvar_anexo(lanc["id"], arquivo_anexo.filename, arquivo_anexo.mimetype, conteudo_anexo)
@@ -144,10 +168,14 @@ def extrato():
         "busca": request.args.get("busca") or None,
     }
     lancamentos = db.listar_lancamentos(org_id, filtros)
+    total_receitas = sum(l["valor"] for l in lancamentos if l["tipo"] == "receita")
+    total_despesas = sum(l["valor"] for l in lancamentos if l["tipo"] == "despesa")
     anexos_por_lancamento = db.anexo_id_por_lancamento([l["id"] for l in lancamentos])
     ctx = _contexto_formulario(org_id)
     return render_template("extrato.html", lancamentos=lancamentos, filtros=filtros,
-                            anexos_por_lancamento=anexos_por_lancamento, **ctx)
+                            anexos_por_lancamento=anexos_por_lancamento,
+                            total_receitas=total_receitas, total_despesas=total_despesas,
+                            saldo_filtrado=total_receitas - total_despesas, **ctx)
 
 
 @lanc_bp.route("/extrato/<int:lid>/excluir", methods=["POST"])

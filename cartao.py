@@ -83,8 +83,20 @@ def importar():
         os.unlink(tmp_path)
 
     vencimento = resultado.get("vencimento")
-    titular_principal = resultado.get("titular") or "GERAL"
     cartao_principal = resultado.get("cartao_final")
+
+    # Nome do titular principal: preferimos o nome como aparece nas seções
+    # de cartão (forma abreviada, ex "NATALIA L S CARVALHO") em vez do nome
+    # completo da página de resumo (ex "NATALIA LUIZA SILVA CARVALHO") -
+    # assim o titular fica consistente com o nome usado nas demais seções
+    # da MESMA fatura, evitando cadastrar a mesma pessoa duas vezes.
+    titular_principal = None
+    for t in resultado["transacoes"]:
+        if t["titular"] != "GERAL" and t["cartao"] == cartao_principal:
+            titular_principal = t["titular"]
+            break
+    if not titular_principal:
+        titular_principal = resultado.get("titular") or "GERAL"
 
     grupos = {}
     for t in resultado["transacoes"]:
@@ -181,7 +193,7 @@ def confirmar():
 
     del _pendentes[token]
     flash(f"Fatura importada com sucesso: {len(cartoes_criados)} cartão(ões) atualizados.", "ok")
-    return redirect(url_for("cartao.faturas"))
+    return redirect(url_for("cartao.painel"))
 
 
 def _parse_data_br(data_str):
@@ -216,8 +228,8 @@ def excluir_fatura(fatura_id):
 @requer_organizacao
 def painel():
     org_id = g.usuario_atual["organizacao_id"]
-    fatura = db.ultima_fatura_organizacao(org_id)
-    return render_template("cartao_painel.html", fatura=fatura)
+    faturas = db.ultimas_faturas_por_cartao(org_id)
+    return render_template("cartao_painel.html", faturas=faturas)
 
 
 @cartao_bp.route("/transacoes")

@@ -29,6 +29,12 @@
     <a href="{{ url_for('lanc.extrato') }}" class="btn btn-ghost">Limpar</a>
   </form>
 
+  <div class="review-summary">
+    <div class="summary-cell"><span class="label">Receitas (filtro atual)</span><span class="value val-receita">R$ {{ '%.2f'|format(total_receitas)|replace('.', ',') }}</span></div>
+    <div class="summary-cell"><span class="label">Despesas (filtro atual)</span><span class="value val-despesa">R$ {{ '%.2f'|format(total_despesas)|replace('.', ',') }}</span></div>
+    <div class="summary-cell"><span class="label">Saldo (filtro atual)</span><span class="value {{ 'val-receita' if saldo_filtrado >= 0 else 'val-despesa' }}">R$ {{ '%.2f'|format(saldo_filtrado)|replace('.', ',') }}</span></div>
+  </div>
+
   <div class="table-wrap">
     <table class="data-table">
       <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Forma</th><th>Pessoa</th><th class="num">Valor</th><th></th></tr></thead>
@@ -37,7 +43,7 @@
         <tr>
           <td class="mono">{{ l.data }}</td>
           <td>{{ l.descricao or '—' }}{% if l.parcela_atual %}<span style="color:var(--graphite);font-size:11px"> ({{ l.parcela_atual }}/{{ l.parcela_total }})</span>{% endif %}
-            {% if anexos_por_lancamento.get(l.id) %}<a href="{{ url_for('lanc.ver_anexo', anexo_id=anexos_por_lancamento[l.id]) }}" title="Ver anexo" style="text-decoration:none">📎</a>{% endif %}
+            {% if anexos_por_lancamento.get(l.id) %}<a href="{{ url_for('lanc.ver_anexo', anexo_id=anexos_por_lancamento[l.id]) }}" target="_blank" rel="noopener" title="Ver anexo" style="text-decoration:none">📎</a>{% endif %}
           </td>
           <td>{{ l.categoria_nome or '—' }}</td>
           <td>{{ l.forma_pagamento_nome or '—' }}</td>

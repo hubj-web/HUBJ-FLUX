@@ -5,7 +5,8 @@
   <header class="panel-head">
     <h1>Planejamento</h1>
     <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a>
-       <a href="{{ url_for('controle.index', mes=mes_referencia) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Ver Controle</a></p>
+       <a href="{{ url_for('controle.index', mes=mes_referencia) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Ver Controle</a>
+       <a href="{{ url_for('plan.visualizar', mes=mes_referencia) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">👁 Só visualizar (sem editar)</a></p>
   </header>
 
   <div class="filters" style="align-items:center;margin-bottom:20px">
@@ -38,13 +39,14 @@
     <input type="hidden" name="mes_referencia" value="{{ mes_referencia }}">
     <div class="table-wrap" style="margin-bottom:20px">
       <table class="data-table">
-        <thead><tr><th>Categoria</th><th class="num">Limite mensal (R$)</th></tr></thead>
+        <thead><tr><th>Categoria</th><th class="num">Média últimos 3 meses</th><th class="num">Limite mensal (R$)</th></tr></thead>
         <tbody>
         {% for c in categorias %}
           <tr>
             <td>{{ c.categoria_nome }}</td>
+            <td class="num mono" style="color:var(--graphite)">R$ {{ '%.2f'|format(c.media_historica)|replace('.', ',') }}</td>
             <td class="num"><input type="text" name="limite_{{ c.categoria_id }}" value="{{ '%.2f'|format(c.valor_limite)|replace('.', ',') }}"
-                style="width:120px;text-align:right;padding:6px 8px;border:1px solid var(--line);border-radius:3px"></td>
+                style="width:120px;text-align:right;padding:6px 8px;border:1px solid var(--line);border-radius:8px"></td>
           </tr>
         {% endfor %}
         </tbody>

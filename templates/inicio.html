@@ -30,6 +30,9 @@
     <a href="{{ url_for('cartao.importar') }}" class="btn btn-ghost">Cartão de Crédito</a>
     <a href="{{ url_for('plan.index') }}" class="btn btn-ghost">Planejamento</a>
     <a href="{{ url_for('controle.index') }}" class="btn btn-ghost">Controle</a>
+    {% if usuario.papel in ('super_admin', 'admin_cliente') %}
+    <a href="{{ url_for('config.index') }}" class="btn btn-ghost">⚙️ Configurações</a>
+    {% endif %}
   </div>
 
   <h3>Últimos lançamentos</h3>

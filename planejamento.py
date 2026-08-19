@@ -24,6 +24,9 @@ def index():
     mes_anterior, mes_seguinte = _meses_vizinhos(mes_referencia)
 
     categorias = db.listar_planejamento_mes(org_id, mes_referencia)
+    media_historica = db.gasto_medio_categoria_ultimos_meses(org_id, mes_referencia)
+    for c in categorias:
+        c["media_historica"] = media_historica.get(c["categoria_id"], 0)
     total_planejado = sum(float(c["valor_limite"]) for c in categorias)
     prefs = db.buscar_preferencias(org_id)
 
@@ -32,6 +35,21 @@ def index():
         categorias=categorias, mes_referencia=mes_referencia,
         mes_anterior=mes_anterior, mes_seguinte=mes_seguinte,
         total_planejado=total_planejado, renda_mensal=prefs["renda_mensal"] if prefs else None,
+    )
+
+
+@plan_bp.route("/visualizar")
+@login_required
+@requer_organizacao
+def visualizar():
+    org_id = g.usuario_atual["organizacao_id"]
+    mes_referencia = request.args.get("mes") or date.today().strftime("%Y-%m")
+    mes_anterior, mes_seguinte = _meses_vizinhos(mes_referencia)
+    categorias = [c for c in db.listar_planejamento_mes(org_id, mes_referencia) if float(c["valor_limite"]) > 0]
+    total_planejado = sum(float(c["valor_limite"]) for c in categorias)
+    return render_template(
+        "planejamento_visualizar.html", categorias=categorias, mes_referencia=mes_referencia,
+        mes_anterior=mes_anterior, mes_seguinte=mes_seguinte, total_planejado=total_planejado,
     )
 
 

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Usuários · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:760px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Usuários da Organização</h1>
+    <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Configurações</a></p>
+    <p style="color:var(--graphite);font-size:13px">Limite contratado: {{ organizacao.limite_usuarios }} usuário(s).</p>
+  </header>
+
+  <h3>Convidar usuário</h3>
+  <form method="post" action="{{ url_for('config.convidar_usuario') }}" class="filters" style="align-items:flex-end">
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">E-mail</label>
+      <input name="email" type="email" required style="padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Papel</label>
+      <select name="papel" style="padding:10px 14px;border:1px solid var(--line);border-radius:8px">
+        <option value="membro">Membro</option><option value="admin_cliente">Admin do Cliente</option>
+      </select></div>
+    <button type="submit" class="btn btn-primary">Convidar</button>
+  </form>
+
+  <div class="table-wrap" style="margin-top:26px">
+    <table class="data-table">
+      <thead><tr><th>E-mail</th><th>Nome</th><th>Papel</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for u in usuarios %}
+        <tr>
+          <td class="mono">{{ u.email }}</td>
+          <td>{{ u.nome or '—' }}</td>
+          <td class="mono">{{ u.papel }}</td>
+          <td class="mono">{{ u.status }}</td>
+          <td>
+            <form method="post" action="{{ url_for('config.remover_usuario', usuario_id=u.id) }}" style="display:inline"
+                  onsubmit="return confirm('Remover o acesso de {{ u.email }}?');">
+              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--brick)">Remover</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

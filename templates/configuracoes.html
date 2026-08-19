@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Configurações · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Configurações</h1>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a></p>
+  </header>
+  <div class="filters" style="flex-direction:column;align-items:stretch;gap:12px">
+    <a href="{{ url_for('config.categorias') }}" class="btn btn-ghost" style="justify-content:flex-start">📂 Categorias (despesa e receita)</a>
+    <a href="{{ url_for('config.formas_pagamento') }}" class="btn btn-ghost" style="justify-content:flex-start">💳 Formas de Pagamento</a>
+    <a href="{{ url_for('config.cartoes') }}" class="btn btn-ghost" style="justify-content:flex-start">🏦 Cartões de Crédito</a>
+    <a href="{{ url_for('config.usuarios') }}" class="btn btn-ghost" style="justify-content:flex-start">👤 Usuários da Organização</a>
+  </div>
+</div>
+{% endblock %}

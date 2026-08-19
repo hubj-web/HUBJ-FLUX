@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Cartões · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:820px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Cartões de Crédito</h1>
+    <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Configurações</a></p>
+    <p style="color:var(--graphite);font-size:13px">Cartões também são criados automaticamente quando você importa uma fatura - aqui você pode cadastrar um na mão (útil pra usar no Novo Lançamento antes de importar a primeira fatura) ou renomear um que a importação criou com nome estranho.</p>
+  </header>
+
+  <h3>Novo cartão</h3>
+  <form method="post" action="{{ url_for('config.novo_cartao') }}" class="filters" style="flex-wrap:wrap;align-items:flex-end">
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Nome</label>
+      <input name="nome" required placeholder="Ex: Diego · Nubank" style="padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Limite total (R$)</label>
+      <input name="limite_total" style="width:120px;padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Dia de fechamento</label>
+      <input name="dia_fechamento" type="number" min="1" max="31" style="width:90px;padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Dia de vencimento</label>
+      <input name="dia_vencimento" type="number" min="1" max="31" style="width:90px;padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
+    <button type="submit" class="btn btn-primary">Criar</button>
+  </form>
+
+  <div class="table-wrap" style="margin-top:26px">
+    <table class="data-table">
+      <thead><tr><th>Nome</th><th class="num">Limite</th><th>Fechamento</th><th>Vencimento</th><th>Ativo</th><th></th></tr></thead>
+      <tbody>
+      {% for c in cartoes %}
+        <tr>
+          <form method="post" action="{{ url_for('config.salvar_cartao', cartao_id=c.id) }}" style="display:contents">
+            <td><input name="nome" value="{{ c.nome }}" style="width:200px;padding:5px;border:1px solid transparent;border-radius:6px" onfocus="this.style.borderColor='var(--line)'"></td>
+            <td class="num"><input name="limite_total" value="{{ c.limite_total or '' }}" style="width:90px;padding:5px;border:1px solid transparent;border-radius:6px;text-align:right" onfocus="this.style.borderColor='var(--line)'"></td>
+            <td><input name="dia_fechamento" type="number" min="1" max="31" value="{{ c.dia_fechamento or '' }}" style="width:60px;padding:5px;border:1px solid transparent;border-radius:6px" onfocus="this.style.borderColor='var(--line)'"></td>
+            <td><input name="dia_vencimento" type="number" min="1" max="31" value="{{ c.dia_vencimento or '' }}" style="width:60px;padding:5px;border:1px solid transparent;border-radius:6px" onfocus="this.style.borderColor='var(--line)'"></td>
+            <td style="text-align:center"><input type="checkbox" name="ativo" {{ 'checked' if c.ativo }}></td>
+            <td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">Salvar</button></td>
+          </form>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

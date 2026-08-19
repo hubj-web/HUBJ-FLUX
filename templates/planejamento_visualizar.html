@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Planejamento (visualização) · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:640px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Planejamento — {{ mes_referencia }}</h1>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a>
+       <a href="{{ url_for('plan.index', mes=mes_referencia) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">✎ Editar</a></p>
+  </header>
+
+  <div class="filters" style="align-items:center;margin-bottom:20px">
+    <a href="{{ url_for('plan.visualizar', mes=mes_anterior) }}" class="btn btn-ghost" style="padding:6px 12px">← Mês anterior</a>
+    <strong class="mono" style="font-size:15px">{{ mes_referencia }}</strong>
+    <a href="{{ url_for('plan.visualizar', mes=mes_seguinte) }}" class="btn btn-ghost" style="padding:6px 12px">Mês seguinte →</a>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Categoria</th><th class="num">Limite mensal</th></tr></thead>
+      <tbody>
+      {% for c in categorias %}
+        <tr><td>{{ c.categoria_nome }}</td><td class="num">R$ {{ '%.2f'|format(c.valor_limite)|replace('.', ',') }}</td></tr>
+      {% else %}
+        <tr><td colspan="2" style="text-align:center;color:var(--graphite);padding:20px">Nenhum limite definido para este mês.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="mono" style="margin-top:16px">Total planejado: <strong>R$ {{ '%.2f'|format(total_planejado)|replace('.', ',') }}</strong></p>
+</div>
+{% endblock %}

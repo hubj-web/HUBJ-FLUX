@@ -1,24 +1,30 @@
 {% extends "base.html" %}
 {% block title %}Painel do Cartão · HUB-J FLUX{% endblock %}
 {% block content %}
-<div class="content" style="max-width:640px;margin:0 auto">
+<div class="content" style="max-width:820px;margin:0 auto">
   <header class="panel-head">
     <h1>Painel do cartão</h1>
-    <p>Situação da fatura mais recente importada.</p>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a>
+       <a href="{{ url_for('cartao.importar') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Importar fatura</a>
+       <a href="{{ url_for('cartao.faturas') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Ver todas as faturas</a>
+       <a href="{{ url_for('cartao.transacoes') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Transações</a></p>
+    <p style="color:var(--graphite);font-size:13px">Mostra a fatura mais recente de cada cartão cadastrado.</p>
   </header>
-  {% if fatura %}
-  <div class="review-summary">
-    <div class="summary-cell"><span class="label">Cartão</span><span class="value" style="font-size:15px">{{ fatura.cartao_nome }}</span></div>
-    <div class="summary-cell"><span class="label">Mês de referência</span><span class="value">{{ fatura.mes_referencia }}</span></div>
-    <div class="summary-cell"><span class="label">Vencimento</span><span class="value">{{ fatura.vencimento }}</span></div>
-    <div class="summary-cell"><span class="label">Valor total</span><span class="value">R$ {{ '%.2f'|format(fatura.valor_total or 0)|replace('.', ',') }}</span></div>
-    <div class="summary-cell"><span class="label">Limite utilizado</span><span class="value">R$ {{ '%.2f'|format(fatura.limite_utilizado or 0)|replace('.', ',') }}</span></div>
-    <div class="summary-cell"><span class="label">Limite disponível</span><span class="value">R$ {{ '%.2f'|format(fatura.limite_disponivel or 0)|replace('.', ',') }}</span></div>
+
+  {% if faturas %}
+  <div class="review-summary" style="grid-template-columns:1fr">
+    {% for fatura in faturas %}
+    <div class="summary-cell" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px">
+      <div style="grid-column:1/-1"><span class="label">Cartão</span><span class="value" style="font-size:16px">{{ fatura.cartao_nome }}</span></div>
+      <div><span class="label">Mês</span><span class="value">{{ fatura.mes_referencia }}</span></div>
+      <div><span class="label">Vencimento</span><span class="value">{{ fatura.vencimento or '—' }}</span></div>
+      <div><span class="label">Valor total</span><span class="value">R$ {{ '%.2f'|format(fatura.valor_total or 0)|replace('.', ',') }}</span></div>
+      <div><span class="label">Limite disponível</span><span class="value">R$ {{ '%.2f'|format(fatura.limite_disponivel or 0)|replace('.', ',') }}</span></div>
+    </div>
+    {% endfor %}
   </div>
   {% else %}
   <p style="color:var(--graphite)">Nenhuma fatura importada ainda.</p>
   {% endif %}
-  <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost">← Início</a> <a href="{{ url_for('cartao.importar') }}" class="btn btn-primary">Importar fatura</a>
-     <a href="{{ url_for('cartao.faturas') }}" class="btn btn-ghost">Ver todas as faturas</a></p>
 </div>
 {% endblock %}

@@ -9,6 +9,12 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+{% if g.get('usuario_atual') %}
+  <div class="topbar-sair">
+    <span class="mono">{{ g.usuario_atual.email }}</span>
+    <a href="{{ url_for('auth.logout') }}">Sair</a>
+  </div>
+{% endif %}
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     <div class="flash-wrap">

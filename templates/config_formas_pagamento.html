@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Formas de Pagamento · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:760px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Formas de Pagamento</h1>
+    <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Configurações</a></p>
+  </header>
+
+  <h3>Nova forma de pagamento</h3>
+  <form method="post" action="{{ url_for('config.nova_forma_pagamento') }}" class="filters" style="align-items:flex-end">
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Nome</label>
+      <input name="nome" required style="padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Aplica a</label>
+      <select name="aplica_a" style="padding:10px 14px;border:1px solid var(--line);border-radius:8px">
+        <option value="ambos">Ambos</option><option value="despesa">Só despesa</option><option value="receita">Só receita</option>
+      </select></div>
+    <button type="submit" class="btn btn-primary">Criar</button>
+  </form>
+
+  <div class="table-wrap" style="margin-top:26px">
+    <table class="data-table">
+      <thead><tr><th>Nome</th><th>Aplica a</th><th>Ativa</th><th></th></tr></thead>
+      <tbody>
+      {% for f in formas %}
+        <tr>
+          <form method="post" action="{{ url_for('config.salvar_forma_pagamento', fp_id=f.id) }}" style="display:contents">
+            <td><input name="nome" value="{{ f.nome }}" style="width:180px;padding:5px;border:1px solid transparent;border-radius:6px" onfocus="this.style.borderColor='var(--line)'"></td>
+            <td><select name="aplica_a" style="padding:5px;border:1px solid var(--line);border-radius:6px">
+              <option value="ambos" {{ 'selected' if f.aplica_a=='ambos' }}>Ambos</option>
+              <option value="despesa" {{ 'selected' if f.aplica_a=='despesa' }}>Só despesa</option>
+              <option value="receita" {{ 'selected' if f.aplica_a=='receita' }}>Só receita</option>
+            </select></td>
+            <td style="text-align:center"><input type="checkbox" name="ativa" {{ 'checked' if f.ativa }}></td>
+            <td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">Salvar</button></td>
+          </form>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

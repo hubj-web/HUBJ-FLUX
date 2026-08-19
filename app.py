@@ -11,6 +11,7 @@ from lancamentos import lanc_bp
 from cartao import cartao_bp
 from planejamento import plan_bp
 from controle import controle_bp
+from configuracoes import config_bp
 
 
 def create_app():
@@ -35,6 +36,7 @@ def create_app():
     app.register_blueprint(cartao_bp)
     app.register_blueprint(plan_bp)
     app.register_blueprint(controle_bp)
+    app.register_blueprint(config_bp)
 
     app.teardown_appcontext(db.close_conn)
 

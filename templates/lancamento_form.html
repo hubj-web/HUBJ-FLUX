@@ -74,7 +74,20 @@
     </div>
     <div class="form-row" id="linha-parcelas" style="display:none">
       <label>Número de parcelas</label>
-      <input type="number" name="num_parcelas" min="2" max="60" value="2">
+      <input type="number" name="num_parcelas" min="2" max="60" value="2" id="input-num-parcelas">
+    </div>
+    <div class="form-row" id="linha-com-juros" style="display:none">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:normal">
+        <input type="checkbox" name="com_juros" id="chk-com-juros" style="width:auto">
+        Parcelamento tem juros?
+      </label>
+    </div>
+    <div class="form-row" id="linha-taxa-juros" style="display:none">
+      <label>Taxa de juros (% ao mês)</label>
+      <input type="text" name="taxa_juros_mensal" id="input-taxa-juros" placeholder="Ex: 2,5">
+    </div>
+    <div class="form-row" id="linha-preview-parcela" style="display:none">
+      <span id="preview-parcela-texto" class="mono" style="font-size:13px;color:var(--ink-soft)"></span>
     </div>
 
     <div class="form-row">
@@ -128,8 +141,47 @@
   });
   const chkParcelado = document.getElementById('chk-parcelado');
   const linhaParcelas = document.getElementById('linha-parcelas');
+  const linhaComJuros = document.getElementById('linha-com-juros');
+  const linhaTaxaJuros = document.getElementById('linha-taxa-juros');
+  const linhaPreview = document.getElementById('linha-preview-parcela');
+  const chkComJuros = document.getElementById('chk-com-juros');
+  const inputTaxaJuros = document.getElementById('input-taxa-juros');
+  const inputNumParcelas = document.getElementById('input-num-parcelas');
+  const inputValor = document.querySelector('input[name="valor"]');
+  const previewTexto = document.getElementById('preview-parcela-texto');
+
+  function fmtMoeda(v) {
+    return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function atualizarPreview() {
+    const valor = parseFloat((inputValor.value || '0').replace(',', '.'));
+    const n = parseInt(inputNumParcelas.value || '1');
+    if (!chkParcelado.checked || !valor || !n || n < 2) { linhaPreview.style.display = 'none'; return; }
+
+    if (chkComJuros.checked) {
+      const taxa = parseFloat((inputTaxaJuros.value || '0').replace(',', '.'));
+      if (!taxa) { linhaPreview.style.display = 'none'; return; }
+      const i = taxa / 100;
+      const parcela = valor * i / (1 - Math.pow(1 + i, -n));
+      previewTexto.textContent = `${n}x de ${fmtMoeda(parcela)} — total ${fmtMoeda(parcela * n)} (com juros)`;
+    } else {
+      const parcela = valor / n;
+      previewTexto.textContent = `${n}x de ${fmtMoeda(parcela)} (a 1ª parcela pode ficar 1 centavo maior, por arredondamento)`;
+    }
+    linhaPreview.style.display = 'block';
+  }
+
   chkParcelado.addEventListener('change', () => {
     linhaParcelas.style.display = chkParcelado.checked ? 'block' : 'none';
+    linhaComJuros.style.display = chkParcelado.checked ? 'block' : 'none';
+    if (!chkParcelado.checked) { chkComJuros.checked = false; linhaTaxaJuros.style.display = 'none'; }
+    atualizarPreview();
   });
+  chkComJuros.addEventListener('change', () => {
+    linhaTaxaJuros.style.display = chkComJuros.checked ? 'block' : 'none';
+    atualizarPreview();
+  });
+  [inputValor, inputNumParcelas, inputTaxaJuros].forEach(el => el.addEventListener('input', atualizarPreview));
 </script>
 {% endblock %}

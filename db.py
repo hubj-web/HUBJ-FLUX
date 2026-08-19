@@ -90,35 +90,50 @@ def listar_usuarios_por_organizacao(organizacao_id):
 
 # ---------- Categorias / Formas de pagamento / Cartões / Pessoas ----------
 
-CATEGORIAS_PADRAO = [
+CATEGORIAS_PADRAO_DESPESA = [
     "Moradia", "Alimentação", "Mercado", "Transporte", "Saúde",
     "Educação", "Lazer", "Assinaturas", "Vestuário", "Outros",
 ]
-FORMAS_PAGAMENTO_PADRAO = ["Dinheiro", "Débito", "Pix", "Boleto", "Cartão de Crédito"]
+CATEGORIAS_PADRAO_RECEITA = ["Salário", "Freelance / Extra", "Investimentos", "Outras receitas"]
+FORMAS_PAGAMENTO_PADRAO = [
+    ("Dinheiro", "ambos"), ("Débito", "despesa"), ("Pix", "ambos"),
+    ("Boleto", "despesa"), ("Cartão de Crédito", "despesa"),
+    ("Depósito em conta", "receita"), ("Transferência recebida", "receita"),
+]
 
 
 def seed_organizacao(organizacao_id):
     """Cria categorias e formas de pagamento padrão para uma organização
     recém-criada, para o formulário de lançamento não nascer vazio."""
-    for i, nome in enumerate(CATEGORIAS_PADRAO):
+    for i, nome in enumerate(CATEGORIAS_PADRAO_DESPESA):
         execute(
-            "INSERT INTO categorias (organizacao_id, nome, ordem) VALUES (%s, %s, %s) "
+            "INSERT INTO categorias (organizacao_id, nome, ordem, tipo) VALUES (%s, %s, %s, 'despesa') "
             "ON CONFLICT (organizacao_id, nome) DO NOTHING",
             (organizacao_id, nome, i),
         )
-    for nome in FORMAS_PAGAMENTO_PADRAO:
+    for i, nome in enumerate(CATEGORIAS_PADRAO_RECEITA):
         execute(
-            "INSERT INTO formas_pagamento (organizacao_id, nome, padrao) VALUES (%s, %s, true)",
-            (organizacao_id, nome),
+            "INSERT INTO categorias (organizacao_id, nome, ordem, tipo) VALUES (%s, %s, %s, 'receita') "
+            "ON CONFLICT (organizacao_id, nome) DO NOTHING",
+            (organizacao_id, nome, i),
+        )
+    for nome, aplica_a in FORMAS_PAGAMENTO_PADRAO:
+        execute(
+            "INSERT INTO formas_pagamento (organizacao_id, nome, aplica_a, padrao) VALUES (%s, %s, %s, true)",
+            (organizacao_id, nome, aplica_a),
         )
 
 
-def listar_categorias(organizacao_id, apenas_ativas=True):
+def listar_categorias(organizacao_id, apenas_ativas=True, tipo=None):
     sql = "SELECT * FROM categorias WHERE organizacao_id = %s"
+    params = [organizacao_id]
     if apenas_ativas:
         sql += " AND ativa = true"
+    if tipo:
+        sql += " AND tipo IN (%s, 'ambos')"
+        params.append(tipo)
     sql += " ORDER BY ordem, nome"
-    return query_all(sql, (organizacao_id,))
+    return query_all(sql, params)
 
 
 def listar_subcategorias(categoria_id):
@@ -128,11 +143,14 @@ def listar_subcategorias(categoria_id):
     )
 
 
-def listar_formas_pagamento(organizacao_id):
-    return query_all(
-        "SELECT * FROM formas_pagamento WHERE organizacao_id = %s AND ativa = true ORDER BY nome",
-        (organizacao_id,),
-    )
+def listar_formas_pagamento(organizacao_id, tipo=None):
+    sql = "SELECT * FROM formas_pagamento WHERE organizacao_id = %s AND ativa = true"
+    params = [organizacao_id]
+    if tipo:
+        sql += " AND aplica_a IN (%s, 'ambos')"
+        params.append(tipo)
+    sql += " ORDER BY nome"
+    return query_all(sql, params)
 
 
 def listar_cartoes(organizacao_id):
@@ -171,15 +189,17 @@ def sugerir_categoria_por_descricao(organizacao_id, descricao):
 # ---------- Lançamentos ----------
 
 def criar_lancamento(organizacao_id, dados, criado_por):
+    dados = {**dados, "taxa_juros_mensal": dados.get("taxa_juros_mensal")}
     return execute(
         """INSERT INTO lancamentos
              (organizacao_id, data, tipo, valor, descricao, categoria_id, subcategoria_id,
               forma_pagamento_id, cartao_id, pessoa_id, grupo_parcelamento_id,
-              parcela_atual, parcela_total, observacao, criado_por, criado_em)
+              parcela_atual, parcela_total, observacao, taxa_juros_mensal, criado_por, criado_em)
            VALUES (%(organizacao_id)s, %(data)s, %(tipo)s, %(valor)s, %(descricao)s,
                    %(categoria_id)s, %(subcategoria_id)s, %(forma_pagamento_id)s,
                    %(cartao_id)s, %(pessoa_id)s, %(grupo_parcelamento_id)s,
-                   %(parcela_atual)s, %(parcela_total)s, %(observacao)s, %(criado_por)s, now())
+                   %(parcela_atual)s, %(parcela_total)s, %(observacao)s, %(taxa_juros_mensal)s,
+                   %(criado_por)s, now())
            RETURNING *""",
         {**dados, "organizacao_id": organizacao_id, "criado_por": criado_por},
     )
@@ -414,6 +434,19 @@ def ultima_fatura_organizacao(organizacao_id):
     )
 
 
+def ultimas_faturas_por_cartao(organizacao_id):
+    """Uma linha por cartão (não só o mais recente entre todos) - pra um
+    Painel que mostra a situação de CADA cartão da organização, não só de um."""
+    return query_all(
+        """SELECT DISTINCT ON (c.id) f.*, c.nome AS cartao_nome
+           FROM cartoes c
+           JOIN faturas f ON f.cartao_id = c.id
+           WHERE c.organizacao_id = %s
+           ORDER BY c.id, f.mes_referencia DESC, f.id DESC""",
+        (organizacao_id,),
+    )
+
+
 def listar_lancamentos_cartao(organizacao_id, filtros=None):
     filtros = filtros or {}
     sql = """SELECT lc.*, f.mes_referencia, c.nome AS cartao_nome, cat.nome AS categoria_nome,
@@ -508,6 +541,20 @@ def realizado_por_categoria_mes(organizacao_id, mes_referencia):
     return {r["categoria_id"]: float(r["total"]) for r in rows if r["categoria_id"] is not None}
 
 
+def gasto_medio_categoria_ultimos_meses(organizacao_id, mes_referencia, n_meses=3):
+    """{categoria_id: media_gasta} nos n_meses ANTERIORES a mes_referencia -
+    referência útil na hora de definir o limite do Planejamento."""
+    from datetime import date as _date
+    from dateutil.relativedelta import relativedelta as _rd
+    ref = _date.fromisoformat(mes_referencia + "-01")
+    totais = {}
+    for i in range(1, n_meses + 1):
+        mes = (ref - _rd(months=i)).strftime("%Y-%m")
+        for cat_id, valor in realizado_por_categoria_mes(organizacao_id, mes).items():
+            totais[cat_id] = totais.get(cat_id, 0) + valor
+    return {cat_id: round(v / n_meses, 2) for cat_id, v in totais.items()}
+
+
 def lancamentos_por_categoria_mes(organizacao_id, categoria_id, mes_referencia):
     """Para o drill-down do Controle: todos os lançamentos (gerais + cartão)
     daquela categoria naquele mês."""
@@ -576,3 +623,85 @@ def anexo_id_por_lancamento(lancamento_ids):
         (list(lancamento_ids),),
     )
     return {r["lancamento_id"]: r["anexo_id"] for r in rows}
+
+
+# ---------- Configurações: Categorias, Formas de Pagamento, Cartões, Usuários ----------
+
+def listar_categorias_todas(organizacao_id):
+    """Todas (ativas e inativas) - para a tela de Configurações."""
+    return query_all(
+        "SELECT * FROM categorias WHERE organizacao_id = %s ORDER BY tipo, ordem, nome",
+        (organizacao_id,),
+    )
+
+
+def criar_categoria(organizacao_id, nome, descricao, tipo, palavras_chave=None):
+    return execute(
+        """INSERT INTO categorias (organizacao_id, nome, descricao, tipo, palavras_chave, ativa)
+           VALUES (%s, %s, %s, %s, %s, true) RETURNING *""",
+        (organizacao_id, nome, descricao, tipo, palavras_chave),
+    )
+
+
+def atualizar_categoria(categoria_id, organizacao_id, nome, descricao, tipo, palavras_chave, ativa):
+    execute(
+        """UPDATE categorias SET nome=%s, descricao=%s, tipo=%s, palavras_chave=%s, ativa=%s
+           WHERE id=%s AND organizacao_id=%s""",
+        (nome, descricao, tipo, palavras_chave, ativa, categoria_id, organizacao_id),
+    )
+
+
+def listar_formas_pagamento_todas(organizacao_id):
+    return query_all(
+        "SELECT * FROM formas_pagamento WHERE organizacao_id = %s ORDER BY aplica_a, nome",
+        (organizacao_id,),
+    )
+
+
+def criar_forma_pagamento(organizacao_id, nome, aplica_a):
+    return execute(
+        "INSERT INTO formas_pagamento (organizacao_id, nome, aplica_a, ativa) VALUES (%s, %s, %s, true) RETURNING *",
+        (organizacao_id, nome, aplica_a),
+    )
+
+
+def atualizar_forma_pagamento(fp_id, organizacao_id, nome, aplica_a, ativa):
+    execute(
+        "UPDATE formas_pagamento SET nome=%s, aplica_a=%s, ativa=%s WHERE id=%s AND organizacao_id=%s",
+        (nome, aplica_a, ativa, fp_id, organizacao_id),
+    )
+
+
+def listar_cartoes_todos(organizacao_id):
+    return query_all(
+        "SELECT * FROM cartoes WHERE organizacao_id = %s ORDER BY nome",
+        (organizacao_id,),
+    )
+
+
+def criar_cartao_manual(organizacao_id, nome, limite_total, dia_fechamento, dia_vencimento):
+    return execute(
+        """INSERT INTO cartoes (organizacao_id, nome, limite_total, dia_fechamento, dia_vencimento, ativo)
+           VALUES (%s, %s, %s, %s, %s, true) RETURNING *""",
+        (organizacao_id, nome, limite_total, dia_fechamento, dia_vencimento),
+    )
+
+
+def atualizar_cartao(cartao_id, organizacao_id, nome, limite_total, dia_fechamento, dia_vencimento, ativo):
+    execute(
+        """UPDATE cartoes SET nome=%s, limite_total=%s, dia_fechamento=%s, dia_vencimento=%s, ativo=%s
+           WHERE id=%s AND organizacao_id=%s""",
+        (nome, limite_total, dia_fechamento, dia_vencimento, ativo, cartao_id, organizacao_id),
+    )
+
+
+def convidar_usuario_organizacao(organizacao_id, email, papel, convidado_por):
+    return execute(
+        """INSERT INTO usuarios (organizacao_id, email, papel, status, convidado_por, criado_em)
+           VALUES (%s, %s, %s, 'pendente', %s, now()) RETURNING *""",
+        (organizacao_id, email.strip().lower(), papel, convidado_por),
+    )
+
+
+def remover_usuario_organizacao(usuario_id, organizacao_id):
+    execute("DELETE FROM usuarios WHERE id=%s AND organizacao_id=%s", (usuario_id, organizacao_id))
