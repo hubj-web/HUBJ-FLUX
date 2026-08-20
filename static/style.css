@@ -138,3 +138,14 @@ h1,h3{ font-family:'Baloo 2', 'Inter', sans-serif; font-weight:700; margin:0; co
 .chip-status.amarelo{ background:var(--warning-light); color:var(--warning-dark); }
 .chip-status.vermelho{ background:var(--danger-light); color:var(--danger-dark); }
 .chip-status.cinza{ background:var(--gray-light); color:var(--gray-medium); }
+
+.topbar-sair{
+  position:fixed; top:0; right:0; z-index:40; display:flex; align-items:center; gap:14px;
+  padding:10px 20px; font-size:12px; color:var(--graphite);
+}
+.topbar-sair a{
+  background:var(--paper-raised); color:var(--ink-soft); text-decoration:none; font-weight:700;
+  padding:6px 16px; border-radius:var(--radius-pill); box-shadow:var(--shadow-card);
+}
+.topbar-sair a:hover{ color:var(--danger-dark); }
+@media (max-width:600px){ .topbar-sair span{ display:none; } }
