@@ -48,14 +48,25 @@ def nova_categoria():
 def salvar_categoria(cat_id):
     org_id = g.usuario_atual["organizacao_id"]
     db.atualizar_categoria(
-        cat_id, org_id,
-        request.form.get("nome", "").strip(),
-        request.form.get("descricao", "").strip(),
-        request.form.get("tipo", "despesa"),
-        request.form.get("palavras_chave", "").strip() or None,
+        cat_id, org_id, request.form.get("nome", "").strip(), request.form.get("descricao", "").strip(),
+        request.form.get("tipo", "despesa"), request.form.get("palavras_chave", "").strip() or None,
         request.form.get("ativa") == "on",
     )
     flash("Categoria atualizada.", "ok")
+    return redirect(url_for("config.categorias"))
+
+
+@config_bp.route("/categorias/<int:cat_id>/excluir", methods=["POST"])
+@login_required
+@requer_organizacao
+def excluir_categoria(cat_id):
+    org_id = g.usuario_atual["organizacao_id"]
+    try:
+        db.excluir_categoria(cat_id, org_id)
+        flash("Categoria excluída.", "ok")
+    except Exception:
+        flash("Não foi possível excluir - essa categoria já tem lançamentos associados. "
+              "Use \"desativar\" em vez de excluir.", "erro")
     return redirect(url_for("config.categorias"))
 
 
@@ -76,10 +87,11 @@ def nova_forma_pagamento():
     org_id = g.usuario_atual["organizacao_id"]
     nome = request.form.get("nome", "").strip()
     aplica_a = request.form.get("aplica_a", "ambos")
+    permite_parcelamento = request.form.get("permite_parcelamento") == "on"
     if not nome:
         flash("Informe o nome da forma de pagamento.", "erro")
         return redirect(url_for("config.formas_pagamento"))
-    db.criar_forma_pagamento(org_id, nome, aplica_a)
+    db.criar_forma_pagamento(org_id, nome, aplica_a, permite_parcelamento)
     flash(f"Forma de pagamento \"{nome}\" criada.", "ok")
     return redirect(url_for("config.formas_pagamento"))
 
@@ -90,12 +102,23 @@ def nova_forma_pagamento():
 def salvar_forma_pagamento(fp_id):
     org_id = g.usuario_atual["organizacao_id"]
     db.atualizar_forma_pagamento(
-        fp_id, org_id,
-        request.form.get("nome", "").strip(),
-        request.form.get("aplica_a", "ambos"),
-        request.form.get("ativa") == "on",
+        fp_id, org_id, request.form.get("nome", "").strip(), request.form.get("aplica_a", "ambos"),
+        request.form.get("permite_parcelamento") == "on", request.form.get("ativa") == "on",
     )
     flash("Forma de pagamento atualizada.", "ok")
+    return redirect(url_for("config.formas_pagamento"))
+
+
+@config_bp.route("/formas-pagamento/<int:fp_id>/excluir", methods=["POST"])
+@login_required
+@requer_organizacao
+def excluir_forma_pagamento(fp_id):
+    org_id = g.usuario_atual["organizacao_id"]
+    try:
+        db.excluir_forma_pagamento(fp_id, org_id)
+        flash("Forma de pagamento excluída.", "ok")
+    except Exception:
+        flash("Não foi possível excluir - já tem lançamentos associados. Use \"desativar\".", "erro")
     return redirect(url_for("config.formas_pagamento"))
 
 
@@ -106,7 +129,8 @@ def salvar_forma_pagamento(fp_id):
 @requer_organizacao
 def cartoes():
     org_id = g.usuario_atual["organizacao_id"]
-    return render_template("config_cartoes.html", cartoes=db.listar_cartoes_todos(org_id))
+    return render_template("config_cartoes.html", cartoes=db.listar_cartoes_todos(org_id),
+                            pessoas=db.listar_pessoas_todas(org_id))
 
 
 @config_bp.route("/cartoes/novo", methods=["POST"])
@@ -118,10 +142,11 @@ def novo_cartao():
     if not nome:
         flash("Informe o nome do cartão.", "erro")
         return redirect(url_for("config.cartoes"))
-    limite = request.form.get("limite_total") or None
-    dia_fech = request.form.get("dia_fechamento") or None
-    dia_venc = request.form.get("dia_vencimento") or None
-    db.criar_cartao_manual(org_id, nome, limite, dia_fech, dia_venc)
+    db.criar_cartao_manual(
+        org_id, nome, request.form.get("limite_total") or None,
+        request.form.get("dia_fechamento") or None, request.form.get("dia_vencimento") or None,
+        request.form.get("pessoa_id") or None,
+    )
     flash(f"Cartão \"{nome}\" criado.", "ok")
     return redirect(url_for("config.cartoes"))
 
@@ -132,15 +157,76 @@ def novo_cartao():
 def salvar_cartao(cartao_id):
     org_id = g.usuario_atual["organizacao_id"]
     db.atualizar_cartao(
-        cartao_id, org_id,
-        request.form.get("nome", "").strip(),
-        request.form.get("limite_total") or None,
-        request.form.get("dia_fechamento") or None,
-        request.form.get("dia_vencimento") or None,
-        request.form.get("ativo") == "on",
+        cartao_id, org_id, request.form.get("nome", "").strip(), request.form.get("limite_total") or None,
+        request.form.get("dia_fechamento") or None, request.form.get("dia_vencimento") or None,
+        request.form.get("ativo") == "on", request.form.get("pessoa_id") or None,
     )
-    flash("Cartão atualizado - o nome novo já vale para lançamentos futuros (os antigos mantêm o nome de quando foram importados).", "ok")
+    flash("Cartão atualizado.", "ok")
     return redirect(url_for("config.cartoes"))
+
+
+@config_bp.route("/cartoes/<int:cartao_id>/excluir", methods=["POST"])
+@login_required
+@requer_organizacao
+def excluir_cartao(cartao_id):
+    org_id = g.usuario_atual["organizacao_id"]
+    try:
+        db.excluir_cartao(cartao_id, org_id)
+        flash("Cartão excluído.", "ok")
+    except Exception:
+        flash("Não foi possível excluir - esse cartão já tem faturas importadas. Use \"desativar\".", "erro")
+    return redirect(url_for("config.cartoes"))
+
+
+# ---------- Pessoas ----------
+
+@config_bp.route("/pessoas")
+@login_required
+@requer_organizacao
+def pessoas():
+    org_id = g.usuario_atual["organizacao_id"]
+    return render_template("config_pessoas.html", pessoas=db.listar_pessoas_todas(org_id),
+                            usuarios=db.listar_usuarios_por_organizacao(org_id))
+
+
+@config_bp.route("/pessoas/nova", methods=["POST"])
+@login_required
+@requer_organizacao
+def nova_pessoa():
+    org_id = g.usuario_atual["organizacao_id"]
+    nome = request.form.get("nome", "").strip()
+    if not nome:
+        flash("Informe o nome da pessoa.", "erro")
+        return redirect(url_for("config.pessoas"))
+    db.criar_pessoa_manual(org_id, nome, request.form.get("usuario_id") or None)
+    flash(f"Pessoa \"{nome}\" cadastrada - já aparece no seletor de Lançamento.", "ok")
+    return redirect(url_for("config.pessoas"))
+
+
+@config_bp.route("/pessoas/<int:pessoa_id>/salvar", methods=["POST"])
+@login_required
+@requer_organizacao
+def salvar_pessoa(pessoa_id):
+    org_id = g.usuario_atual["organizacao_id"]
+    db.atualizar_pessoa(
+        pessoa_id, org_id, request.form.get("nome", "").strip(),
+        request.form.get("usuario_id") or None, request.form.get("disponivel_lancamento") == "on",
+    )
+    flash("Pessoa atualizada.", "ok")
+    return redirect(url_for("config.pessoas"))
+
+
+@config_bp.route("/pessoas/<int:pessoa_id>/excluir", methods=["POST"])
+@login_required
+@requer_organizacao
+def excluir_pessoa(pessoa_id):
+    org_id = g.usuario_atual["organizacao_id"]
+    try:
+        db.excluir_pessoa(pessoa_id, org_id)
+        flash("Pessoa excluída.", "ok")
+    except Exception:
+        flash("Não foi possível excluir - essa pessoa já tem lançamentos associados.", "erro")
+    return redirect(url_for("config.pessoas"))
 
 
 # ---------- Usuários da organização ----------
@@ -197,4 +283,29 @@ def remover_usuario(usuario_id):
         return redirect(url_for("config.usuarios"))
     db.remover_usuario_organizacao(usuario_id, org_id)
     flash("Usuário removido.", "ok")
+    return redirect(url_for("config.usuarios"))
+
+
+@config_bp.route("/usuarios/<int:usuario_id>/bloquear", methods=["POST"])
+@login_required
+@requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
+def bloquear_usuario(usuario_id):
+    org_id = g.usuario_atual["organizacao_id"]
+    if usuario_id == g.usuario_atual["id"]:
+        flash("Você não pode desativar a si mesmo.", "erro")
+        return redirect(url_for("config.usuarios"))
+    db.bloquear_usuario_organizacao(usuario_id, org_id)
+    flash("Usuário desativado - o acesso dele fica bloqueado até você reativar.", "ok")
+    return redirect(url_for("config.usuarios"))
+
+
+@config_bp.route("/usuarios/<int:usuario_id>/reativar", methods=["POST"])
+@login_required
+@requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
+def reativar_usuario(usuario_id):
+    org_id = g.usuario_atual["organizacao_id"]
+    db.reativar_usuario_organizacao(usuario_id, org_id)
+    flash("Usuário reativado.", "ok")
     return redirect(url_for("config.usuarios"))

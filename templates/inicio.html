@@ -14,10 +14,10 @@
   </div>
 
   <div class="review-summary">
-    <div class="summary-cell"><span class="label">Receitas do mês</span><span class="value val-receita">R$ {{ '%.2f'|format(totais.receitas)|replace('.', ',') }}</span></div>
-    <div class="summary-cell"><span class="label">Despesas do mês</span><span class="value val-despesa">R$ {{ '%.2f'|format(totais.despesas)|replace('.', ',') }}</span></div>
+    <div class="summary-cell"><span class="label">Receitas do mês</span><span class="value val-receita">R$ {{ totais.receitas|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Despesas do mês</span><span class="value val-despesa">R$ {{ totais.despesas|brl }}</span></div>
     <div class="summary-cell"><span class="label">Saldo do mês</span>
-      <span class="value {{ 'val-receita' if totais.saldo >= 0 else 'val-despesa' }}">R$ {{ '%.2f'|format(totais.saldo)|replace('.', ',') }}</span></div>
+      <span class="value {{ 'val-receita' if totais.saldo >= 0 else 'val-despesa' }}">R$ {{ totais.saldo|brl }}</span></div>
   </div>
 
   <p style="color:var(--ink-soft);font-size:13.5px;margin:-8px 0 20px">{{ frase_saldo }}</p>
@@ -45,9 +45,7 @@
           <td class="mono">{{ l.data }}</td>
           <td>{{ l.descricao or '—' }}</td>
           <td>{{ l.categoria_nome or '—' }}</td>
-          <td class="num {{ 'val-receita' if l.tipo == 'receita' else 'val-despesa' }}">
-            {{ '+' if l.tipo == 'receita' else '-' }} R$ {{ '%.2f'|format(l.valor)|replace('.', ',') }}
-          </td>
+          <td class="num {{ 'val-receita' if l.tipo == 'receita' else 'val-despesa' }}">{{ '+' if l.tipo == 'receita' else '-' }} R$ {{ l.valor|brl }}</td>
         </tr>
       {% else %}
         <tr><td colspan="4" style="text-align:center;color:var(--graphite);padding:20px">Nenhum lançamento ainda — comece com "+ Despesa" ou "+ Receita" acima.</td></tr>
@@ -56,14 +54,8 @@
     </table>
   </div>
 
-  <p style="color:var(--graphite);font-size:12.5px">
-    % do orçamento consumido e lembretes de vencimento aparecem aqui assim que os módulos de
-    Planejamento e Lembretes forem construídos (próximas fases).
-  </p>
-
   {% if usuario.papel == 'super_admin' %}
   <p style="margin-top:20px"><a href="{{ url_for('admin.listar_organizacoes') }}" class="btn btn-ghost">Gestão de Clientes</a></p>
   {% endif %}
-  <p style="margin-top:10px"><a href="{{ url_for('auth.logout') }}" class="btn btn-ghost">Sair</a></p>
 </div>
 {% endblock %}

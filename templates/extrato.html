@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Extrato · HUB-J FLUX{% endblock %}
 {% block content %}
-<div class="content" style="max-width:1000px;margin:0 auto">
+<div class="content" style="max-width:1050px;margin:0 auto">
   <header class="panel-head">
     <h1>Extrato</h1>
-    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
        <a href="{{ url_for('lanc.novo') }}" class="btn btn-primary" style="padding:4px 10px;font-size:12px">+ Novo Lançamento</a></p>
   </header>
 
@@ -30,9 +30,9 @@
   </form>
 
   <div class="review-summary">
-    <div class="summary-cell"><span class="label">Receitas (filtro atual)</span><span class="value val-receita">R$ {{ '%.2f'|format(total_receitas)|replace('.', ',') }}</span></div>
-    <div class="summary-cell"><span class="label">Despesas (filtro atual)</span><span class="value val-despesa">R$ {{ '%.2f'|format(total_despesas)|replace('.', ',') }}</span></div>
-    <div class="summary-cell"><span class="label">Saldo (filtro atual)</span><span class="value {{ 'val-receita' if saldo_filtrado >= 0 else 'val-despesa' }}">R$ {{ '%.2f'|format(saldo_filtrado)|replace('.', ',') }}</span></div>
+    <div class="summary-cell"><span class="label">Receitas (filtro atual)</span><span class="value val-receita">R$ {{ total_receitas|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Despesas (filtro atual)</span><span class="value val-despesa">R$ {{ total_despesas|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Saldo (filtro atual)</span><span class="value {{ 'val-receita' if saldo_filtrado >= 0 else 'val-despesa' }}">R$ {{ saldo_filtrado|brl }}</span></div>
   </div>
 
   <div class="table-wrap">
@@ -48,15 +48,13 @@
           <td>{{ l.categoria_nome or '—' }}</td>
           <td>{{ l.forma_pagamento_nome or '—' }}</td>
           <td>{{ l.pessoa_nome or '—' }}</td>
-          <td class="num {{ 'val-receita' if l.tipo == 'receita' else 'val-despesa' }}">
-            {{ '+' if l.tipo == 'receita' else '-' }} R$ {{ '%.2f'|format(l.valor)|replace('.', ',') }}
-          </td>
+          <td class="num {{ 'val-receita' if l.tipo == 'receita' else 'val-despesa' }}">{{ '+' if l.tipo == 'receita' else '-' }} R$ {{ l.valor|brl }}</td>
           <td style="white-space:nowrap">
+            <a href="{{ url_for('lanc.editar', lid=l.id) }}" class="btn btn-ghost" style="padding:3px 8px;font-size:11px">Editar</a>
             <form method="post" action="{{ url_for('lanc.duplicar', lid=l.id) }}" style="display:inline">
               <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px">Duplicar</button>
             </form>
-            <form method="post" action="{{ url_for('lanc.excluir', lid=l.id) }}" style="display:inline"
-                  onsubmit="return confirm('Excluir este lançamento?');">
+            <form method="post" action="{{ url_for('lanc.excluir', lid=l.id) }}" style="display:inline" onsubmit="return confirm('Excluir este lançamento?');">
               <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;color:var(--brick)">Excluir</button>
             </form>
           </td>

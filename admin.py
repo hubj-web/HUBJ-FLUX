@@ -45,13 +45,9 @@ def criar_organizacao():
            VALUES (%s, %s, %s, %s, now()) RETURNING *""",
         (nome, tipo, limite_usuarios, g.usuario_atual["id"]),
     )
-    db.execute(
-        """INSERT INTO organizacoes_preferencias (organizacao_id) VALUES (%s)""",
-        (org["id"],),
-    )
+    db.execute("INSERT INTO organizacoes_preferencias (organizacao_id) VALUES (%s)", (org["id"],))
     db.seed_organizacao(org["id"])
-    # cria o primeiro Admin do Cliente como 'pendente' — ele conclui o
-    # cadastro sozinho no primeiro login com Google
+
     db.execute(
         """INSERT INTO usuarios (organizacao_id, email, papel, status, convidado_por, criado_em)
            VALUES (%s, %s, 'admin_cliente', 'pendente', %s, now())""",
@@ -95,8 +91,6 @@ def excluir_organizacao(org_id):
     if org is None:
         flash("Organização não encontrada.", "erro")
         return redirect(url_for("admin.listar_organizacoes"))
-    # ON DELETE CASCADE no banco já remove usuários, categorias, lançamentos
-    # etc. dessa organização junto - é uma exclusão definitiva e completa.
     db.execute("DELETE FROM organizacoes WHERE id = %s", (org_id,))
     flash(f"Organização \"{org['nome']}\" e todos os dados associados foram excluídos definitivamente.", "ok")
     return redirect(url_for("admin.listar_organizacoes"))

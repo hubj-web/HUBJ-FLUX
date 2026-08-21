@@ -17,7 +17,6 @@ def index():
     organizacao = db.buscar_organizacao(usuario["organizacao_id"])
 
     if usuario["organizacao_id"] is None:
-        # Super Admin não tem "Início" de organização - manda pra Gestão de Clientes
         return render_template("inicio_super_admin.html", usuario=usuario)
 
     mes_referencia = request.args.get("mes") or date.today().strftime("%Y-%m")
@@ -30,13 +29,7 @@ def index():
     frase_saldo = regras_negocio.frase_saldo_mes(totais["saldo"])
 
     return render_template(
-        "inicio.html",
-        usuario=usuario,
-        organizacao=organizacao,
-        mes_referencia=mes_referencia,
-        mes_anterior=mes_anterior,
-        mes_seguinte=mes_seguinte,
-        totais=totais,
-        ultimos=ultimos,
-        frase_saldo=frase_saldo,
+        "inicio.html", usuario=usuario, organizacao=organizacao,
+        mes_referencia=mes_referencia, mes_anterior=mes_anterior, mes_seguinte=mes_seguinte,
+        totais=totais, ultimos=ultimos, frase_saldo=frase_saldo,
     )

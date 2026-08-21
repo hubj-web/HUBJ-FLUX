@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Editar Lançamento · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:560px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Editar Lançamento</h1>
+    <p><a href="{{ url_for('lanc.extrato') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+  </header>
+
+  <form method="post" class="form-grid">
+    <input type="hidden" name="tipo" value="{{ lancamento.tipo }}">
+    <div class="form-row"><label>Data *</label><input type="date" name="data" value="{{ lancamento.data }}" required></div>
+    <div class="form-row"><label>Valor (R$) *</label><input type="text" name="valor" value="{{ lancamento.valor|brl }}" required></div>
+    <div class="form-row"><label>Descrição *</label><input type="text" name="descricao" value="{{ lancamento.descricao or '' }}" required></div>
+    <div class="form-row"><label>Categoria *</label>
+      <select name="categoria_id" required>
+        <option value="">— selecione —</option>
+        {% for c in categorias %}<option value="{{ c.id }}" {{ 'selected' if c.id == lancamento.categoria_id }}>{{ c.nome }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="form-row"><label>Forma de pagamento *</label>
+      <select name="forma_pagamento_id" required>
+        <option value="">— selecione —</option>
+        {% for f in formas_pagamento %}<option value="{{ f.id }}" {{ 'selected' if f.id == lancamento.forma_pagamento_id }}>{{ f.nome }}</option>{% endfor %}
+      </select>
+    </div>
+    {% if cartoes %}
+    <div class="form-row"><label>Cartão</label>
+      <select name="cartao_id">
+        <option value="">— nenhum —</option>
+        {% for c in cartoes %}<option value="{{ c.id }}" {{ 'selected' if c.id == lancamento.cartao_id }}>{{ c.nome }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    {% if pessoas %}
+    <div class="form-row"><label>Pessoa</label>
+      <select name="pessoa_id">
+        <option value="">— nenhuma —</option>
+        {% for p in pessoas %}<option value="{{ p.id }}" {{ 'selected' if p.id == lancamento.pessoa_id }}>{{ p.nome }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="form-row"><label>Observação</label><textarea name="observacao" rows="2">{{ lancamento.observacao or '' }}</textarea></div>
+    <button type="submit" class="btn btn-primary" style="margin-top:10px">Salvar alterações</button>
+  </form>
+</div>
+{% endblock %}

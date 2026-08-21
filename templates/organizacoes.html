@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Gestão de Clientes · HUB-J FLUX{% endblock %}
 {% block content %}
-<div class="content" style="max-width:900px;margin:40px auto">
+<div class="content" style="max-width:900px;margin:0 auto">
   <header class="panel-head">
     <h1>Gestão de Clientes</h1>
     <p>Criar e administrar as organizações (famílias/empresas) do HUB-J FLUX.</p>
@@ -10,16 +10,15 @@
   <h3>Nova organização</h3>
   <form method="post" action="{{ url_for('admin.criar_organizacao') }}" class="filters" style="align-items:flex-end;flex-wrap:wrap">
     <div><label style="display:block;font-size:11px;color:var(--graphite)">Nome</label>
-      <input name="nome" required style="padding:9px 12px;border:1px solid var(--line);border-radius:3px"></div>
+      <input name="nome" required style="padding:9px 12px;border:1px solid var(--line);border-radius:8px"></div>
     <div><label style="display:block;font-size:11px;color:var(--graphite)">Tipo</label>
-      <select name="tipo" style="padding:9px 12px;border:1px solid var(--line);border-radius:3px">
-        <option value="familia">Família</option>
-        <option value="empresa">Empresa</option>
+      <select name="tipo" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px">
+        <option value="familia">Família</option><option value="empresa">Empresa</option>
       </select></div>
     <div><label style="display:block;font-size:11px;color:var(--graphite)">Limite de usuários</label>
-      <input type="number" name="limite_usuarios" value="1" min="1" style="width:80px;padding:9px 12px;border:1px solid var(--line);border-radius:3px"></div>
+      <input type="number" name="limite_usuarios" value="1" min="1" style="width:80px;padding:9px 12px;border:1px solid var(--line);border-radius:8px"></div>
     <div><label style="display:block;font-size:11px;color:var(--graphite)">E-mail do administrador</label>
-      <input type="email" name="email_admin" required style="padding:9px 12px;border:1px solid var(--line);border-radius:3px"></div>
+      <input type="email" name="email_admin" required style="padding:9px 12px;border:1px solid var(--line);border-radius:8px"></div>
     <button type="submit" class="btn btn-primary">Criar</button>
   </form>
 
@@ -40,32 +39,23 @@
               <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">Salvar limite</button>
             </form>
             <form method="post" action="{{ url_for('admin.alternar_status', org_id=org.id) }}" style="display:inline">
-              <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">
-                {{ 'Suspender' if org.status == 'ativo' else 'Reativar' }}
-              </button>
+              <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">{{ 'Suspender' if org.status == 'ativo' else 'Reativar' }}</button>
             </form>
             <form method="post" action="{{ url_for('admin.excluir_organizacao', org_id=org.id) }}" style="display:inline"
                   onsubmit="return confirm('Excluir \'{{ org.nome }}\' PERMANENTEMENTE? Isso apaga todos os usuários, categorias e lançamentos dessa organização. Essa ação não pode ser desfeita.');">
-              <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;color:var(--brick);border-color:var(--brick)">Excluir</button>
+              <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;color:var(--brick)">Excluir</button>
             </form>
           </td>
         </tr>
         <tr>
           <td colspan="5" style="padding:0 14px 14px">
             <details>
-              <summary style="cursor:pointer;color:var(--graphite);font-size:12px">
-                Ver e-mails cadastrados ({{ org.usuarios|length }})
-              </summary>
+              <summary style="cursor:pointer;color:var(--graphite);font-size:12px">Ver e-mails cadastrados ({{ org.usuarios|length }})</summary>
               <table class="data-table" style="margin-top:8px">
                 <thead><tr><th>E-mail</th><th>Nome</th><th>Papel</th><th>Status</th></tr></thead>
                 <tbody>
                 {% for u in org.usuarios %}
-                  <tr>
-                    <td class="mono">{{ u.email }}</td>
-                    <td>{{ u.nome or '—' }}</td>
-                    <td class="mono">{{ u.papel }}</td>
-                    <td class="mono">{{ u.status }}</td>
-                  </tr>
+                  <tr><td class="mono">{{ u.email }}</td><td>{{ u.nome or '—' }}</td><td class="mono">{{ u.papel }}</td><td class="mono">{{ u.status }}</td></tr>
                 {% else %}
                   <tr><td colspan="4" style="color:var(--graphite)">Nenhum usuário cadastrado ainda.</td></tr>
                 {% endfor %}
@@ -78,7 +68,6 @@
       </tbody>
     </table>
   </div>
-
-  <p style="margin-top:30px"><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost">← Início</a></p>
+  <p style="margin-top:30px"><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost">← Voltar</a></p>
 </div>
 {% endblock %}

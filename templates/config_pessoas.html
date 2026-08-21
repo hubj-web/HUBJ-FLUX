@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Pessoas · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:820px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Pessoas</h1>
+    <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:13px">Cadastre aqui quem pode ser marcado num lançamento — não precisa ter login no sistema (ex: um filho que não usa o app, mas cujas despesas você quer registrar).</p>
+  </header>
+
+  <h3>Nova pessoa</h3>
+  <form method="post" action="{{ url_for('config.nova_pessoa') }}" class="filters" style="align-items:flex-end">
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Nome</label>
+      <input name="nome" required style="padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Vincular a um usuário existente (opcional)</label>
+      <select name="usuario_id" style="padding:10px 14px;border:1px solid var(--line);border-radius:8px">
+        <option value="">— nenhum (só um nome, sem login) —</option>
+        {% for u in usuarios %}<option value="{{ u.id }}">{{ u.email }}</option>{% endfor %}
+      </select></div>
+    <button type="submit" class="btn btn-primary">Criar</button>
+  </form>
+
+  <div class="table-wrap" style="margin-top:26px">
+    <table class="data-table">
+      <thead><tr><th>Nome</th><th>Usuário vinculado</th><th>Aparece no Lançamento</th><th></th></tr></thead>
+      <tbody>
+      {% for p in pessoas %}
+        <tr>
+          <form method="post" action="{{ url_for('config.salvar_pessoa', pessoa_id=p.id) }}" style="display:contents">
+            <td><input name="nome" value="{{ p.nome }}" style="width:200px;padding:5px;border:1px solid transparent;border-radius:6px" onfocus="this.style.borderColor='var(--line)'"></td>
+            <td><select name="usuario_id" style="padding:5px;border:1px solid var(--line);border-radius:6px">
+              <option value="">— nenhum —</option>
+              {% for u in usuarios %}<option value="{{ u.id }}" {{ 'selected' if u.id == p.usuario_id }}>{{ u.email }}</option>{% endfor %}
+            </select></td>
+            <td style="text-align:center"><input type="checkbox" name="disponivel_lancamento" {{ 'checked' if p.disponivel_lancamento }}></td>
+            <td style="white-space:nowrap"><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">Salvar</button></td>
+          </form>
+          <td style="padding:0">
+            <form method="post" action="{{ url_for('config.excluir_pessoa', pessoa_id=p.id) }}" onsubmit="return confirm('Excluir \'{{ p.nome }}\' permanentemente?');">
+              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--brick)">Excluir</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" style="text-align:center;color:var(--graphite);padding:20px">Nenhuma pessoa cadastrada ainda.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:12px;color:var(--graphite);margin-top:10px">Pessoas identificadas automaticamente ao importar uma fatura de cartão também aparecem aqui, mas com "Aparece no Lançamento" desmarcado por padrão — marque a caixinha se quiser que uma delas também apareça no formulário de Novo Lançamento.</p>
+</div>
+{% endblock %}

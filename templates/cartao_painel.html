@@ -4,24 +4,35 @@
 <div class="content" style="max-width:820px;margin:0 auto">
   <header class="panel-head">
     <h1>Painel do cartão</h1>
-    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
        <a href="{{ url_for('cartao.importar') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Importar fatura</a>
        <a href="{{ url_for('cartao.faturas') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Ver todas as faturas</a>
        <a href="{{ url_for('cartao.transacoes') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Transações</a></p>
-    <p style="color:var(--graphite);font-size:13px">Mostra a fatura mais recente de cada cartão cadastrado.</p>
+    <p style="color:var(--graphite);font-size:13px">Mostra a fatura mais recente de cada cartão cadastrado (1 cartão por pessoa).</p>
   </header>
 
   {% if faturas %}
-  <div class="review-summary" style="grid-template-columns:1fr">
-    {% for fatura in faturas %}
-    <div class="summary-cell" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px">
-      <div style="grid-column:1/-1"><span class="label">Cartão</span><span class="value" style="font-size:16px">{{ fatura.cartao_nome }}</span></div>
-      <div><span class="label">Mês</span><span class="value">{{ fatura.mes_referencia }}</span></div>
-      <div><span class="label">Vencimento</span><span class="value">{{ fatura.vencimento or '—' }}</span></div>
-      <div><span class="label">Valor total</span><span class="value">R$ {{ '%.2f'|format(fatura.valor_total or 0)|replace('.', ',') }}</span></div>
-      <div><span class="label">Limite disponível</span><span class="value">R$ {{ '%.2f'|format(fatura.limite_disponivel or 0)|replace('.', ',') }}</span></div>
-    </div>
-    {% endfor %}
+  <div class="review-summary">
+    <div class="summary-cell"><span class="label">Total das faturas mostradas</span><span class="value">R$ {{ total_faturas|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Total de limite disponível</span><span class="value">R$ {{ total_disponivel|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Cartões</span><span class="value">{{ faturas|length }}</span></div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Cartão</th><th>Mês</th><th>Vencimento</th><th class="num">Valor total</th><th class="num">Limite disponível</th></tr></thead>
+      <tbody>
+      {% for fatura in faturas %}
+        <tr>
+          <td>{{ fatura.cartao_nome }}</td>
+          <td class="mono">{{ fatura.mes_referencia }}</td>
+          <td class="mono">{{ fatura.vencimento }}</td>
+          <td class="num">R$ {{ (fatura.valor_total or 0)|brl }}</td>
+          <td class="num">R$ {{ (fatura.limite_disponivel or 0)|brl }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
   </div>
   {% else %}
   <p style="color:var(--graphite)">Nenhuma fatura importada ainda.</p>

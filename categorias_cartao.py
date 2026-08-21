@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 """Sugestão automática de categoria por palavra-chave na descrição de
-compras de cartão - ponto de partida, o usuário pode corrigir depois.
-Os nomes aqui devem bater com as categorias padrão criadas em
-db.seed_organizacao (CATEGORIAS_PADRAO)."""
+compras de cartão."""
 
 REGRAS = [
     ("Transporte", ["UBER", "99APP", "TAXI", "METRO", "BILHETE", "LOCALIZA", "MOVIDA", "POSTO"]),
-    ("Alimentação", ["IFOOD", "IFD ", "RESTAURANTE", "LANCHONETE", "CHEF", "CAFE", "PADARIA",
-                      "PIZZARIA", "BURGER", "AÇAI", "ACAI"]),
+    ("Alimentação", ["IFOOD", "IFD ", "RESTAURANTE", "LANCHONETE", "CHEF", "CAFE", "PADARIA", "PIZZARIA", "BURGER", "AÇAI", "ACAI"]),
     ("Mercado", ["SUPERMERCADO", " SUP ", "MERCADO", "HORTIFRUTI", "ATACAD"]),
-    ("Assinaturas", ["NETFLIX", "SPOTIFY", "YOUTUBE", "PRIME VIDEO", "DISNEY",
-                      "HBO", "GOOGLE", "APPLE.COM", "ICLOUD"]),
+    ("Assinaturas", ["NETFLIX", "SPOTIFY", "YOUTUBE", "PRIME VIDEO", "DISNEY", "HBO", "GOOGLE", "APPLE.COM", "ICLOUD"]),
     ("Saúde", ["DROGARIA", "DROGASIL", "FARMA", "PANVEL", "ODONTO", "CLINICA"]),
     ("Vestuário", ["CALCADOS", "CALÇADOS", "MODA", "CONFECC", "OTICA", "ÓTICA"]),
     ("Educação", ["FACULDADE", "UNIVERSIDADE", "ESCOLA", "CURSO"]),

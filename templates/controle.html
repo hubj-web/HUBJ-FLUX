@@ -4,10 +4,9 @@
 <div class="content" style="max-width:820px;margin:0 auto">
   <header class="panel-head">
     <h1>Controle</h1>
-    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
        <a href="{{ url_for('plan.index', mes=mes_referencia) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Ajustar Planejamento</a></p>
   </header>
-
   <div class="filters" style="align-items:center;margin-bottom:20px">
     <a href="{{ url_for('controle.index', mes=mes_anterior) }}" class="btn btn-ghost" style="padding:6px 12px">← Mês anterior</a>
     <strong class="mono" style="font-size:15px">{{ mes_referencia }}</strong>
@@ -15,9 +14,9 @@
   </div>
 
   <div class="review-summary">
-    <div class="summary-cell"><span class="label">Receitas</span><span class="value val-receita">R$ {{ '%.2f'|format(totais.receitas)|replace('.', ',') }}</span></div>
-    <div class="summary-cell"><span class="label">Despesas</span><span class="value val-despesa">R$ {{ '%.2f'|format(totais.despesas)|replace('.', ',') }}</span></div>
-    <div class="summary-cell"><span class="label">Saldo</span><span class="value {{ 'val-receita' if totais.saldo >= 0 else 'val-despesa' }}">R$ {{ '%.2f'|format(totais.saldo)|replace('.', ',') }}</span></div>
+    <div class="summary-cell"><span class="label">Receitas</span><span class="value val-receita">R$ {{ totais.receitas|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Despesas</span><span class="value val-despesa">R$ {{ totais.despesas|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Saldo</span><span class="value {{ 'val-receita' if totais.saldo >= 0 else 'val-despesa' }}">R$ {{ totais.saldo|brl }}</span></div>
   </div>
 
   {% if frase %}<p style="color:var(--ink-soft);font-size:13.5px;margin:-8px 0 20px">{{ frase }}</p>{% endif %}
@@ -29,11 +28,11 @@
       {% for l in linhas %}
         <tr>
           <td><a href="{{ url_for('controle.drill_down', categoria_id=l.categoria_id, mes=mes_referencia) }}">{{ l.categoria_nome }}</a></td>
-          <td class="num">R$ {{ '%.2f'|format(l.planejado)|replace('.', ',') }}</td>
-          <td class="num">R$ {{ '%.2f'|format(l.realizado)|replace('.', ',') }}</td>
-          <td class="num {{ 'val-receita' if l.diferenca >= 0 else 'val-despesa' }}">R$ {{ '%.2f'|format(l.diferenca)|replace('.', ',') }}</td>
+          <td class="num" style="color:var(--graphite)">R$ {{ l.planejado|brl }}</td>
+          <td class="num" style="font-weight:700;color:{% if l.cor == 'verde' %}var(--success-dark){% elif l.cor == 'amarelo' %}var(--warning-dark){% elif l.cor == 'vermelho' %}var(--danger-dark){% else %}var(--ink-soft){% endif %}">R$ {{ l.realizado|brl }}</td>
+          <td class="num {{ 'val-receita' if l.diferenca >= 0 else 'val-despesa' }}">R$ {{ l.diferenca|brl }}</td>
           <td class="num mono">{{ l.percentual if l.percentual is not none else '—' }}{{ '%' if l.percentual is not none }}</td>
-          <td><span class="chip-status {{ l.cor }}">{{ l.estado.replace('_', ' ') }}</span></td>
+          <td><span class="chip-status {{ l.cor }}">{{ 'Sem planejamento' if l.estado == 'sem_planejamento' else l.estado.replace('_', ' ') }}</span></td>
         </tr>
       {% else %}
         <tr><td colspan="6" style="text-align:center;color:var(--graphite);padding:24px">Nenhuma categoria planejada este mês — <a href="{{ url_for('plan.index', mes=mes_referencia) }}">defina limites no Planejamento</a>.</td></tr>

@@ -8,14 +8,6 @@ class Config:
     GOOGLE_CLIENT_SECRET = os.environ["GOOGLE_CLIENT_SECRET"]
     SESSION_SECRET_KEY = os.environ["SESSION_SECRET_KEY"]
     SUPER_ADMIN_EMAIL = os.environ["SUPER_ADMIN_EMAIL"].strip().lower()
-
-    # URL pública do app (usada para montar o redirect_uri do Google OAuth).
-    # Em desenvolvimento local, cai no localhost; no Railway, é definida via
-    # variável de ambiente APP_BASE_URL apontando para o domínio gerado.
     APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
-
-    # E-mail de convites (Resend). Opcional: se não configurado, o app
-    # continua funcionando, só não envia o e-mail automático (fica só o
-    # aviso na tela, como antes).
     RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
     EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE", "HUB-J FLUX <onboarding@resend.dev>")

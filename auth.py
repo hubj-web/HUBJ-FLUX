@@ -69,6 +69,11 @@ def callback():
         flash("Seu acesso foi bloqueado. Fale com o administrador da sua organização.", "erro")
         return redirect(url_for("auth.login_page"))
 
+    # Primeiro login bem-sucedido de um usuário convidado: sai de "pendente"
+    # e vira "ativo" de verdade, já que a pessoa está usando o sistema.
+    if usuario["status"] == "pendente":
+        db.ativar_usuario_se_pendente(usuario["id"])
+
     db.atualizar_login(usuario["id"], google_sub, nome)
 
     session.clear()

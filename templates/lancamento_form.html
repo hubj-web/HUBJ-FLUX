@@ -4,7 +4,7 @@
 <div class="content" style="max-width:620px;margin:0 auto">
   <header class="panel-head">
     <h1>Novo Lançamento</h1>
-    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
        <a href="{{ url_for('lanc.extrato') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Ver Extrato</a>
        <a href="{{ url_for('lanc.recorrentes') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Recorrentes</a></p>
   </header>
@@ -18,33 +18,35 @@
     <input type="hidden" name="tipo" value="{{ tipo_inicial }}">
 
     <div class="form-row">
-      <label>Data</label>
+      <label>Data *</label>
       <input type="date" name="data" value="{{ hoje }}" required>
     </div>
 
     <div class="form-row">
-      <label>Valor (R$)</label>
-      <input type="text" name="valor" placeholder="0,00" required>
+      <label>Valor (R$) *</label>
+      <input type="text" name="valor" placeholder="0,00" required id="input-valor">
     </div>
 
     <div class="form-row">
-      <label>Descrição</label>
-      <input type="text" name="descricao" placeholder="Ex: Supermercado, Salário...">
+      <label>Descrição *</label>
+      <input type="text" name="descricao" placeholder="Ex: Supermercado, Salário..." required>
     </div>
 
     <div class="form-row">
-      <label>Categoria</label>
-      <select name="categoria_id">
+      <label>Categoria *</label>
+      <select name="categoria_id" required>
         <option value="">— selecione —</option>
         {% for c in categorias %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
       </select>
     </div>
 
     <div class="form-row">
-      <label>Forma de pagamento</label>
-      <select name="forma_pagamento_id" id="sel-forma">
+      <label>Forma de pagamento *</label>
+      <select name="forma_pagamento_id" id="sel-forma" required>
         <option value="">— selecione —</option>
-        {% for f in formas_pagamento %}<option value="{{ f.id }}" data-nome="{{ f.nome }}">{{ f.nome }}</option>{% endfor %}
+        {% for f in formas_pagamento %}
+          <option value="{{ f.id }}" data-nome="{{ f.nome }}" data-permite-parcelamento="{{ 'true' if f.permite_parcelamento else 'false' }}">{{ f.nome }}</option>
+        {% endfor %}
       </select>
     </div>
 
@@ -64,9 +66,13 @@
         {% for p in pessoas %}<option value="{{ p.id }}">{{ p.nome }}</option>{% endfor %}
       </select>
     </div>
+    {% else %}
+    <p style="font-size:12px;color:var(--graphite);margin:-8px 0 4px">
+      Nenhuma pessoa cadastrada ainda. Cadastre em <a href="{{ url_for('config.pessoas') }}">Configurações → Pessoas</a> se quiser marcar quem fez este lançamento.
+    </p>
     {% endif %}
 
-    <div class="form-row">
+    <div class="form-row" id="linha-parcelado" style="display:none">
       <label style="display:flex;align-items:center;gap:8px;font-weight:normal">
         <input type="checkbox" name="parcelado" id="chk-parcelado" style="width:auto">
         Parcelado?
@@ -82,12 +88,35 @@
         Parcelamento tem juros?
       </label>
     </div>
+    <div class="form-row" id="linha-modo-juros" style="display:none">
+      <label>Como você sabe o valor dos juros?</label>
+      <select name="modo_juros" id="sel-modo-juros">
+        <option value="taxa">Sei a taxa de juros mensal</option>
+        <option value="valor_parcela">Sei o valor de cada parcela (a loja já informou)</option>
+      </select>
+    </div>
     <div class="form-row" id="linha-taxa-juros" style="display:none">
       <label>Taxa de juros (% ao mês)</label>
       <input type="text" name="taxa_juros_mensal" id="input-taxa-juros" placeholder="Ex: 2,5">
     </div>
+    <div class="form-row" id="linha-valor-parcela-informado" style="display:none">
+      <label>Valor de cada parcela (R$)</label>
+      <input type="text" name="valor_parcela_informado" id="input-valor-parcela-informado" placeholder="Ex: 150,00">
+    </div>
     <div class="form-row" id="linha-preview-parcela" style="display:none">
       <span id="preview-parcela-texto" class="mono" style="font-size:13px;color:var(--ink-soft)"></span>
+    </div>
+
+    <div class="form-row">
+      <label>Anexar comprovante (extrato, cupom fiscal, foto)</label>
+      <input type="file" name="anexo" accept="image/*,.pdf" id="input-anexo-arquivo" style="display:none">
+      <input type="file" name="anexo_camera" accept="image/*" capture="environment" id="input-anexo-camera" style="display:none">
+      <div class="filters" style="margin-top:4px">
+        <button type="button" class="btn btn-ghost" id="btn-escolher-arquivo" style="padding:8px 14px;font-size:12.5px">📎 Escolher arquivo</button>
+        <button type="button" class="btn btn-ghost" id="btn-tirar-foto" style="padding:8px 14px;font-size:12.5px">📷 Tirar foto</button>
+      </div>
+      <span style="display:block;margin-top:4px;font-size:11px;color:var(--graphite)">"Tirar foto" abre a câmera do dispositivo em celular/tablet — no computador, abre o seletor de arquivo normal (não existe câmera de verdade nesse tipo de campo em navegador de desktop).</span>
+      <span id="nome-anexo-escolhido" style="display:block;margin-top:6px;font-size:12.5px;color:var(--graphite)"></span>
     </div>
 
     <div class="form-row">
@@ -95,71 +124,59 @@
       <textarea name="observacao" rows="2"></textarea>
     </div>
 
-    <div class="form-row">
-      <label>Anexar comprovante (extrato, cupom fiscal, foto) — opcional</label>
-      <input type="file" name="anexo" accept="image/*,.pdf" id="input-anexo-arquivo" style="display:none">
-      <input type="file" name="anexo_camera" accept="image/*" capture="environment" id="input-anexo-camera" style="display:none">
-      <div class="filters" style="margin-top:4px">
-        <button type="button" class="btn btn-ghost" id="btn-escolher-arquivo" style="padding:8px 14px;font-size:12.5px">📎 Escolher arquivo</button>
-        <button type="button" class="btn btn-ghost" id="btn-tirar-foto" style="padding:8px 14px;font-size:12.5px">📷 Tirar foto</button>
-      </div>
-      <span id="nome-anexo-escolhido" style="display:block;margin-top:6px;font-size:12.5px;color:var(--graphite)"></span>
-    </div>
-
     <button type="submit" class="btn btn-primary" style="margin-top:10px">Salvar lançamento</button>
   </form>
 </div>
 
 <script>
-  const inputArquivo = document.getElementById('input-anexo-arquivo');
-  const inputCamera = document.getElementById('input-anexo-camera');
-  const nomeAnexo = document.getElementById('nome-anexo-escolhido');
-
-  document.getElementById('btn-escolher-arquivo').addEventListener('click', () => inputArquivo.click());
-  document.getElementById('btn-tirar-foto').addEventListener('click', () => inputCamera.click());
-
-  function mostrarNomeAnexo(input) {
-    if (input.files.length) {
-      nomeAnexo.textContent = '✓ ' + input.files[0].name;
-      // o backend só lê o campo "anexo" - se veio da câmera, copiamos o
-      // arquivo pro input principal antes de enviar o formulário
-      if (input === inputCamera) {
-        const dt = new DataTransfer();
-        dt.items.add(input.files[0]);
-        inputArquivo.files = dt.files;
-      }
-    }
-  }
-  inputArquivo.addEventListener('change', () => mostrarNomeAnexo(inputArquivo));
-  inputCamera.addEventListener('change', () => mostrarNomeAnexo(inputCamera));
-
   const selForma = document.getElementById('sel-forma');
   const linhaCartao = document.getElementById('linha-cartao');
-  selForma.addEventListener('change', () => {
-    const opt = selForma.options[selForma.selectedIndex];
-    linhaCartao.style.display = (opt.dataset.nome === 'Cartão de Crédito') ? 'block' : 'none';
-  });
+  const linhaParcelado = document.getElementById('linha-parcelado');
   const chkParcelado = document.getElementById('chk-parcelado');
   const linhaParcelas = document.getElementById('linha-parcelas');
   const linhaComJuros = document.getElementById('linha-com-juros');
-  const linhaTaxaJuros = document.getElementById('linha-taxa-juros');
-  const linhaPreview = document.getElementById('linha-preview-parcela');
   const chkComJuros = document.getElementById('chk-com-juros');
+  const linhaModoJuros = document.getElementById('linha-modo-juros');
+  const selModoJuros = document.getElementById('sel-modo-juros');
+  const linhaTaxaJuros = document.getElementById('linha-taxa-juros');
+  const linhaValorParcelaInformado = document.getElementById('linha-valor-parcela-informado');
+  const linhaPreview = document.getElementById('linha-preview-parcela');
   const inputTaxaJuros = document.getElementById('input-taxa-juros');
+  const inputValorParcelaInformado = document.getElementById('input-valor-parcela-informado');
   const inputNumParcelas = document.getElementById('input-num-parcelas');
-  const inputValor = document.querySelector('input[name="valor"]');
+  const inputValor = document.getElementById('input-valor');
   const previewTexto = document.getElementById('preview-parcela-texto');
 
-  function fmtMoeda(v) {
-    return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function fmtMoeda(v) { return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+  function atualizarVisibilidadeParcelamento() {
+    const opt = selForma.options[selForma.selectedIndex];
+    const permiteParcelamento = opt && opt.dataset.permiteParcelamento === 'true';
+    linhaCartao.style.display = (opt && opt.dataset.nome === 'Cartão de Crédito') ? 'block' : 'none';
+    linhaParcelado.style.display = permiteParcelamento ? 'block' : 'none';
+    if (!permiteParcelamento) {
+      chkParcelado.checked = false;
+      linhaParcelas.style.display = 'none';
+      linhaComJuros.style.display = 'none';
+      chkComJuros.checked = false;
+      linhaModoJuros.style.display = 'none';
+      linhaTaxaJuros.style.display = 'none';
+      linhaValorParcelaInformado.style.display = 'none';
+      linhaPreview.style.display = 'none';
+    }
   }
+  selForma.addEventListener('change', atualizarVisibilidadeParcelamento);
 
   function atualizarPreview() {
-    const valor = parseFloat((inputValor.value || '0').replace(',', '.'));
+    const valor = parseFloat((inputValor.value || '0').replace(/\./g, '').replace(',', '.'));
     const n = parseInt(inputNumParcelas.value || '1');
     if (!chkParcelado.checked || !valor || !n || n < 2) { linhaPreview.style.display = 'none'; return; }
 
-    if (chkComJuros.checked) {
+    if (chkComJuros.checked && selModoJuros.value === 'valor_parcela') {
+      const parcela = parseFloat((inputValorParcelaInformado.value || '0').replace(/\./g, '').replace(',', '.'));
+      if (!parcela) { linhaPreview.style.display = 'none'; return; }
+      previewTexto.textContent = `${n}x de ${fmtMoeda(parcela)} — total ${fmtMoeda(parcela * n)}`;
+    } else if (chkComJuros.checked) {
       const taxa = parseFloat((inputTaxaJuros.value || '0').replace(',', '.'));
       if (!taxa) { linhaPreview.style.display = 'none'; return; }
       const i = taxa / 100;
@@ -175,13 +192,44 @@
   chkParcelado.addEventListener('change', () => {
     linhaParcelas.style.display = chkParcelado.checked ? 'block' : 'none';
     linhaComJuros.style.display = chkParcelado.checked ? 'block' : 'none';
-    if (!chkParcelado.checked) { chkComJuros.checked = false; linhaTaxaJuros.style.display = 'none'; }
+    if (!chkParcelado.checked) { chkComJuros.checked = false; linhaModoJuros.style.display = 'none'; linhaTaxaJuros.style.display = 'none'; linhaValorParcelaInformado.style.display = 'none'; }
     atualizarPreview();
   });
   chkComJuros.addEventListener('change', () => {
-    linhaTaxaJuros.style.display = chkComJuros.checked ? 'block' : 'none';
+    linhaModoJuros.style.display = chkComJuros.checked ? 'block' : 'none';
+    if (chkComJuros.checked) {
+      selModoJuros.dispatchEvent(new Event('change'));
+    } else {
+      linhaTaxaJuros.style.display = 'none';
+      linhaValorParcelaInformado.style.display = 'none';
+    }
     atualizarPreview();
   });
-  [inputValor, inputNumParcelas, inputTaxaJuros].forEach(el => el.addEventListener('input', atualizarPreview));
+  selModoJuros.addEventListener('change', () => {
+    linhaTaxaJuros.style.display = selModoJuros.value === 'taxa' ? 'block' : 'none';
+    linhaValorParcelaInformado.style.display = selModoJuros.value === 'valor_parcela' ? 'block' : 'none';
+    atualizarPreview();
+  });
+  [inputValor, inputNumParcelas, inputTaxaJuros, inputValorParcelaInformado].forEach(el => el.addEventListener('input', atualizarPreview));
+
+  atualizarVisibilidadeParcelamento();
+
+  const inputArquivo = document.getElementById('input-anexo-arquivo');
+  const inputCamera = document.getElementById('input-anexo-camera');
+  const nomeAnexo = document.getElementById('nome-anexo-escolhido');
+  document.getElementById('btn-escolher-arquivo').addEventListener('click', () => inputArquivo.click());
+  document.getElementById('btn-tirar-foto').addEventListener('click', () => inputCamera.click());
+  function mostrarNomeAnexo(input) {
+    if (input.files.length) {
+      nomeAnexo.textContent = '✓ ' + input.files[0].name;
+      if (input === inputCamera) {
+        const dt = new DataTransfer();
+        dt.items.add(input.files[0]);
+        inputArquivo.files = dt.files;
+      }
+    }
+  }
+  inputArquivo.addEventListener('change', () => mostrarNomeAnexo(inputArquivo));
+  inputCamera.addEventListener('change', () => mostrarNomeAnexo(inputCamera));
 </script>
 {% endblock %}

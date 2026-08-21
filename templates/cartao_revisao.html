@@ -4,17 +4,18 @@
 <div class="content" style="max-width:820px;margin:0 auto">
   <header class="panel-head">
     <h1>Revisar fatura</h1>
-    <p>{{ arquivo }} · vencimento {{ vencimento or '—' }}</p><p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a></p>
+    <p>{{ arquivo }} · vencimento {{ vencimento or '—' }}</p>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
   </header>
 
   <div class="review-summary">
-    <div class="summary-cell"><span class="label">Valor total da fatura</span><span class="value">R$ {{ '%.2f'|format(conferencia.valor_total_fatura or 0)|replace('.', ',') }}</span></div>
-    <div class="summary-cell"><span class="label">Soma dos lançamentos</span><span class="value">R$ {{ '%.2f'|format(conferencia.soma_transacoes)|replace('.', ',') }}</span></div>
+    <div class="summary-cell"><span class="label">Valor total da fatura</span><span class="value">R$ {{ (conferencia.valor_total_fatura or 0)|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Soma dos lançamentos</span><span class="value">R$ {{ conferencia.soma_transacoes|brl }}</span></div>
     <div class="summary-cell">
       <span class="label">Conferência</span>
       <span class="chip-status {{ 'verde' if conferencia.bate else 'vermelho' }}">{{ '✓ CONFERE' if conferencia.bate else '✗ DIVERGE' }}</span>
     </div>
-    <div class="summary-cell"><span class="label">Cartões identificados</span><span class="value">{{ grupos|length }}</span></div>
+    <div class="summary-cell"><span class="label">Pessoas identificadas</span><span class="value">{{ grupos|length }}</span></div>
   </div>
 
   <form method="post" action="{{ url_for('cartao.confirmar') }}">
@@ -24,9 +25,9 @@
       <input type="text" name="mes_referencia" value="{{ mes_referencia }}" class="mono">
     </div>
 
-    {% for chave, grupo in grupos.items() %}
-    <h3>{{ grupo.titular }}{% if grupo.cartao %} · cartão final {{ grupo.cartao }}{% endif %}
-      <span class="pill mono" style="font-size:12px;color:var(--graphite)">{{ grupo.transacoes|length }} lançamentos · R$ {{ '%.2f'|format(grupo.soma)|replace('.', ',') }}</span>
+    {% for titular, grupo in grupos.items() %}
+    <h3>{{ grupo.titular }}
+      <span class="mono" style="font-size:12px;color:var(--graphite)">{{ grupo.transacoes|length }} lançamentos · R$ {{ grupo.soma|brl }}</span>
     </h3>
     <div class="table-wrap" style="margin-bottom:26px">
       <table class="data-table">
@@ -39,9 +40,7 @@
             <td>{{ t.cidade or '—' }}</td>
             <td>{{ t.categoria_sugerida or '—' }}</td>
             <td class="mono">{{ (t.parcela_atual ~ '/' ~ t.parcela_total) if t.parcela_atual else '—' }}</td>
-            <td class="num {{ 'val-despesa' if t.sinal == 'D' else 'val-receita' }}">
-              {{ '' if t.sinal == 'D' else '-' }} R$ {{ '%.2f'|format(t.valor)|replace('.', ',') }}
-            </td>
+            <td class="num {{ 'val-despesa' if t.sinal == 'D' else 'val-receita' }}">{{ '' if t.sinal == 'D' else '-' }} R$ {{ t.valor|brl }}</td>
           </tr>
         {% endfor %}
         </tbody>

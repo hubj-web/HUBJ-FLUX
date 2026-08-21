@@ -14,18 +14,28 @@ from controle import controle_bp
 from configuracoes import config_bp
 
 
+def fmt_brl(v):
+    """Formata número no padrão brasileiro: 14000.0 -> '14.000,00'."""
+    if v is None or v == "":
+        return ""
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return str(v)
+    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 def create_app():
     app = Flask(__name__)
     app.secret_key = Config.SESSION_SECRET_KEY
-
-    # cookies de sessão seguros (parte da Camada 2 de autenticação: o
-    # cookie só é assinado/confiável, nunca guarda dado sensível em claro)
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=Config.APP_BASE_URL.startswith("https"),
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
+        MAX_CONTENT_LENGTH=10 * 1024 * 1024,
     )
+    app.jinja_env.filters["brl"] = fmt_brl
 
     init_oauth(app)
 
@@ -39,7 +49,6 @@ def create_app():
     app.register_blueprint(config_bp)
 
     app.teardown_appcontext(db.close_conn)
-
     return app
 
 

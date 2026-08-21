@@ -4,7 +4,7 @@
 <div class="content" style="max-width:760px;margin:0 auto">
   <header class="panel-head">
     <h1>Planejamento</h1>
-    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
        <a href="{{ url_for('controle.index', mes=mes_referencia) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Ver Controle</a>
        <a href="{{ url_for('plan.visualizar', mes=mes_referencia) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">👁 Só visualizar (sem editar)</a></p>
   </header>
@@ -19,7 +19,7 @@
     <input type="hidden" name="mes_referencia" value="{{ mes_referencia }}">
     <div class="form-row" style="margin:0">
       <label>Renda mensal (usada na sugestão automática)</label>
-      <input type="text" name="renda_mensal" value="{{ renda_mensal or '' }}" placeholder="0,00" style="width:160px">
+      <input type="text" name="renda_mensal" value="{{ renda_mensal|brl if renda_mensal else '' }}" placeholder="0,00" style="width:160px">
     </div>
     <button type="submit" class="btn btn-ghost" style="align-self:flex-end">Salvar renda</button>
   </form>
@@ -44,15 +44,15 @@
         {% for c in categorias %}
           <tr>
             <td>{{ c.categoria_nome }}</td>
-            <td class="num mono" style="color:var(--graphite)">R$ {{ '%.2f'|format(c.media_historica)|replace('.', ',') }}</td>
-            <td class="num"><input type="text" name="limite_{{ c.categoria_id }}" value="{{ '%.2f'|format(c.valor_limite)|replace('.', ',') }}"
+            <td class="num mono" style="color:var(--graphite)">R$ {{ c.media_historica|brl }}</td>
+            <td class="num"><input type="text" name="limite_{{ c.categoria_id }}" value="{{ c.valor_limite|brl }}"
                 style="width:120px;text-align:right;padding:6px 8px;border:1px solid var(--line);border-radius:8px"></td>
           </tr>
         {% endfor %}
         </tbody>
       </table>
     </div>
-    <p class="mono" style="margin-bottom:16px">Total planejado: <strong>R$ {{ '%.2f'|format(total_planejado)|replace('.', ',') }}</strong></p>
+    <p class="mono" style="margin-bottom:16px">Total planejado: <strong>R$ {{ total_planejado|brl }}</strong></p>
     <button type="submit" class="btn btn-primary">Salvar planejamento</button>
   </form>
 </div>

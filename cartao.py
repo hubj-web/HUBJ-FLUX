@@ -12,10 +12,6 @@ import categorias_cartao
 
 cartao_bp = Blueprint("cartao", __name__, url_prefix="/cartao")
 
-# Armazenamento temporário (em memória) das faturas já lidas do PDF, entre a
-# tela de revisão e a confirmação - evita estourar o limite de tamanho do
-# cookie de sessão com centenas de transações. Funciona enquanto o app
-# rodar num único processo (é o caso hoje no Railway).
 _pendentes = {}
 
 
@@ -85,11 +81,9 @@ def importar():
     vencimento = resultado.get("vencimento")
     cartao_principal = resultado.get("cartao_final")
 
-    # Nome do titular principal: preferimos o nome como aparece nas seções
-    # de cartão (forma abreviada, ex "NATALIA L S CARVALHO") em vez do nome
-    # completo da página de resumo (ex "NATALIA LUIZA SILVA CARVALHO") -
-    # assim o titular fica consistente com o nome usado nas demais seções
-    # da MESMA fatura, evitando cadastrar a mesma pessoa duas vezes.
+    # Nome do titular principal: preferimos a forma como aparece nas
+    # seções de cartão (abreviada) - assim fica consistente com as demais
+    # seções da MESMA fatura, evitando cadastrar a mesma pessoa duas vezes.
     titular_principal = None
     for t in resultado["transacoes"]:
         if t["titular"] != "GERAL" and t["cartao"] == cartao_principal:
@@ -103,11 +97,11 @@ def importar():
         titular = t["titular"]
         cartao_num = t["cartao"]
         if titular == "GERAL":
-            # entradas gerais (pagamento, ajuste, saldo anterior) pertencem
-            # à fatura do titular principal do cartão
             titular, cartao_num = titular_principal, (cartao_num or cartao_principal)
-        chave = (titular, cartao_num)
-        grupo = grupos.setdefault(chave, {"titular": titular, "cartao": cartao_num, "transacoes": [], "soma": 0.0})
+        chave = titular  # agrupa por PESSOA, não mais por (pessoa, número do cartão)
+        grupo = grupos.setdefault(chave, {"titular": titular, "cartoes_numeros": set(), "transacoes": [], "soma": 0.0})
+        if cartao_num:
+            grupo["cartoes_numeros"].add(cartao_num)
         t["data_iso"] = _infer_year_and_iso(t["data"], vencimento)
         t["categoria_sugerida"] = categorias_cartao.sugerir_categoria(t["descricao"])
         grupo["transacoes"].append(t)
@@ -122,16 +116,11 @@ def importar():
 
     token = str(uuid.uuid4())
     _pendentes[token] = {
-        "organizacao_id": org_id,
-        "arquivo": f.filename,
-        "vencimento": vencimento,
+        "organizacao_id": org_id, "arquivo": f.filename, "vencimento": vencimento,
         "mes_referencia": _default_mes_referencia(vencimento),
-        "valor_total": resultado.get("valor_total"),
-        "valor_minimo": resultado.get("valor_minimo"),
-        "limite_total": resultado.get("limite_total"),
-        "limite_utilizado": resultado.get("limite_utilizado"),
-        "limite_disponivel": resultado.get("limite_disponivel"),
-        "grupos": grupos,
+        "valor_total": resultado.get("valor_total"), "valor_minimo": resultado.get("valor_minimo"),
+        "limite_total": resultado.get("limite_total"), "limite_utilizado": resultado.get("limite_utilizado"),
+        "limite_disponivel": resultado.get("limite_disponivel"), "grupos": grupos,
     }
 
     return render_template("cartao_revisao.html", token=token, grupos=grupos, conferencia=conferencia,
@@ -152,24 +141,23 @@ def confirmar():
         return redirect(url_for("cartao.importar"))
 
     mes_referencia = request.form.get("mes_referencia") or pend["mes_referencia"]
-    cartoes_criados = []
+    cartoes_atualizados = []
 
-    for chave_str, grupo in pend["grupos"].items():
-        titular, cartao_num = grupo["titular"], grupo["cartao"]
-        pessoa = db.encontrar_ou_criar_pessoa(org_id, titular) if titular != "GERAL" else None
-        nome_cartao = f"{titular} · final {cartao_num}" if cartao_num else titular
-        cartao_row = db.encontrar_ou_criar_cartao_por_nome(org_id, nome_cartao)
-        cartoes_criados.append(nome_cartao)
+    for titular, grupo in pend["grupos"].items():
+        # pessoas vindas de fatura NÃO aparecem no seletor de lançamento
+        # (disponivel_lancamento=False) - só as cadastradas manualmente.
+        pessoa = db.encontrar_ou_criar_pessoa(org_id, titular, disponivel_lancamento=False) if titular != "GERAL" else None
+        cartao_row = db.encontrar_ou_criar_cartao_por_pessoa(org_id, pessoa["id"], titular) if pessoa else \
+            db.encontrar_ou_criar_cartao_por_pessoa(org_id, None, "Fatura Geral")
+        cartoes_atualizados.append(cartao_row["nome"])
 
+        numeros = ", ".join(sorted(grupo["cartoes_numeros"])) if grupo["cartoes_numeros"] else None
         fatura_id = db.salvar_fatura(cartao_row["id"], {
-            "mes_referencia": mes_referencia,
-            "vencimento": _parse_data_br(pend["vencimento"]),
+            "mes_referencia": mes_referencia, "vencimento": _parse_data_br(pend["vencimento"]),
             "valor_total": pend["valor_total"] if len(pend["grupos"]) == 1 else round(grupo["soma"], 2),
-            "valor_minimo": pend["valor_minimo"],
-            "limite_total": pend["limite_total"],
-            "limite_utilizado": pend["limite_utilizado"],
-            "limite_disponivel": pend["limite_disponivel"],
-            "arquivo_origem": pend["arquivo"],
+            "valor_minimo": pend["valor_minimo"], "limite_total": pend["limite_total"],
+            "limite_utilizado": pend["limite_utilizado"], "limite_disponivel": pend["limite_disponivel"],
+            "arquivo_origem": pend["arquivo"], "numero_cartao_origem": numeros,
         }, g.usuario_atual["id"])
 
         for t in grupo["transacoes"]:
@@ -178,21 +166,15 @@ def confirmar():
                 cat = db.buscar_categoria_por_nome(org_id, t["categoria_sugerida"])
                 categoria_id = cat["id"] if cat else None
             db.inserir_lancamento_cartao(fatura_id, {
-                "data_iso": t["data_iso"],
-                "descricao": t["descricao"],
-                "cidade": t.get("cidade"),
-                "valor": t["valor"],
-                "sinal": t["sinal"],
-                "parcela_atual": t.get("parcela_atual"),
-                "parcela_total": t.get("parcela_total"),
-                "parcelada": bool(t.get("parcelada")),
-                "tipo": t.get("tipo"),
-                "categoria_id": categoria_id,
+                "data_iso": t["data_iso"], "descricao": t["descricao"], "cidade": t.get("cidade"),
+                "valor": t["valor"], "sinal": t["sinal"], "parcela_atual": t.get("parcela_atual"),
+                "parcela_total": t.get("parcela_total"), "parcelada": bool(t.get("parcelada")),
+                "tipo": t.get("tipo"), "categoria_id": categoria_id,
                 "pessoa_id": pessoa["id"] if pessoa else None,
             })
 
     del _pendentes[token]
-    flash(f"Fatura importada com sucesso: {len(cartoes_criados)} cartão(ões) atualizados.", "ok")
+    flash(f"Fatura importada com sucesso: {len(cartoes_atualizados)} cartão(ões) atualizados.", "ok")
     return redirect(url_for("cartao.painel"))
 
 
@@ -229,7 +211,10 @@ def excluir_fatura(fatura_id):
 def painel():
     org_id = g.usuario_atual["organizacao_id"]
     faturas = db.ultimas_faturas_por_cartao(org_id)
-    return render_template("cartao_painel.html", faturas=faturas)
+    total_faturas = sum(float(f["valor_total"] or 0) for f in faturas)
+    total_disponivel = sum(float(f["limite_disponivel"] or 0) for f in faturas)
+    return render_template("cartao_painel.html", faturas=faturas,
+                            total_faturas=total_faturas, total_disponivel=total_disponivel)
 
 
 @cartao_bp.route("/transacoes")
@@ -244,5 +229,7 @@ def transacoes():
         "busca": request.args.get("busca") or None,
     }
     lancs = db.listar_lancamentos_cartao(org_id, filtros)
-    return render_template("cartao_transacoes.html", lancamentos=lancs, filtros=filtros,
-                            cartoes=db.listar_cartoes(org_id), pessoas=db.listar_pessoas(org_id))
+    total = sum(float(l["valor"]) for l in lancs if l["sinal"] == "D") - \
+        sum(float(l["valor"]) for l in lancs if l["sinal"] == "C")
+    return render_template("cartao_transacoes.html", lancamentos=lancs, filtros=filtros, total=total,
+                            cartoes=db.listar_cartoes(org_id), pessoas=db.listar_pessoas_todas(org_id))

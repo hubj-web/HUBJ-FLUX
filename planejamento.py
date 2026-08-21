@@ -31,8 +31,7 @@ def index():
     prefs = db.buscar_preferencias(org_id)
 
     return render_template(
-        "planejamento.html",
-        categorias=categorias, mes_referencia=mes_referencia,
+        "planejamento.html", categorias=categorias, mes_referencia=mes_referencia,
         mes_anterior=mes_anterior, mes_seguinte=mes_seguinte,
         total_planejado=total_planejado, renda_mensal=prefs["renda_mensal"] if prefs else None,
     )
@@ -63,7 +62,7 @@ def salvar():
         if chave.startswith("limite_"):
             categoria_id = int(chave.replace("limite_", ""))
             try:
-                valor_limite = float((valor or "0").replace(",", "."))
+                valor_limite = float((valor or "0").replace(".", "").replace(",", "."))
             except ValueError:
                 continue
             db.salvar_planejamento_categoria(org_id, mes_referencia, categoria_id, valor_limite)
@@ -93,7 +92,7 @@ def salvar_renda():
     org_id = g.usuario_atual["organizacao_id"]
     mes_referencia = request.form.get("mes_referencia")
     try:
-        renda = float((request.form.get("renda_mensal") or "0").replace(",", "."))
+        renda = float((request.form.get("renda_mensal") or "0").replace(".", "").replace(",", "."))
     except ValueError:
         flash("Renda inválida.", "erro")
         return redirect(url_for("plan.index", mes=mes_referencia))

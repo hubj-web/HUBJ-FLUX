@@ -4,33 +4,32 @@
 <div class="content" style="max-width:700px;margin:0 auto">
   <header class="panel-head">
     <h1>Lançamentos Recorrentes</h1>
-    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Início</a>
-       <a href="{{ url_for('lanc.novo') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Novo Lançamento</a></p>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
   </header>
 
   <h3>Modelos salvos</h3>
   <div class="table-wrap" style="margin-bottom:30px">
     <table class="data-table">
-      <thead><tr><th>Nome</th><th>Categoria</th><th>Forma</th><th class="num">Valor</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>Categoria</th><th>Forma</th><th>Frequência</th><th class="num">Valor</th><th></th></tr></thead>
       <tbody>
       {% for t in templates %}
         <tr>
           <td>{{ t.nome }}</td>
           <td>{{ t.categoria_nome or '—' }}</td>
           <td>{{ t.forma_pagamento_nome or '—' }}</td>
-          <td class="num">R$ {{ '%.2f'|format(t.valor)|replace('.', ',') }}</td>
+          <td class="mono">{{ t.frequencia }}</td>
+          <td class="num">R$ {{ t.valor|brl }}</td>
           <td style="white-space:nowrap">
             <form method="post" action="{{ url_for('lanc.lancar_recorrente', tid=t.id) }}" style="display:inline">
               <button class="btn btn-primary" style="padding:4px 10px;font-size:12px">Lançar hoje</button>
             </form>
-            <form method="post" action="{{ url_for('lanc.excluir_recorrente', tid=t.id) }}" style="display:inline"
-                  onsubmit="return confirm('Remover este modelo?');">
+            <form method="post" action="{{ url_for('lanc.excluir_recorrente', tid=t.id) }}" style="display:inline" onsubmit="return confirm('Remover este modelo?');">
               <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">Remover</button>
             </form>
           </td>
         </tr>
       {% else %}
-        <tr><td colspan="5" style="text-align:center;color:var(--graphite);padding:20px">Nenhum modelo criado ainda.</td></tr>
+        <tr><td colspan="6" style="text-align:center;color:var(--graphite);padding:20px">Nenhum modelo criado ainda.</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -51,7 +50,15 @@
       </select>
     </div>
     <div class="form-row"><label>Frequência</label>
-      <select name="frequencia"><option value="mensal">Mensal</option><option value="anual">Anual</option></select>
+      <select name="frequencia">
+        <option value="semanal">Semanal</option>
+        <option value="quinzenal">Quinzenal</option>
+        <option value="mensal" selected>Mensal</option>
+        <option value="bimestral">Bimestral</option>
+        <option value="trimestral">Trimestral</option>
+        <option value="semestral">Semestral</option>
+        <option value="anual">Anual</option>
+      </select>
     </div>
     <button type="submit" class="btn btn-primary" style="margin-top:8px">Criar modelo</button>
   </form>

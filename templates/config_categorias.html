@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Categorias · HUB-J FLUX{% endblock %}
 {% block content %}
-<div class="content" style="max-width:900px;margin:0 auto">
+<div class="content" style="max-width:940px;margin:0 auto">
   <header class="panel-head">
     <h1>Categorias</h1>
-    <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Configurações</a></p>
+    <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
   </header>
 
   <h3>Nova categoria</h3>
@@ -38,12 +38,18 @@
             </select></td>
             <td><input name="palavras_chave" value="{{ c.palavras_chave or '' }}" style="width:150px;padding:5px;border:1px solid transparent;border-radius:6px" onfocus="this.style.borderColor='var(--line)'"></td>
             <td style="text-align:center"><input type="checkbox" name="ativa" {{ 'checked' if c.ativa }}></td>
-            <td><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">Salvar</button></td>
+            <td style="white-space:nowrap"><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">Salvar</button></td>
           </form>
+          <td style="padding:0">
+            <form method="post" action="{{ url_for('config.excluir_categoria', cat_id=c.id) }}" onsubmit="return confirm('Excluir a categoria \'{{ c.nome }}\' permanentemente?');">
+              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--brick)">Excluir</button>
+            </form>
+          </td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
+  <p style="font-size:12px;color:var(--graphite);margin-top:10px">"Excluir" só funciona se a categoria não tiver nenhum lançamento associado — se já tiver histórico, use "desativar" (desmarcar Ativa) em vez de excluir.</p>
 </div>
 {% endblock %}

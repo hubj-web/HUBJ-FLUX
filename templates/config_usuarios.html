@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Usuários · HUB-J FLUX{% endblock %}
 {% block content %}
-<div class="content" style="max-width:760px;margin:0 auto">
+<div class="content" style="max-width:800px;margin:0 auto">
   <header class="panel-head">
     <h1>Usuários da Organização</h1>
-    <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Configurações</a></p>
+    <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
     <p style="color:var(--graphite);font-size:13px">Limite contratado: {{ organizacao.limite_usuarios }} usuário(s).</p>
   </header>
 
@@ -29,10 +29,18 @@
           <td>{{ u.nome or '—' }}</td>
           <td class="mono">{{ u.papel }}</td>
           <td class="mono">{{ u.status }}</td>
-          <td>
-            <form method="post" action="{{ url_for('config.remover_usuario', usuario_id=u.id) }}" style="display:inline"
-                  onsubmit="return confirm('Remover o acesso de {{ u.email }}?');">
-              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--brick)">Remover</button>
+          <td style="white-space:nowrap">
+            {% if u.status == 'bloqueado' %}
+            <form method="post" action="{{ url_for('config.reativar_usuario', usuario_id=u.id) }}" style="display:inline">
+              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">Reativar</button>
+            </form>
+            {% else %}
+            <form method="post" action="{{ url_for('config.bloquear_usuario', usuario_id=u.id) }}" style="display:inline">
+              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">Desativar</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{{ url_for('config.remover_usuario', usuario_id=u.id) }}" style="display:inline" onsubmit="return confirm('Remover o acesso de {{ u.email }} permanentemente?');">
+              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--brick)">Excluir</button>
             </form>
           </td>
         </tr>
