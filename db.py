@@ -187,17 +187,17 @@ def sugerir_categoria_por_descricao(organizacao_id, descricao):
 # ---------- Lançamentos ----------
 
 def criar_lancamento(organizacao_id, dados, criado_por):
-    dados = {**dados, "taxa_juros_mensal": dados.get("taxa_juros_mensal")}
+    dados = {**dados, "taxa_juros_mensal": dados.get("taxa_juros_mensal"), "conta_bancaria_id": dados.get("conta_bancaria_id")}
     return execute(
         """INSERT INTO lancamentos
              (organizacao_id, data, tipo, valor, descricao, categoria_id, subcategoria_id,
               forma_pagamento_id, cartao_id, pessoa_id, grupo_parcelamento_id,
-              parcela_atual, parcela_total, observacao, taxa_juros_mensal, criado_por, criado_em)
+              parcela_atual, parcela_total, observacao, taxa_juros_mensal, conta_bancaria_id, criado_por, criado_em)
            VALUES (%(organizacao_id)s, %(data)s, %(tipo)s, %(valor)s, %(descricao)s,
                    %(categoria_id)s, %(subcategoria_id)s, %(forma_pagamento_id)s,
                    %(cartao_id)s, %(pessoa_id)s, %(grupo_parcelamento_id)s,
                    %(parcela_atual)s, %(parcela_total)s, %(observacao)s, %(taxa_juros_mensal)s,
-                   %(criado_por)s, now())
+                   %(conta_bancaria_id)s, %(criado_por)s, now())
            RETURNING *""",
         {**dados, "organizacao_id": organizacao_id, "criado_por": criado_por},
     )
@@ -357,14 +357,14 @@ def salvar_renda_mensal(organizacao_id, renda_mensal):
             (renda_mensal, organizacao_id))
 
 
-def listar_planejamento_mes(organizacao_id, mes_referencia):
+def listar_planejamento_mes(organizacao_id, mes_referencia, tipo="despesa"):
     return query_all(
         """SELECT c.id AS categoria_id, c.nome AS categoria_nome, COALESCE(p.valor_limite, 0) AS valor_limite
            FROM categorias c
            LEFT JOIN planejamentos p ON p.categoria_id = c.id AND p.mes_referencia = %(mes)s
-           WHERE c.organizacao_id = %(org)s AND c.ativa = true AND c.tipo IN ('despesa','ambos')
+           WHERE c.organizacao_id = %(org)s AND c.ativa = true AND c.tipo IN (%(tipo)s, 'ambos')
            ORDER BY c.ordem, c.nome""",
-        {"org": organizacao_id, "mes": mes_referencia},
+        {"org": organizacao_id, "mes": mes_referencia, "tipo": tipo},
     )
 
 
@@ -668,3 +668,112 @@ def reativar_usuario_organizacao(usuario_id, organizacao_id):
 
 def buscar_categoria_por_nome(organizacao_id, nome):
     return query_one("SELECT id FROM categorias WHERE organizacao_id = %s AND nome = %s", (organizacao_id, nome))
+
+
+# ---------- Metas ----------
+
+def listar_metas(organizacao_id):
+    return query_all(
+        "SELECT * FROM metas WHERE organizacao_id = %s ORDER BY status, data_alvo NULLS LAST, criado_em DESC",
+        (organizacao_id,),
+    )
+
+
+def criar_meta(organizacao_id, nome, descricao, valor_alvo, data_alvo):
+    return execute(
+        """INSERT INTO metas (organizacao_id, nome, descricao, valor_alvo, valor_atual, data_alvo, status, criado_em)
+           VALUES (%s, %s, %s, %s, 0, %s, 'em_andamento', now()) RETURNING *""",
+        (organizacao_id, nome, descricao, valor_alvo, data_alvo),
+    )
+
+
+def buscar_meta(meta_id, organizacao_id):
+    return query_one("SELECT * FROM metas WHERE id = %s AND organizacao_id = %s", (meta_id, organizacao_id))
+
+
+def excluir_meta(meta_id, organizacao_id):
+    execute("DELETE FROM metas WHERE id = %s AND organizacao_id = %s", (meta_id, organizacao_id))
+
+
+def registrar_movimento_meta(meta_id, organizacao_id, valor, observacao):
+    meta = buscar_meta(meta_id, organizacao_id)
+    if not meta:
+        return None
+    execute(
+        "INSERT INTO metas_movimentos (meta_id, valor, data, observacao) VALUES (%s, %s, CURRENT_DATE, %s)",
+        (meta_id, valor, observacao),
+    )
+    novo_valor = float(meta["valor_atual"]) + valor
+    novo_status = "concluida" if meta["valor_alvo"] and novo_valor >= float(meta["valor_alvo"]) else meta["status"]
+    execute(
+        "UPDATE metas SET valor_atual = %s, status = %s WHERE id = %s",
+        (novo_valor, novo_status, meta_id),
+    )
+    return novo_status
+
+
+def listar_movimentos_meta(meta_id):
+    return query_all("SELECT * FROM metas_movimentos WHERE meta_id = %s ORDER BY data DESC, id DESC", (meta_id,))
+
+
+# ---------- Contas bancárias ----------
+
+def listar_contas_bancarias(organizacao_id, apenas_ativas=True):
+    sql = "SELECT * FROM contas_bancarias WHERE organizacao_id = %s"
+    if apenas_ativas:
+        sql += " AND ativa = true"
+    sql += " ORDER BY nome"
+    return query_all(sql, (organizacao_id,))
+
+
+def criar_conta_bancaria(organizacao_id, nome, tipo, saldo_inicial):
+    return execute(
+        """INSERT INTO contas_bancarias (organizacao_id, nome, tipo, saldo_inicial, ativa, criado_em)
+           VALUES (%s, %s, %s, %s, true, now()) RETURNING *""",
+        (organizacao_id, nome, tipo, saldo_inicial),
+    )
+
+
+def atualizar_conta_bancaria(conta_id, organizacao_id, nome, tipo, saldo_inicial, ativa):
+    execute(
+        "UPDATE contas_bancarias SET nome=%s, tipo=%s, saldo_inicial=%s, ativa=%s WHERE id=%s AND organizacao_id=%s",
+        (nome, tipo, saldo_inicial, ativa, conta_id, organizacao_id),
+    )
+
+
+def excluir_conta_bancaria(conta_id, organizacao_id):
+    execute("DELETE FROM contas_bancarias WHERE id = %s AND organizacao_id = %s", (conta_id, organizacao_id))
+
+
+def saldo_atual_conta(conta_id, organizacao_id):
+    conta = query_one("SELECT saldo_inicial FROM contas_bancarias WHERE id = %s AND organizacao_id = %s",
+                       (conta_id, organizacao_id))
+    if not conta:
+        return None
+    row = query_one(
+        """SELECT COALESCE(SUM(CASE WHEN tipo='receita' THEN valor ELSE -valor END), 0) AS movimento
+           FROM lancamentos WHERE conta_bancaria_id = %s AND organizacao_id = %s""",
+        (conta_id, organizacao_id),
+    )
+    return float(conta["saldo_inicial"]) + float(row["movimento"])
+
+
+# ---------- Setup guiado ----------
+
+def marcar_setup_concluido(organizacao_id):
+    execute("UPDATE organizacoes_preferencias SET setup_concluido = true WHERE organizacao_id = %s", (organizacao_id,))
+
+
+def status_checklist_setup(organizacao_id):
+    n_categorias = query_one("SELECT COUNT(*) AS n FROM categorias WHERE organizacao_id = %s AND ativa = true", (organizacao_id,))["n"]
+    n_cartoes = query_one("SELECT COUNT(*) AS n FROM cartoes WHERE organizacao_id = %s AND ativo = true", (organizacao_id,))["n"]
+    n_contas = query_one("SELECT COUNT(*) AS n FROM contas_bancarias WHERE organizacao_id = %s AND ativa = true", (organizacao_id,))["n"]
+    n_pessoas = query_one("SELECT COUNT(*) AS n FROM pessoas WHERE organizacao_id = %s AND disponivel_lancamento = true", (organizacao_id,))["n"]
+    prefs = buscar_preferencias(organizacao_id)
+    return {
+        "categorias": n_categorias > 0,
+        "renda": bool(prefs and prefs["renda_mensal"]),
+        "cartoes": n_cartoes > 0,
+        "contas": n_contas > 0,
+        "pessoas": n_pessoas > 0,
+    }

@@ -17,6 +17,7 @@ def _contexto_formulario(org_id, tipo=None):
         "formas_pagamento": db.listar_formas_pagamento(org_id, tipo=tipo),
         "cartoes": db.listar_cartoes(org_id),
         "pessoas": db.listar_pessoas(org_id),
+        "contas": db.listar_contas_bancarias(org_id),
     }
 
 
@@ -43,6 +44,7 @@ def novo():
     forma_pagamento_id = request.form.get("forma_pagamento_id") or None
     cartao_id = request.form.get("cartao_id") or None
     pessoa_id = request.form.get("pessoa_id") or None
+    conta_bancaria_id = request.form.get("conta_bancaria_id") or None
     observacao = request.form.get("observacao", "").strip()
     data_str = request.form.get("data") or date.today().isoformat()
     parcelado = request.form.get("parcelado") == "on"
@@ -113,6 +115,7 @@ def novo():
         "tipo": tipo, "descricao": descricao, "categoria_id": categoria_id,
         "subcategoria_id": subcategoria_id, "forma_pagamento_id": forma_pagamento_id,
         "cartao_id": cartao_id, "pessoa_id": pessoa_id, "observacao": observacao,
+        "conta_bancaria_id": conta_bancaria_id,
     }
 
     if parcelado and num_parcelas > 1:

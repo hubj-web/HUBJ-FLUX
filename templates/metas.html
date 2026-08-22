@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Metas · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:760px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Metas</h1>
+    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+  </header>
+
+  <h3>Nova meta</h3>
+  <form method="post" action="{{ url_for('metas.nova') }}" class="filters" style="flex-wrap:wrap;align-items:flex-end">
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Nome</label>
+      <input name="nome" required placeholder="Ex: Viagem de férias" style="padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Valor alvo (R$)</label>
+      <input name="valor_alvo" required placeholder="0,00" style="width:120px;padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Prazo (opcional)</label>
+      <input type="date" name="data_alvo" min="{{ hoje }}" style="padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
+    <div style="flex:1;min-width:180px"><label style="display:block;font-size:11px;color:var(--graphite)">Descrição (opcional)</label>
+      <input name="descricao" style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
+    <button type="submit" class="btn btn-primary">Criar meta</button>
+  </form>
+
+  <div style="margin-top:30px;display:flex;flex-direction:column;gap:16px">
+    {% for m in metas %}
+    <div class="summary-cell" style="padding:20px">
+      <div class="filters" style="justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <strong style="font-family:'Baloo 2',sans-serif;font-size:17px">{{ m.nome }}</strong>
+          {% if m.status == 'concluida' %}<span class="chip-status verde" style="margin-left:8px">🎉 Atingida</span>{% endif %}
+          {% if m.descricao %}<p style="color:var(--graphite);font-size:12.5px;margin:4px 0 0">{{ m.descricao }}</p>{% endif %}
+        </div>
+        <form method="post" action="{{ url_for('metas.excluir', meta_id=m.id) }}" onsubmit="return confirm('Excluir a meta \'{{ m.nome }}\'?');">
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--brick)">Excluir</button>
+        </form>
+      </div>
+
+      <div style="background:var(--gray-light);border-radius:var(--radius-pill);height:10px;overflow:hidden;margin-bottom:8px">
+        <div style="width:{{ m.progresso }}%;height:100%;background:linear-gradient(135deg, var(--laranja-evolucao), #FF8B3D);"></div>
+      </div>
+      <div class="filters" style="justify-content:space-between">
+        <span class="mono" style="font-size:13px">R$ {{ m.valor_atual|brl }} de R$ {{ m.valor_alvo|brl }}</span>
+        <span class="mono" style="font-size:13px;color:var(--graphite)">{{ m.progresso }}%{% if m.data_alvo %} · até {{ m.data_alvo }}{% endif %}</span>
+      </div>
+
+      {% if m.status != 'concluida' %}
+      <form method="post" action="{{ url_for('metas.depositar', meta_id=m.id) }}" class="filters" style="margin-top:14px;align-items:flex-end">
+        <div><label style="display:block;font-size:11px;color:var(--graphite)">Adicionar valor (R$)</label>
+          <input name="valor" required placeholder="0,00" style="width:110px;padding:8px 12px;border:1px solid var(--line);border-radius:8px"></div>
+        <div style="flex:1"><label style="display:block;font-size:11px;color:var(--graphite)">Observação (opcional)</label>
+          <input name="observacao" style="width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px"></div>
+        <button type="submit" class="btn btn-ghost" style="padding:8px 16px;font-size:12.5px">+ Guardar</button>
+      </form>
+      {% endif %}
+    </div>
+    {% else %}
+    <p style="text-align:center;color:var(--graphite);padding:30px">Nenhuma meta criada ainda.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

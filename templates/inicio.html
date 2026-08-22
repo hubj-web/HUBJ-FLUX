@@ -7,6 +7,13 @@
     <p>{{ organizacao.nome if organizacao else '' }} · papel: <strong>{{ usuario.papel }}</strong></p>
   </header>
 
+  {% if not setup_concluido %}
+  <div class="summary-cell" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;border-left:4px solid var(--laranja-evolucao)">
+    <span style="font-size:13px">👋 Ainda não concluiu a configuração inicial da organização.</span>
+    <a href="{{ url_for('setup.index') }}" class="btn btn-primary" style="padding:6px 16px;font-size:12px">Ver checklist</a>
+  </div>
+  {% endif %}
+
   <div class="filters" style="align-items:center;margin-bottom:20px">
     <a href="{{ url_for('inicio.index', mes=mes_anterior) }}" class="btn btn-ghost" style="padding:6px 12px">← Mês anterior</a>
     <strong class="mono" style="font-size:15px">{{ mes_referencia }}</strong>
@@ -30,6 +37,8 @@
     <a href="{{ url_for('cartao.importar') }}" class="btn btn-ghost">Cartão de Crédito</a>
     <a href="{{ url_for('plan.index') }}" class="btn btn-ghost">Planejamento</a>
     <a href="{{ url_for('controle.index') }}" class="btn btn-ghost">Controle</a>
+    <a href="{{ url_for('metas.index') }}" class="btn btn-ghost">🎯 Metas</a>
+    <a href="{{ url_for('relatorios.index') }}" class="btn btn-ghost">📊 Relatórios</a>
     {% if usuario.papel in ('super_admin', 'admin_cliente') %}
     <a href="{{ url_for('config.index') }}" class="btn btn-ghost">⚙️ Configurações</a>
     {% endif %}

@@ -72,6 +72,16 @@
     </p>
     {% endif %}
 
+    {% if contas %}
+    <div class="form-row">
+      <label>Conta bancária (opcional)</label>
+      <select name="conta_bancaria_id">
+        <option value="">— nenhuma —</option>
+        {% for c in contas %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
     <div class="form-row" id="linha-parcelado" style="display:none">
       <label style="display:flex;align-items:center;gap:8px;font-weight:normal">
         <input type="checkbox" name="parcelado" id="chk-parcelado" style="width:auto">

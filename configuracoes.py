@@ -124,6 +124,70 @@ def excluir_forma_pagamento(fp_id):
 
 # ---------- Cartões ----------
 
+# ---------- Contas Bancárias ----------
+
+@config_bp.route("/contas")
+@login_required
+@requer_organizacao
+def contas():
+    org_id = g.usuario_atual["organizacao_id"]
+    contas = db.listar_contas_bancarias(org_id, apenas_ativas=False)
+    for c in contas:
+        c["saldo_atual"] = db.saldo_atual_conta(c["id"], org_id)
+    return render_template("config_contas.html", contas=contas)
+
+
+@config_bp.route("/contas/nova", methods=["POST"])
+@login_required
+@requer_organizacao
+def nova_conta():
+    org_id = g.usuario_atual["organizacao_id"]
+    nome = request.form.get("nome", "").strip()
+    tipo = request.form.get("tipo", "corrente")
+    saldo_inicial_str = (request.form.get("saldo_inicial") or "0").replace(".", "").replace(",", ".")
+    if not nome:
+        flash("Informe o nome da conta.", "erro")
+        return redirect(url_for("config.contas"))
+    try:
+        saldo_inicial = float(saldo_inicial_str)
+    except ValueError:
+        saldo_inicial = 0
+    db.criar_conta_bancaria(org_id, nome, tipo, saldo_inicial)
+    flash(f"Conta \"{nome}\" criada.", "ok")
+    return redirect(url_for("config.contas"))
+
+
+@config_bp.route("/contas/<int:conta_id>/salvar", methods=["POST"])
+@login_required
+@requer_organizacao
+def salvar_conta(conta_id):
+    org_id = g.usuario_atual["organizacao_id"]
+    saldo_inicial_str = (request.form.get("saldo_inicial") or "0").replace(".", "").replace(",", ".")
+    try:
+        saldo_inicial = float(saldo_inicial_str)
+    except ValueError:
+        saldo_inicial = 0
+    db.atualizar_conta_bancaria(
+        conta_id, org_id, request.form.get("nome", "").strip(), request.form.get("tipo", "corrente"),
+        saldo_inicial, request.form.get("ativa") == "on",
+    )
+    flash("Conta atualizada.", "ok")
+    return redirect(url_for("config.contas"))
+
+
+@config_bp.route("/contas/<int:conta_id>/excluir", methods=["POST"])
+@login_required
+@requer_organizacao
+def excluir_conta(conta_id):
+    org_id = g.usuario_atual["organizacao_id"]
+    try:
+        db.excluir_conta_bancaria(conta_id, org_id)
+        flash("Conta excluída.", "ok")
+    except Exception:
+        flash("Não foi possível excluir - essa conta já tem lançamentos associados. Use \"desativar\".", "erro")
+    return redirect(url_for("config.contas"))
+
+
 @config_bp.route("/cartoes")
 @login_required
 @requer_organizacao

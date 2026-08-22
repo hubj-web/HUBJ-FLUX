@@ -12,6 +12,9 @@ from cartao import cartao_bp
 from planejamento import plan_bp
 from controle import controle_bp
 from configuracoes import config_bp
+from metas import metas_bp
+from relatorios import relatorios_bp
+from setup import setup_bp
 
 
 def fmt_brl(v):
@@ -47,6 +50,9 @@ def create_app():
     app.register_blueprint(plan_bp)
     app.register_blueprint(controle_bp)
     app.register_blueprint(config_bp)
+    app.register_blueprint(metas_bp)
+    app.register_blueprint(relatorios_bp)
+    app.register_blueprint(setup_bp)
 
     app.teardown_appcontext(db.close_conn)
     return app
