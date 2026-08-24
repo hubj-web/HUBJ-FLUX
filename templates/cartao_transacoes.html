@@ -1,51 +1,47 @@
 {% extends "base.html" %}
 {% block title %}Transações do Cartão · HUB-J FLUX{% endblock %}
 {% block content %}
-<div class="content" style="max-width:1000px;margin:0 auto">
+<div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
     <h1>Transações do cartão</h1>
-    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
-       <a href="{{ url_for('cartao.importar') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">+ Importar fatura</a></p>
+    <p><a href="{{ url_for('cartao.importar') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
   </header>
 
-  <form method="get" class="filters" style="flex-wrap:wrap">
-    <input type="text" name="busca" placeholder="Buscar na descrição..." value="{{ filtros.busca or '' }}">
-    <select name="cartao_id">
-      <option value="">Cartão — todos</option>
-      {% for c in cartoes %}<option value="{{ c.id }}" {{ 'selected' if filtros.cartao_id == c.id|string }}>{{ c.nome }}</option>{% endfor %}
-    </select>
-    <select name="pessoa_id">
-      <option value="">Pessoa — todas</option>
-      {% for p in pessoas %}<option value="{{ p.id }}" {{ 'selected' if filtros.pessoa_id == p.id|string }}>{{ p.nome }}</option>{% endfor %}
-    </select>
-    <button class="btn btn-primary">Filtrar</button>
-    <a href="{{ url_for('cartao.transacoes') }}" class="btn btn-ghost">Limpar</a>
-  </form>
+  <details style="margin-bottom:18px">
+    <summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:var(--roxo-estrategico);padding:4px 0">🔍 Filtros</summary>
+    <form method="get" class="filters" style="flex-wrap:wrap;margin-top:12px">
+      <input type="text" name="busca" placeholder="Buscar na descrição..." value="{{ filtros.busca or '' }}">
+      <select name="cartao_id">
+        <option value="">Cartão — todos</option>
+        {% for c in cartoes %}<option value="{{ c.id }}" {{ 'selected' if filtros.cartao_id == c.id|string }}>{{ c.nome }}</option>{% endfor %}
+      </select>
+      <select name="pessoa_id">
+        <option value="">Pessoa — todas</option>
+        {% for p in pessoas %}<option value="{{ p.id }}" {{ 'selected' if filtros.pessoa_id == p.id|string }}>{{ p.nome }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-primary">Filtrar</button>
+      <a href="{{ url_for('cartao.transacoes') }}" class="btn btn-ghost">Limpar</a>
+    </form>
+  </details>
 
-  <div class="review-summary">
-    <div class="summary-cell"><span class="label">Total (filtro atual)</span><span class="value">R$ {{ total|brl }}</span></div>
+  <div class="resumo-flex">
+    <div class="summary-cell"><span class="label">Total</span><span class="value">R$ {{ total|brl }}</span></div>
     <div class="summary-cell"><span class="label">Lançamentos</span><span class="value">{{ lancamentos|length }}</span></div>
   </div>
 
-  <div class="table-wrap">
-    <table class="data-table">
-      <thead><tr><th>Data</th><th>Cartão</th><th>Pessoa</th><th>Descrição</th><th>Categoria</th><th>Parcela</th><th class="num">Valor</th></tr></thead>
-      <tbody>
-      {% for l in lancamentos %}
-        <tr>
-          <td class="mono">{{ l.data_iso }}</td>
-          <td>{{ l.cartao_nome }}</td>
-          <td>{{ l.pessoa_nome or '—' }}</td>
-          <td>{{ l.descricao }}</td>
-          <td>{{ l.categoria_nome or '—' }}</td>
-          <td class="mono">{{ (l.parcela_atual ~ '/' ~ l.parcela_total) if l.parcela_atual else '—' }}</td>
-          <td class="num {{ 'val-despesa' if l.sinal == 'D' else 'val-receita' }}">{{ '' if l.sinal == 'D' else '-' }} R$ {{ l.valor|brl }}</td>
-        </tr>
-      {% else %}
-        <tr><td colspan="7" style="text-align:center;color:var(--graphite);padding:24px">Nenhuma transação encontrada.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
+  <div class="card-lista">
+    {% for l in lancamentos %}
+    <div class="card-item">
+      <div class="card-item-icone">{{ '💳' if l.sinal == 'D' else '↩️' }}</div>
+      <div class="card-item-corpo">
+        <div class="card-item-titulo">{{ l.descricao }}{% if l.parcela_atual %} <span style="font-weight:400;color:var(--graphite);font-size:11px">({{ l.parcela_atual }}/{{ l.parcela_total }})</span>{% endif %}</div>
+        <div class="card-item-sub">{{ l.data_iso }} · {{ l.cartao_nome }}{% if l.pessoa_nome %} · {{ l.pessoa_nome }}{% endif %}{% if l.categoria_nome %} · {{ l.categoria_nome }}{% endif %}</div>
+      </div>
+      <div class="card-item-valor {{ 'val-despesa' if l.sinal == 'D' else 'val-receita' }}">{{ '' if l.sinal == 'D' else '-' }} R$ {{ l.valor|brl }}</div>
+    </div>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:24px">Nenhuma transação encontrada.</div>
+    {% endfor %}
   </div>
 </div>
 {% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Mais · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:500px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Mais</h1>
+  </header>
+  <div class="menu-list">
+    <a href="{{ url_for('lanc.recorrentes') }}" class="menu-item"><span class="menu-icon">🔁</span> Recorrentes</a>
+    <a href="{{ url_for('plan.index') }}" class="menu-item"><span class="menu-icon">📝</span> Planejamento</a>
+    <a href="{{ url_for('controle.index') }}" class="menu-item"><span class="menu-icon">🎛️</span> Controle</a>
+    <a href="{{ url_for('metas.index') }}" class="menu-item"><span class="menu-icon">🎯</span> Metas</a>
+    <a href="{{ url_for('relatorios.index') }}" class="menu-item"><span class="menu-icon">📊</span> Relatórios</a>
+    {% if g.usuario_atual.papel in ('super_admin', 'admin_cliente') %}
+    <a href="{{ url_for('config.index') }}" class="menu-item"><span class="menu-icon">⚙️</span> Configurações</a>
+    {% endif %}
+    {% if g.usuario_atual.papel == 'super_admin' %}
+    <a href="{{ url_for('admin.listar_organizacoes') }}" class="menu-item"><span class="menu-icon">🏢</span> Gestão de Clientes</a>
+    {% endif %}
+    <div class="menu-divider"></div>
+    <span class="menu-item" style="color:var(--graphite);cursor:default">{{ g.usuario_atual.email }}</span>
+    <a href="{{ url_for('auth.logout') }}" class="menu-item" style="color:var(--danger-dark)"><span class="menu-icon">🚪</span> Sair</a>
+  </div>
+</div>
+{% endblock %}

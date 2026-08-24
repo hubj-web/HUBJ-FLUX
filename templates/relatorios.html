@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Relatórios · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Relatórios</h1>
+    <p><a href="{{ url_for('relatorios.exportar_csv', mes=mes_referencia) }}" class="btn btn-primary" style="padding:6px 14px;font-size:12.5px">⬇ Exportar CSV</a></p>
+  </header>
+
+  <div class="filters" style="align-items:center;margin-bottom:20px;justify-content:center">
+    <a href="{{ url_for('relatorios.index', mes=mes_anterior) }}" class="btn btn-ghost" style="padding:6px 12px">←</a>
+    <strong class="mono" style="font-size:15px">{{ mes_referencia }}</strong>
+    <a href="{{ url_for('relatorios.index', mes=mes_seguinte) }}" class="btn btn-ghost" style="padding:6px 12px">→</a>
+  </div>
+
+  <div class="resumo-flex">
+    <div class="summary-cell"><span class="label">Receitas</span><span class="value val-receita">R$ {{ total_receitas|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Despesas</span><span class="value val-despesa">R$ {{ total_despesas|brl }}</span></div>
+  </div>
+  <div class="resumo-flex">
+    <div class="summary-cell"><span class="label">Saldo</span><span class="value {{ 'val-receita' if saldo >= 0 else 'val-despesa' }}">R$ {{ saldo|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Planejado</span><span class="value">R$ {{ total_planejado|brl }}</span></div>
+  </div>
+
+  <h3>Despesas por categoria</h3>
+  <div class="card-lista">
+    {% for c in por_categoria %}
+    {% set pct = (c.valor / total_despesas * 100)|round|int if total_despesas else 0 %}
+    <div class="card-item" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div class="filters" style="justify-content:space-between">
+        <strong style="font-size:13.5px">{{ c.categoria }}</strong>
+        <span class="mono" style="font-size:13px">R$ {{ c.valor|brl }} · {{ pct }}%</span>
+      </div>
+      <div style="background:var(--gray-light);border-radius:var(--radius-pill);height:8px;overflow:hidden">
+        <div style="width:{{ pct }}%;height:100%;background:linear-gradient(135deg, var(--laranja-evolucao), #FF8B3D);"></div>
+      </div>
+    </div>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:30px 20px;background:var(--paper-raised);border-radius:var(--radius)">Nenhuma despesa neste mês.</div>
+    {% endfor %}
+  </div>
+
+  <p style="font-size:12.5px;color:var(--graphite);margin-top:24px;text-align:center">
+    Quer ver cada lançamento individualmente? Acesse o <a href="{{ url_for('lanc.extrato') }}">Extrato</a> — lá dá pra filtrar por período, categoria e mais.
+  </p>
+</div>
+{% endblock %}

@@ -34,7 +34,7 @@
   --shadow-card-hover: 0 6px 22px rgba(62,0,123,0.14);
 }
 *{ box-sizing:border-box; }
-body{ margin:0; background:var(--bg-app); color:var(--ink-soft); font-family:'Inter',system-ui,sans-serif; font-size:14.5px; }
+body{ margin:0; background:var(--bg-app); color:var(--ink-soft); font-family:'Inter',system-ui,sans-serif; font-size:14.5px; overflow-x:hidden; }
 h1,h3{ font-family:'Baloo 2', 'Inter', sans-serif; font-weight:700; margin:0; color:var(--roxo-estrategico); }
 .mono{ font-family:'IBM Plex Mono',monospace; }
 
@@ -89,15 +89,16 @@ h1,h3{ font-family:'Baloo 2', 'Inter', sans-serif; font-weight:700; margin:0; co
 .btn-ghost:hover{ border-color:var(--roxo-estrategico); color:var(--roxo-estrategico); }
 
 .table-wrap{
-  border:none; border-radius:var(--radius); overflow:hidden; background:var(--paper-raised);
-  box-shadow:var(--shadow-card);
+  border:none; border-radius:var(--radius); overflow-x:auto; overflow-y:hidden; background:var(--paper-raised);
+  box-shadow:var(--shadow-card); -webkit-overflow-scrolling:touch; max-width:100%;
 }
 .data-table{ width:100%; border-collapse:collapse; font-size:13px; }
 .data-table th{
   text-align:left; font-weight:700; font-size:10.5px; text-transform:uppercase; letter-spacing:.4px;
   color:var(--graphite); padding:14px 18px; border-bottom:1px solid var(--line); background:var(--gray-light);
+  white-space:nowrap;
 }
-.data-table td{ padding:12px 18px; border-bottom:1px solid var(--gray-light); }
+.data-table td{ padding:12px 18px; border-bottom:1px solid var(--gray-light); white-space:nowrap; }
 .data-table tbody tr:last-child td{ border-bottom:none; }
 .data-table tbody tr:hover{ background: var(--gray-light); }
 .data-table td.num, .data-table th.num{ text-align:right; }
@@ -149,3 +150,123 @@ h1,h3{ font-family:'Baloo 2', 'Inter', sans-serif; font-weight:700; margin:0; co
 }
 .topbar-sair a:hover{ color:var(--danger-dark); }
 @media (max-width:600px){ .topbar-sair span{ display:none; } }
+
+/* Telas pequenas: aperta espaçamento pra caber mais sem precisar rolar,
+   e deixa claro (com uma sombra sutil na borda) que a tabela pode ser
+   arrastada de lado quando ela é mais larga que a tela. */
+@media (max-width:640px){
+  .content{ padding:20px 12px; }
+  .data-table th{ padding:10px 12px; font-size:9.5px; }
+  .data-table td{ padding:9px 12px; font-size:12.5px; }
+  .panel-head h1{ font-size:20px; }
+  .summary-cell .value{ font-size:18px; }
+  .table-wrap{
+    background-image:
+      linear-gradient(to right, var(--paper-raised) 0%, rgba(255,255,255,0) 4%),
+      linear-gradient(to left, var(--paper-raised) 0%, rgba(255,255,255,0) 4%);
+    background-position: left, right; background-repeat: no-repeat;
+    background-size: 24px 100%; background-attachment: local, local;
+  }
+}
+
+/* ---------- Navegação fixa embaixo (padrão de app mobile) ---------- */
+body.com-nav-fixa{ padding-bottom:84px; }
+
+.navbar-fixa{
+  position:fixed; bottom:0; left:0; right:0; z-index:60;
+  display:flex; align-items:center; justify-content:space-around;
+  background:var(--paper-raised); border-top:1px solid var(--line);
+  padding:8px 4px calc(8px + env(safe-area-inset-bottom, 0px));
+  box-shadow:0 -4px 20px rgba(62,0,123,0.10);
+}
+.navbar-item{
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  text-decoration:none; color:var(--graphite); font-size:10.5px; font-weight:600;
+  padding:4px 8px; border-radius:12px; min-width:52px;
+}
+.navbar-item.ativo{ color:var(--roxo-estrategico); }
+.navbar-icone{ font-size:20px; line-height:1; }
+.navbar-lancar{
+  width:52px; height:52px; border-radius:50%; border:none; margin-top:-26px;
+  background:linear-gradient(135deg, var(--laranja-evolucao), #FF8B3D); color:#fff;
+  font-size:28px; font-weight:400; line-height:1; box-shadow:0 8px 20px rgba(255,117,31,0.45);
+  cursor:pointer;
+}
+
+.navbar-popover{
+  position:fixed; bottom:88px; left:50%; transform:translateX(-50%) translateY(20px);
+  z-index:70; display:flex; flex-direction:column; gap:10px; width:220px;
+  opacity:0; pointer-events:none; transition:all .18s ease;
+}
+.navbar-popover.aberto{ opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0); }
+.navbar-overlay{
+  position:fixed; inset:0; background:rgba(43,36,56,0.35); z-index:65;
+  opacity:0; pointer-events:none; transition:opacity .18s ease;
+}
+.navbar-overlay.aberto{ opacity:1; pointer-events:auto; }
+
+/* ---------- Modal de confirmação (substitui o confirm() nativo) ---------- */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(43,36,56,0.45); z-index:100;
+  display:flex; align-items:center; justify-content:center; padding:24px;
+  opacity:0; pointer-events:none; transition:opacity .15s ease;
+}
+.modal-overlay.aberto{ opacity:1; pointer-events:auto; }
+.modal-caixa{
+  background:var(--paper-raised); border-radius:var(--radius-lg); padding:24px;
+  max-width:360px; width:100%; box-shadow:0 20px 50px rgba(0,0,0,0.3);
+}
+
+/* ---------- Flash messages: some sozinho depois de um tempo ---------- */
+.flash-wrap{ transition:opacity .4s ease; }
+.flash-wrap.flash-saindo{ opacity:0; }
+
+/* ---------- Lista de cards (substitui tabela em telas mobile-first) ---------- */
+.card-lista{ display:flex; flex-direction:column; gap:10px; }
+.card-item{
+  background:var(--paper-raised); border-radius:var(--radius); padding:14px 16px;
+  box-shadow:var(--shadow-card); display:flex; align-items:center; gap:12px;
+}
+.card-item-icone{
+  width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+  font-size:17px; flex-shrink:0; background:var(--gray-light);
+}
+.card-item-corpo{ flex:1; min-width:0; }
+.card-item-titulo{ font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card-item-sub{ font-size:12px; color:var(--graphite); margin-top:1px; }
+.card-item-valor{ font-weight:700; font-size:14.5px; white-space:nowrap; flex-shrink:0; }
+.card-item-acoes{ display:flex; gap:4px; flex-shrink:0; }
+.card-item-menu-btn{
+  width:32px; height:32px; border-radius:50%; border:none; background:transparent;
+  color:var(--graphite); font-size:18px; cursor:pointer;
+}
+.card-item-menu-btn:hover{ background:var(--gray-light); }
+
+/* ---------- Menu "Mais" ---------- */
+.menu-list{ display:flex; flex-direction:column; background:var(--paper-raised); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow-card); }
+.menu-item{
+  display:flex; align-items:center; gap:14px; padding:16px 18px; text-decoration:none;
+  color:var(--ink-soft); font-weight:600; font-size:14.5px; border-bottom:1px solid var(--gray-light);
+}
+.menu-item:last-child{ border-bottom:none; }
+.menu-icon{ font-size:19px; width:24px; text-align:center; }
+.menu-divider{ height:8px; background:var(--bg-app); }
+
+@media (max-width:640px){
+  .navbar-item span:last-child{ font-size:9.5px; }
+}
+
+/* Card expansível (usado no Extrato pra revelar ações sem precisar de tabela) */
+.card-item-expandivel{ background:var(--paper-raised); border-radius:var(--radius); box-shadow:var(--shadow-card); overflow:hidden; }
+.card-item-expandivel .card-item{ box-shadow:none; border-radius:0; }
+.card-item-expandivel summary::-webkit-details-marker{ display:none; }
+.card-item-expandivel summary{ list-style:none; }
+.card-item-expandivel[open] summary{ border-bottom:1px solid var(--gray-light); }
+
+/* Versão em flexbox do review-summary, pra layout de N colunas iguais
+   funcionar de forma confiável em qualquer navegador (grid com auto-fit
+   às vezes empilha em telas estreitas dependendo do motor de renderização). */
+.resumo-flex{ display:flex; gap:10px; margin-bottom:26px; }
+.resumo-flex .summary-cell{ flex:1; min-width:0; padding:14px 10px; text-align:center; }
+.resumo-flex .summary-cell .label{ font-size:9.5px; }
+.resumo-flex .summary-cell .value{ font-size:15px; }

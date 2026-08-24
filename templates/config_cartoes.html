@@ -1,59 +1,57 @@
 {% extends "base.html" %}
 {% block title %}Cartões · HUB-J FLUX{% endblock %}
 {% block content %}
-<div class="content" style="max-width:900px;margin:0 auto">
+<div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
     <h1>Cartões de Crédito</h1>
     <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
-    <p style="color:var(--graphite);font-size:13px">Cartões também são criados automaticamente quando você importa uma fatura (1 cartão por pessoa) - aqui você pode renomear, vincular a uma pessoa, ou cadastrar um novo na mão.</p>
+    <p style="color:var(--graphite);font-size:12.5px">Também criados automaticamente ao importar fatura (1 por pessoa).</p>
   </header>
 
-  <h3>Novo cartão</h3>
-  <form method="post" action="{{ url_for('config.novo_cartao') }}" class="filters" style="flex-wrap:wrap;align-items:flex-end">
-    <div><label style="display:block;font-size:11px;color:var(--graphite)">Nome</label>
-      <input name="nome" required placeholder="Ex: Cartão do Diego" style="padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
-    <div><label style="display:block;font-size:11px;color:var(--graphite)">Pessoa</label>
-      <select name="pessoa_id" style="padding:10px 14px;border:1px solid var(--line);border-radius:8px">
-        <option value="">— nenhuma —</option>
-        {% for p in pessoas %}<option value="{{ p.id }}">{{ p.nome }}</option>{% endfor %}
-      </select></div>
-    <div><label style="display:block;font-size:11px;color:var(--graphite)">Limite total (R$)</label>
-      <input name="limite_total" style="width:110px;padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
-    <div><label style="display:block;font-size:11px;color:var(--graphite)">Fechamento</label>
-      <input name="dia_fechamento" type="number" min="1" max="31" style="width:80px;padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
-    <div><label style="display:block;font-size:11px;color:var(--graphite)">Vencimento</label>
-      <input name="dia_vencimento" type="number" min="1" max="31" style="width:80px;padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
-    <button type="submit" class="btn btn-primary">Criar</button>
-  </form>
+  <details style="margin-bottom:20px">
+    <summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:var(--roxo-estrategico);padding:4px 0">+ Novo cartão</summary>
+    <form method="post" action="{{ url_for('config.novo_cartao') }}" class="form-grid" style="margin-top:14px">
+      <div class="form-row"><label>Nome</label><input name="nome" required placeholder="Ex: Diego · Nubank"></div>
+      <div class="form-row"><label>Pessoa</label>
+        <select name="pessoa_id"><option value="">— nenhuma —</option>{% for p in pessoas %}<option value="{{ p.id }}">{{ p.nome }}</option>{% endfor %}</select></div>
+      <div class="form-row"><label>Limite total (R$)</label><input name="limite_total"></div>
+      <div class="form-row"><label>Dia de fechamento</label><input name="dia_fechamento" type="number" min="1" max="31"></div>
+      <div class="form-row"><label>Dia de vencimento</label><input name="dia_vencimento" type="number" min="1" max="31"></div>
+      <button type="submit" class="btn btn-primary">Criar</button>
+    </form>
+  </details>
 
-  <div class="table-wrap" style="margin-top:26px">
-    <table class="data-table">
-      <thead><tr><th>Nome</th><th>Pessoa</th><th class="num">Limite</th><th>Fech.</th><th>Venc.</th><th>Ativo</th><th></th></tr></thead>
-      <tbody>
-      {% for c in cartoes %}
-        <tr>
-          <form method="post" action="{{ url_for('config.salvar_cartao', cartao_id=c.id) }}" style="display:contents">
-            <td><input name="nome" value="{{ c.nome }}" style="width:180px;padding:5px;border:1px solid transparent;border-radius:6px" onfocus="this.style.borderColor='var(--line)'"></td>
-            <td><select name="pessoa_id" style="padding:5px;border:1px solid var(--line);border-radius:6px">
-              <option value="">— nenhuma —</option>
-              {% for p in pessoas %}<option value="{{ p.id }}" {{ 'selected' if p.id == c.pessoa_id }}>{{ p.nome }}</option>{% endfor %}
-            </select></td>
-            <td class="num"><input name="limite_total" value="{{ c.limite_total or '' }}" style="width:80px;padding:5px;border:1px solid transparent;border-radius:6px;text-align:right" onfocus="this.style.borderColor='var(--line)'"></td>
-            <td><input name="dia_fechamento" type="number" min="1" max="31" value="{{ c.dia_fechamento or '' }}" style="width:55px;padding:5px;border:1px solid transparent;border-radius:6px" onfocus="this.style.borderColor='var(--line)'"></td>
-            <td><input name="dia_vencimento" type="number" min="1" max="31" value="{{ c.dia_vencimento or '' }}" style="width:55px;padding:5px;border:1px solid transparent;border-radius:6px" onfocus="this.style.borderColor='var(--line)'"></td>
-            <td style="text-align:center"><input type="checkbox" name="ativo" {{ 'checked' if c.ativo }}></td>
-            <td style="white-space:nowrap"><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">Salvar</button></td>
-          </form>
-          <td style="padding:0">
-            <form method="post" action="{{ url_for('config.excluir_cartao', cartao_id=c.id) }}" onsubmit="return confirm('Excluir o cartão \'{{ c.nome }}\' permanentemente?');">
-              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--brick)">Excluir</button>
-            </form>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+  <div class="card-lista">
+    {% for c in cartoes %}
+    <details class="card-item-expandivel">
+      <summary class="card-item" style="cursor:pointer">
+        <div class="card-item-icone">🏦</div>
+        <div class="card-item-corpo">
+          <div class="card-item-titulo">{{ c.nome }}</div>
+          <div class="card-item-sub">{% if c.limite_total %}Limite R$ {{ c.limite_total|brl }}{% endif %}{% if not c.ativo %} · inativo{% endif %}</div>
+        </div>
+      </summary>
+      <div style="padding:4px 16px 16px">
+        <form method="post" action="{{ url_for('config.salvar_cartao', cartao_id=c.id) }}" class="form-grid">
+          <div class="form-row"><label>Nome</label><input name="nome" value="{{ c.nome }}"></div>
+          <div class="form-row"><label>Pessoa</label>
+            <select name="pessoa_id"><option value="">— nenhuma —</option>{% for p in pessoas %}<option value="{{ p.id }}" {{ 'selected' if p.id == c.pessoa_id }}>{{ p.nome }}</option>{% endfor %}</select></div>
+          <div class="form-row"><label>Limite total (R$)</label><input name="limite_total" value="{{ c.limite_total or '' }}"></div>
+          <div class="form-row"><label>Dia de fechamento</label><input name="dia_fechamento" type="number" min="1" max="31" value="{{ c.dia_fechamento or '' }}"></div>
+          <div class="form-row"><label>Dia de vencimento</label><input name="dia_vencimento" type="number" min="1" max="31" value="{{ c.dia_vencimento or '' }}"></div>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:normal;font-size:13px">
+            <input type="checkbox" name="ativo" {{ 'checked' if c.ativo }} style="width:auto"> Ativo
+          </label>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </form>
+        <form method="post" action="{{ url_for('config.excluir_cartao', cartao_id=c.id) }}" data-confirmar="Excluir o cartão '{{ c.nome }}' permanentemente?" style="margin-top:8px">
+          <button class="btn btn-ghost" style="width:100%;justify-content:center;color:var(--brick)">Excluir</button>
+        </form>
+      </div>
+    </details>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:24px">Nenhum cartão cadastrado ainda.</div>
+    {% endfor %}
   </div>
-  <p style="font-size:12px;color:var(--graphite);margin-top:10px">"Excluir" só funciona se o cartão não tiver nenhuma fatura importada associada.</p>
 </div>
 {% endblock %}

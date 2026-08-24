@@ -2,28 +2,121 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E007B">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>{% block title %}HUB-J FLUX{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-{% if g.get('usuario_atual') %}
-  <div class="topbar-sair">
-    <span class="mono">{{ g.usuario_atual.email }}</span>
-    <a href="{{ url_for('auth.logout') }}">Sair</a>
-  </div>
-{% endif %}
+<body class="{{ 'com-nav-fixa' if g.get('usuario_atual') }}">
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
-    <div class="flash-wrap">
+    <div class="flash-wrap" id="flash-wrap">
       {% for categoria, msg in messages %}
         <div class="flash flash-{{ categoria }}">{{ msg }}</div>
       {% endfor %}
     </div>
   {% endif %}
 {% endwith %}
+
 {% block content %}{% endblock %}
+
+{% if g.get('usuario_atual') and g.usuario_atual.organizacao_id %}
+<nav class="navbar-fixa">
+  <a href="{{ url_for('inicio.index') }}" class="navbar-item {{ 'ativo' if request.path == '/' }}">
+    <span class="navbar-icone">🏠</span><span>Início</span>
+  </a>
+  <a href="{{ url_for('lanc.extrato') }}" class="navbar-item {{ 'ativo' if request.path == url_for('lanc.extrato') }}">
+    <span class="navbar-icone">🧾</span><span>Extrato</span>
+  </a>
+  <button type="button" class="navbar-lancar" id="btn-navbar-lancar" aria-label="Novo lançamento">+</button>
+  <a href="{{ url_for('cartao.importar') }}" class="navbar-item {{ 'ativo' if '/cartao' in request.path }}">
+    <span class="navbar-icone">💳</span><span>Cartão</span>
+  </a>
+  <a href="{{ url_for('mais.index') }}" class="navbar-item {{ 'ativo' if request.path == url_for('mais.index') }}">
+    <span class="navbar-icone">☰</span><span>Mais</span>
+  </a>
+</nav>
+<div class="navbar-popover" id="navbar-popover">
+  <a href="{{ url_for('lanc.novo', tipo='despesa') }}" class="btn btn-primary" style="width:100%;justify-content:center">− Despesa</a>
+  <a href="{{ url_for('lanc.novo', tipo='receita') }}" class="btn btn-primary" style="width:100%;justify-content:center">+ Receita</a>
+</div>
+<div class="navbar-overlay" id="navbar-overlay"></div>
+{% endif %}
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+    });
+  }
+
+  var flashWrap = document.getElementById('flash-wrap');
+  if (flashWrap) { setTimeout(function () { flashWrap.classList.add('flash-saindo'); }, 4000); }
+
+  var btnLancar = document.getElementById('btn-navbar-lancar');
+  var popover = document.getElementById('navbar-popover');
+  var overlay = document.getElementById('navbar-overlay');
+  if (btnLancar) {
+    btnLancar.addEventListener('click', function () {
+      popover.classList.toggle('aberto');
+      overlay.classList.toggle('aberto');
+    });
+    overlay.addEventListener('click', function () {
+      popover.classList.remove('aberto');
+      overlay.classList.remove('aberto');
+    });
+  }
+
+  document.querySelectorAll('form[data-confirmar]').forEach(function (form) {
+    form.addEventListener('submit', function (ev) {
+      if (form.dataset.confirmado === 'true') return;
+      ev.preventDefault();
+      document.getElementById('modal-confirmar-texto').textContent = form.dataset.confirmar;
+      window._formPendente = form;
+      document.getElementById('modal-confirmar').classList.add('aberto');
+    });
+  });
+  var modalConfirmar = document.getElementById('modal-confirmar');
+  if (modalConfirmar) {
+    document.getElementById('modal-confirmar-cancelar').addEventListener('click', function () {
+      modalConfirmar.classList.remove('aberto');
+      window._formPendente = null;
+    });
+    document.getElementById('modal-confirmar-ok').addEventListener('click', function () {
+      modalConfirmar.classList.remove('aberto');
+      if (window._formPendente) {
+        window._formPendente.dataset.confirmado = 'true';
+        window._formPendente.submit();
+      }
+    });
+  }
+
+  document.querySelectorAll('form:not([data-confirmar])').forEach(function (form) {
+    form.addEventListener('submit', function () {
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn && !btn.disabled) {
+        btn.dataset.textoOriginal = btn.textContent;
+        btn.textContent = 'Salvando...';
+        btn.disabled = true;
+      }
+    });
+  });
+</script>
+
+<div class="modal-overlay" id="modal-confirmar">
+  <div class="modal-caixa">
+    <p id="modal-confirmar-texto" style="margin:0 0 20px;font-size:14.5px"></p>
+    <div class="filters" style="justify-content:flex-end">
+      <button type="button" class="btn btn-ghost" id="modal-confirmar-cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="modal-confirmar-ok" style="background:linear-gradient(135deg, var(--danger-dark), #C0304A)">Confirmar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

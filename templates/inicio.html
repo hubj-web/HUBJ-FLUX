@@ -4,58 +4,50 @@
 <div class="content" style="max-width:780px;margin:0 auto">
   <header class="panel-head">
     <h1>Olá, {{ usuario.nome or usuario.email }}</h1>
-    <p>{{ organizacao.nome if organizacao else '' }} · papel: <strong>{{ usuario.papel }}</strong></p>
+    <p>{{ organizacao.nome if organizacao else '' }}</p>
   </header>
 
-  <div class="filters" style="align-items:center;margin-bottom:20px">
-    <a href="{{ url_for('inicio.index', mes=mes_anterior) }}" class="btn btn-ghost" style="padding:6px 12px">← Mês anterior</a>
+  {% if not setup_concluido %}
+  <div class="summary-cell" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;border-left:4px solid var(--laranja-evolucao);gap:10px;flex-wrap:wrap">
+    <span style="font-size:13px">👋 Ainda não concluiu a configuração inicial.</span>
+    <a href="{{ url_for('setup.index') }}" class="btn btn-primary" style="padding:6px 16px;font-size:12px">Ver checklist</a>
+  </div>
+  {% endif %}
+
+  <div class="filters" style="align-items:center;margin-bottom:20px;justify-content:center">
+    <a href="{{ url_for('inicio.index', mes=mes_anterior) }}" class="btn btn-ghost" style="padding:6px 12px">←</a>
     <strong class="mono" style="font-size:15px">{{ mes_referencia }}</strong>
-    <a href="{{ url_for('inicio.index', mes=mes_seguinte) }}" class="btn btn-ghost" style="padding:6px 12px">Mês seguinte →</a>
+    <a href="{{ url_for('inicio.index', mes=mes_seguinte) }}" class="btn btn-ghost" style="padding:6px 12px">→</a>
   </div>
 
-  <div class="review-summary">
-    <div class="summary-cell"><span class="label">Receitas do mês</span><span class="value val-receita">R$ {{ totais.receitas|brl }}</span></div>
-    <div class="summary-cell"><span class="label">Despesas do mês</span><span class="value val-despesa">R$ {{ totais.despesas|brl }}</span></div>
-    <div class="summary-cell"><span class="label">Saldo do mês</span>
-      <span class="value {{ 'val-receita' if totais.saldo >= 0 else 'val-despesa' }}">R$ {{ totais.saldo|brl }}</span></div>
+  <div class="summary-cell" style="text-align:center;margin-bottom:14px;padding:24px">
+    <span class="label">Saldo do mês</span>
+    <div class="value" style="font-size:32px;margin-top:6px;color:{{ 'var(--success-dark)' if totais.saldo >= 0 else 'var(--danger-dark)' }}">R$ {{ totais.saldo|brl }}</div>
   </div>
 
-  <p style="color:var(--ink-soft);font-size:13.5px;margin:-8px 0 20px">{{ frase_saldo }}</p>
-
-  <div class="filters" style="margin:24px 0">
-    <a href="{{ url_for('lanc.novo', tipo='despesa') }}" class="btn btn-primary">+ Despesa</a>
-    <a href="{{ url_for('lanc.novo', tipo='receita') }}" class="btn btn-primary">+ Receita</a>
-    <a href="{{ url_for('lanc.extrato') }}" class="btn btn-ghost">Ver Extrato</a>
-    <a href="{{ url_for('lanc.recorrentes') }}" class="btn btn-ghost">Recorrentes</a>
-    <a href="{{ url_for('cartao.importar') }}" class="btn btn-ghost">Cartão de Crédito</a>
-    <a href="{{ url_for('plan.index') }}" class="btn btn-ghost">Planejamento</a>
-    <a href="{{ url_for('controle.index') }}" class="btn btn-ghost">Controle</a>
-    {% if usuario.papel in ('super_admin', 'admin_cliente') %}
-    <a href="{{ url_for('config.index') }}" class="btn btn-ghost">⚙️ Configurações</a>
-    {% endif %}
+  <div class="review-summary resumo-flex">
+    <div class="summary-cell"><span class="label">Receitas</span><span class="value val-receita" style="font-size:17px">R$ {{ totais.receitas|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Despesas</span><span class="value val-despesa" style="font-size:17px">R$ {{ totais.despesas|brl }}</span></div>
   </div>
+
+  <p style="color:var(--ink-soft);font-size:13.5px;margin:14px 0 24px;text-align:center">{{ frase_saldo }}</p>
 
   <h3>Últimos lançamentos</h3>
-  <div class="table-wrap" style="margin-bottom:24px">
-    <table class="data-table">
-      <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th class="num">Valor</th></tr></thead>
-      <tbody>
-      {% for l in ultimos %}
-        <tr>
-          <td class="mono">{{ l.data }}</td>
-          <td>{{ l.descricao or '—' }}</td>
-          <td>{{ l.categoria_nome or '—' }}</td>
-          <td class="num {{ 'val-receita' if l.tipo == 'receita' else 'val-despesa' }}">{{ '+' if l.tipo == 'receita' else '-' }} R$ {{ l.valor|brl }}</td>
-        </tr>
-      {% else %}
-        <tr><td colspan="4" style="text-align:center;color:var(--graphite);padding:20px">Nenhum lançamento ainda — comece com "+ Despesa" ou "+ Receita" acima.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
+  <div class="card-lista" style="margin-bottom:24px">
+    {% for l in ultimos %}
+    <div class="card-item">
+      <div class="card-item-icone">{{ '💰' if l.tipo == 'receita' else '💸' }}</div>
+      <div class="card-item-corpo">
+        <div class="card-item-titulo">{{ l.descricao or 'Sem descrição' }}</div>
+        <div class="card-item-sub">{{ l.data }}{% if l.categoria_nome %} · {{ l.categoria_nome }}{% endif %}</div>
+      </div>
+      <div class="card-item-valor {{ 'val-receita' if l.tipo == 'receita' else 'val-despesa' }}">{{ '+' if l.tipo == 'receita' else '-' }} R$ {{ l.valor|brl }}</div>
+    </div>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:30px 20px;background:var(--paper-raised);border-radius:var(--radius)">
+      Nenhum lançamento ainda.<br>Toque no <strong>+</strong> aqui embaixo pra começar.
+    </div>
+    {% endfor %}
   </div>
-
-  {% if usuario.papel == 'super_admin' %}
-  <p style="margin-top:20px"><a href="{{ url_for('admin.listar_organizacoes') }}" class="btn btn-ghost">Gestão de Clientes</a></p>
-  {% endif %}
 </div>
 {% endblock %}

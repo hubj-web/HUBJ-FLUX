@@ -23,17 +23,20 @@ def index():
     mes_referencia = request.args.get("mes") or date.today().strftime("%Y-%m")
     mes_anterior, mes_seguinte = _meses_vizinhos(mes_referencia)
 
-    categorias = db.listar_planejamento_mes(org_id, mes_referencia)
+    categorias = db.listar_planejamento_mes(org_id, mes_referencia, tipo="despesa")
+    categorias_receita = db.listar_planejamento_mes(org_id, mes_referencia, tipo="receita")
     media_historica = db.gasto_medio_categoria_ultimos_meses(org_id, mes_referencia)
     for c in categorias:
         c["media_historica"] = media_historica.get(c["categoria_id"], 0)
     total_planejado = sum(float(c["valor_limite"]) for c in categorias)
+    total_planejado_receita = sum(float(c["valor_limite"]) for c in categorias_receita)
     prefs = db.buscar_preferencias(org_id)
 
     return render_template(
-        "planejamento.html", categorias=categorias, mes_referencia=mes_referencia,
-        mes_anterior=mes_anterior, mes_seguinte=mes_seguinte,
-        total_planejado=total_planejado, renda_mensal=prefs["renda_mensal"] if prefs else None,
+        "planejamento.html", categorias=categorias, categorias_receita=categorias_receita,
+        mes_referencia=mes_referencia, mes_anterior=mes_anterior, mes_seguinte=mes_seguinte,
+        total_planejado=total_planejado, total_planejado_receita=total_planejado_receita,
+        renda_mensal=prefs["renda_mensal"] if prefs else None,
     )
 
 

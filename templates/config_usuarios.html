@@ -1,52 +1,47 @@
 {% extends "base.html" %}
 {% block title %}Usuários · HUB-J FLUX{% endblock %}
 {% block content %}
-<div class="content" style="max-width:800px;margin:0 auto">
+<div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
     <h1>Usuários da Organização</h1>
     <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
-    <p style="color:var(--graphite);font-size:13px">Limite contratado: {{ organizacao.limite_usuarios }} usuário(s).</p>
+    <p style="color:var(--graphite);font-size:12.5px">Limite contratado: {{ organizacao.limite_usuarios }} usuário(s).</p>
   </header>
 
-  <h3>Convidar usuário</h3>
-  <form method="post" action="{{ url_for('config.convidar_usuario') }}" class="filters" style="align-items:flex-end">
-    <div><label style="display:block;font-size:11px;color:var(--graphite)">E-mail</label>
-      <input name="email" type="email" required style="padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
-    <div><label style="display:block;font-size:11px;color:var(--graphite)">Papel</label>
-      <select name="papel" style="padding:10px 14px;border:1px solid var(--line);border-radius:8px">
-        <option value="membro">Membro</option><option value="admin_cliente">Admin do Cliente</option>
-      </select></div>
-    <button type="submit" class="btn btn-primary">Convidar</button>
-  </form>
+  <details style="margin-bottom:20px">
+    <summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:var(--roxo-estrategico);padding:4px 0">+ Convidar usuário</summary>
+    <form method="post" action="{{ url_for('config.convidar_usuario') }}" class="form-grid" style="margin-top:14px">
+      <div class="form-row"><label>E-mail</label><input name="email" type="email" required></div>
+      <div class="form-row"><label>Papel</label>
+        <select name="papel"><option value="membro">Membro</option><option value="admin_cliente">Admin do Cliente</option></select></div>
+      <button type="submit" class="btn btn-primary">Convidar</button>
+    </form>
+  </details>
 
-  <div class="table-wrap" style="margin-top:26px">
-    <table class="data-table">
-      <thead><tr><th>E-mail</th><th>Nome</th><th>Papel</th><th>Status</th><th></th></tr></thead>
-      <tbody>
-      {% for u in usuarios %}
-        <tr>
-          <td class="mono">{{ u.email }}</td>
-          <td>{{ u.nome or '—' }}</td>
-          <td class="mono">{{ u.papel }}</td>
-          <td class="mono">{{ u.status }}</td>
-          <td style="white-space:nowrap">
-            {% if u.status == 'bloqueado' %}
-            <form method="post" action="{{ url_for('config.reativar_usuario', usuario_id=u.id) }}" style="display:inline">
-              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">Reativar</button>
-            </form>
-            {% else %}
-            <form method="post" action="{{ url_for('config.bloquear_usuario', usuario_id=u.id) }}" style="display:inline">
-              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">Desativar</button>
-            </form>
-            {% endif %}
-            <form method="post" action="{{ url_for('config.remover_usuario', usuario_id=u.id) }}" style="display:inline" onsubmit="return confirm('Remover o acesso de {{ u.email }} permanentemente?');">
-              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--brick)">Excluir</button>
-            </form>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+  <div class="card-lista">
+    {% for u in usuarios %}
+    <div class="card-item">
+      <div class="card-item-icone">👤</div>
+      <div class="card-item-corpo">
+        <div class="card-item-titulo">{{ u.nome or u.email }}</div>
+        <div class="card-item-sub">{{ u.email }} · {{ u.papel }} · {{ u.status }}</div>
+      </div>
+      <div class="card-item-acoes">
+        {% if u.status == 'bloqueado' %}
+        <form method="post" action="{{ url_for('config.reativar_usuario', usuario_id=u.id) }}">
+          <button class="btn btn-ghost" style="padding:6px 12px;font-size:11px">Reativar</button>
+        </form>
+        {% else %}
+        <form method="post" action="{{ url_for('config.bloquear_usuario', usuario_id=u.id) }}">
+          <button class="btn btn-ghost" style="padding:6px 12px;font-size:11px">Desativar</button>
+        </form>
+        {% endif %}
+        <form method="post" action="{{ url_for('config.remover_usuario', usuario_id=u.id) }}" data-confirmar="Remover o acesso de {{ u.email }} permanentemente?">
+          <button class="btn btn-ghost" style="padding:6px 12px;font-size:11px;color:var(--brick)">Excluir</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
   </div>
 </div>
 {% endblock %}

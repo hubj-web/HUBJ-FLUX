@@ -4,12 +4,9 @@
 <div class="content" style="max-width:620px;margin:0 auto">
   <header class="panel-head">
     <h1>Novo Lançamento</h1>
-    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
-       <a href="{{ url_for('lanc.extrato') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Ver Extrato</a>
-       <a href="{{ url_for('lanc.recorrentes') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Recorrentes</a></p>
   </header>
 
-  <div class="view-toggle" style="margin-bottom:22px">
+  <div class="view-toggle" style="margin-bottom:18px">
     <a href="{{ url_for('lanc.novo', tipo='despesa') }}" class="view-toggle-btn {{ 'active' if tipo_inicial == 'despesa' }}">Despesa</a>
     <a href="{{ url_for('lanc.novo', tipo='receita') }}" class="view-toggle-btn {{ 'active' if tipo_inicial == 'receita' }}">Receita</a>
   </div>
@@ -17,19 +14,20 @@
   <form method="post" class="form-grid" enctype="multipart/form-data">
     <input type="hidden" name="tipo" value="{{ tipo_inicial }}">
 
-    <div class="form-row">
-      <label>Data *</label>
-      <input type="date" name="data" value="{{ hoje }}" required>
-    </div>
-
-    <div class="form-row">
-      <label>Valor (R$) *</label>
-      <input type="text" name="valor" placeholder="0,00" required id="input-valor">
+    <div class="form-row" style="text-align:center;margin-bottom:4px">
+      <label style="text-align:center">Valor (R$) *</label>
+      <input type="text" name="valor" placeholder="0,00" required id="input-valor"
+             style="font-size:34px;font-weight:700;text-align:center;border:none;background:transparent;font-family:'Baloo 2',sans-serif;color:{{ 'var(--success-dark)' if tipo_inicial == 'receita' else 'var(--danger-dark)' }};padding:6px">
     </div>
 
     <div class="form-row">
       <label>Descrição *</label>
-      <input type="text" name="descricao" placeholder="Ex: Supermercado, Salário..." required>
+      <input type="text" name="descricao" placeholder="Ex: Supermercado, Salário..." required autofocus>
+    </div>
+
+    <div class="form-row">
+      <label>Data *</label>
+      <input type="date" name="data" value="{{ hoje }}" required>
     </div>
 
     <div class="form-row">
@@ -58,73 +56,90 @@
       </select>
     </div>
 
-    {% if pessoas %}
-    <div class="form-row">
-      <label>Pessoa</label>
-      <select name="pessoa_id">
-        <option value="">— selecione —</option>
-        {% for p in pessoas %}<option value="{{ p.id }}">{{ p.nome }}</option>{% endfor %}
-      </select>
-    </div>
-    {% else %}
-    <p style="font-size:12px;color:var(--graphite);margin:-8px 0 4px">
-      Nenhuma pessoa cadastrada ainda. Cadastre em <a href="{{ url_for('config.pessoas') }}">Configurações → Pessoas</a> se quiser marcar quem fez este lançamento.
-    </p>
-    {% endif %}
+    <details style="margin-top:6px">
+      <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--roxo-estrategico);padding:6px 0">⋯ Mais opções (pessoa, conta, parcelamento, anexo)</summary>
+      <div class="form-grid" style="margin-top:14px">
 
-    <div class="form-row" id="linha-parcelado" style="display:none">
-      <label style="display:flex;align-items:center;gap:8px;font-weight:normal">
-        <input type="checkbox" name="parcelado" id="chk-parcelado" style="width:auto">
-        Parcelado?
-      </label>
-    </div>
-    <div class="form-row" id="linha-parcelas" style="display:none">
-      <label>Número de parcelas</label>
-      <input type="number" name="num_parcelas" min="2" max="60" value="2" id="input-num-parcelas">
-    </div>
-    <div class="form-row" id="linha-com-juros" style="display:none">
-      <label style="display:flex;align-items:center;gap:8px;font-weight:normal">
-        <input type="checkbox" name="com_juros" id="chk-com-juros" style="width:auto">
-        Parcelamento tem juros?
-      </label>
-    </div>
-    <div class="form-row" id="linha-modo-juros" style="display:none">
-      <label>Como você sabe o valor dos juros?</label>
-      <select name="modo_juros" id="sel-modo-juros">
-        <option value="taxa">Sei a taxa de juros mensal</option>
-        <option value="valor_parcela">Sei o valor de cada parcela (a loja já informou)</option>
-      </select>
-    </div>
-    <div class="form-row" id="linha-taxa-juros" style="display:none">
-      <label>Taxa de juros (% ao mês)</label>
-      <input type="text" name="taxa_juros_mensal" id="input-taxa-juros" placeholder="Ex: 2,5">
-    </div>
-    <div class="form-row" id="linha-valor-parcela-informado" style="display:none">
-      <label>Valor de cada parcela (R$)</label>
-      <input type="text" name="valor_parcela_informado" id="input-valor-parcela-informado" placeholder="Ex: 150,00">
-    </div>
-    <div class="form-row" id="linha-preview-parcela" style="display:none">
-      <span id="preview-parcela-texto" class="mono" style="font-size:13px;color:var(--ink-soft)"></span>
-    </div>
-
-    <div class="form-row">
-      <label>Anexar comprovante (extrato, cupom fiscal, foto)</label>
-      <input type="file" name="anexo" accept="image/*,.pdf" id="input-anexo-arquivo" style="display:none">
-      <input type="file" name="anexo_camera" accept="image/*" capture="environment" id="input-anexo-camera" style="display:none">
-      <div class="filters" style="margin-top:4px">
-        <button type="button" class="btn btn-ghost" id="btn-escolher-arquivo" style="padding:8px 14px;font-size:12.5px">📎 Escolher arquivo</button>
-        <button type="button" class="btn btn-ghost" id="btn-tirar-foto" style="padding:8px 14px;font-size:12.5px">📷 Tirar foto</button>
+      {% if pessoas %}
+      <div class="form-row">
+        <label>Pessoa</label>
+        <select name="pessoa_id">
+          <option value="">— selecione —</option>
+          {% for p in pessoas %}<option value="{{ p.id }}">{{ p.nome }}</option>{% endfor %}
+        </select>
       </div>
-      <span style="display:block;margin-top:4px;font-size:11px;color:var(--graphite)">"Tirar foto" abre a câmera do dispositivo em celular/tablet — no computador, abre o seletor de arquivo normal (não existe câmera de verdade nesse tipo de campo em navegador de desktop).</span>
-      <span id="nome-anexo-escolhido" style="display:block;margin-top:6px;font-size:12.5px;color:var(--graphite)"></span>
-    </div>
+      {% else %}
+      <p style="font-size:12px;color:var(--graphite);margin:-8px 0 4px">
+        Nenhuma pessoa cadastrada ainda. Cadastre em <a href="{{ url_for('config.pessoas') }}">Configurações → Pessoas</a> se quiser marcar quem fez este lançamento.
+      </p>
+      {% endif %}
 
-    <div class="form-row">
-      <label>Observação (opcional)</label>
-      <textarea name="observacao" rows="2"></textarea>
-    </div>
+      {% if contas %}
+      <div class="form-row">
+        <label>Conta bancária (opcional)</label>
+        <select name="conta_bancaria_id">
+          <option value="">— nenhuma —</option>
+          {% for c in contas %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
 
-    <button type="submit" class="btn btn-primary" style="margin-top:10px">Salvar lançamento</button>
+      <div class="form-row" id="linha-parcelado" style="display:none">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:normal">
+          <input type="checkbox" name="parcelado" id="chk-parcelado" style="width:auto">
+          Parcelado?
+        </label>
+      </div>
+      <div class="form-row" id="linha-parcelas" style="display:none">
+        <label>Número de parcelas</label>
+        <input type="number" name="num_parcelas" min="2" max="60" value="2" id="input-num-parcelas">
+      </div>
+      <div class="form-row" id="linha-com-juros" style="display:none">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:normal">
+          <input type="checkbox" name="com_juros" id="chk-com-juros" style="width:auto">
+          Parcelamento tem juros?
+        </label>
+      </div>
+      <div class="form-row" id="linha-modo-juros" style="display:none">
+        <label>Como você sabe o valor dos juros?</label>
+        <select name="modo_juros" id="sel-modo-juros">
+          <option value="taxa">Sei a taxa de juros mensal</option>
+          <option value="valor_parcela">Sei o valor de cada parcela (a loja já informou)</option>
+        </select>
+      </div>
+      <div class="form-row" id="linha-taxa-juros" style="display:none">
+        <label>Taxa de juros (% ao mês)</label>
+        <input type="text" name="taxa_juros_mensal" id="input-taxa-juros" placeholder="Ex: 2,5">
+      </div>
+      <div class="form-row" id="linha-valor-parcela-informado" style="display:none">
+        <label>Valor de cada parcela (R$)</label>
+        <input type="text" name="valor_parcela_informado" id="input-valor-parcela-informado" placeholder="Ex: 150,00">
+      </div>
+      <div class="form-row" id="linha-preview-parcela" style="display:none">
+        <span id="preview-parcela-texto" class="mono" style="font-size:13px;color:var(--ink-soft)"></span>
+      </div>
+
+      <div class="form-row">
+        <label>Anexar comprovante (extrato, cupom fiscal, foto)</label>
+        <input type="file" name="anexo" accept="image/*,.pdf" id="input-anexo-arquivo" style="display:none">
+        <input type="file" name="anexo_camera" accept="image/*" capture="environment" id="input-anexo-camera" style="display:none">
+        <div class="filters" style="margin-top:4px">
+          <button type="button" class="btn btn-ghost" id="btn-escolher-arquivo" style="padding:8px 14px;font-size:12.5px">📎 Escolher arquivo</button>
+          <button type="button" class="btn btn-ghost" id="btn-tirar-foto" style="padding:8px 14px;font-size:12.5px">📷 Tirar foto</button>
+        </div>
+        <span style="display:block;margin-top:4px;font-size:11px;color:var(--graphite)">"Tirar foto" abre a câmera do dispositivo em celular/tablet — no computador, abre o seletor de arquivo normal.</span>
+        <span id="nome-anexo-escolhido" style="display:block;margin-top:6px;font-size:12.5px;color:var(--graphite)"></span>
+      </div>
+
+      <div class="form-row">
+        <label>Observação (opcional)</label>
+        <textarea name="observacao" rows="2"></textarea>
+      </div>
+
+      </div>
+    </details>
+
+    <button type="submit" class="btn btn-primary" style="margin-top:16px;width:100%;justify-content:center;padding:14px">Salvar lançamento</button>
   </form>
 </div>
 

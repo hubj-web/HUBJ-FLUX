@@ -1,55 +1,58 @@
 {% extends "base.html" %}
 {% block title %}Categorias · HUB-J FLUX{% endblock %}
 {% block content %}
-<div class="content" style="max-width:940px;margin:0 auto">
+<div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
     <h1>Categorias</h1>
     <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
   </header>
 
-  <h3>Nova categoria</h3>
-  <form method="post" action="{{ url_for('config.nova_categoria') }}" class="filters" style="flex-wrap:wrap;align-items:flex-end">
-    <div><label style="display:block;font-size:11px;color:var(--graphite)">Nome</label>
-      <input name="nome" required style="padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
-    <div><label style="display:block;font-size:11px;color:var(--graphite)">Tipo</label>
-      <select name="tipo" style="padding:10px 14px;border:1px solid var(--line);border-radius:8px">
-        <option value="despesa">Despesa</option><option value="receita">Receita</option><option value="ambos">Ambos</option>
-      </select></div>
-    <div style="flex:1;min-width:200px"><label style="display:block;font-size:11px;color:var(--graphite)">Descrição (opcional)</label>
-      <input name="descricao" style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
-    <div><label style="display:block;font-size:11px;color:var(--graphite)">Palavras-chave (opcional)</label>
-      <input name="palavras_chave" placeholder="ex: uber, 99, taxi" style="padding:10px 14px;border:1px solid var(--line);border-radius:8px"></div>
-    <button type="submit" class="btn btn-primary">Criar</button>
-  </form>
+  <details style="margin-bottom:20px">
+    <summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:var(--roxo-estrategico);padding:4px 0">+ Nova categoria</summary>
+    <form method="post" action="{{ url_for('config.nova_categoria') }}" class="form-grid" style="margin-top:14px">
+      <div class="form-row"><label>Nome</label><input name="nome" required></div>
+      <div class="form-row"><label>Tipo</label>
+        <select name="tipo"><option value="despesa">Despesa</option><option value="receita">Receita</option><option value="ambos">Ambos</option></select></div>
+      <div class="form-row"><label>Descrição (opcional)</label><input name="descricao"></div>
+      <div class="form-row"><label>Palavras-chave (opcional)</label><input name="palavras_chave" placeholder="ex: uber, 99, taxi"></div>
+      <button type="submit" class="btn btn-primary">Criar</button>
+    </form>
+  </details>
 
-  <div class="table-wrap" style="margin-top:26px">
-    <table class="data-table">
-      <thead><tr><th>Nome</th><th>Descrição</th><th>Tipo</th><th>Palavras-chave</th><th>Ativa</th><th></th></tr></thead>
-      <tbody>
-      {% for c in categorias %}
-        <tr>
-          <form method="post" action="{{ url_for('config.salvar_categoria', cat_id=c.id) }}" style="display:contents">
-            <td><input name="nome" value="{{ c.nome }}" style="width:130px;padding:5px;border:1px solid transparent;border-radius:6px" onfocus="this.style.borderColor='var(--line)'"></td>
-            <td><input name="descricao" value="{{ c.descricao or '' }}" style="width:180px;padding:5px;border:1px solid transparent;border-radius:6px" onfocus="this.style.borderColor='var(--line)'"></td>
-            <td><select name="tipo" style="padding:5px;border:1px solid var(--line);border-radius:6px">
+  <div class="card-lista">
+    {% for c in categorias %}
+    <details class="card-item-expandivel">
+      <summary class="card-item" style="cursor:pointer">
+        <div class="card-item-icone">{{ '💰' if c.tipo == 'receita' else '📂' }}</div>
+        <div class="card-item-corpo">
+          <div class="card-item-titulo">{{ c.nome }}</div>
+          <div class="card-item-sub">{{ c.tipo }}{% if not c.ativa %} · inativa{% endif %}</div>
+        </div>
+      </summary>
+      <div style="padding:4px 16px 16px">
+        <form method="post" action="{{ url_for('config.salvar_categoria', cat_id=c.id) }}" class="form-grid">
+          <div class="form-row"><label>Nome</label><input name="nome" value="{{ c.nome }}"></div>
+          <div class="form-row"><label>Descrição</label><input name="descricao" value="{{ c.descricao or '' }}"></div>
+          <div class="form-row"><label>Tipo</label>
+            <select name="tipo">
               <option value="despesa" {{ 'selected' if c.tipo=='despesa' }}>Despesa</option>
               <option value="receita" {{ 'selected' if c.tipo=='receita' }}>Receita</option>
               <option value="ambos" {{ 'selected' if c.tipo=='ambos' }}>Ambos</option>
-            </select></td>
-            <td><input name="palavras_chave" value="{{ c.palavras_chave or '' }}" style="width:150px;padding:5px;border:1px solid transparent;border-radius:6px" onfocus="this.style.borderColor='var(--line)'"></td>
-            <td style="text-align:center"><input type="checkbox" name="ativa" {{ 'checked' if c.ativa }}></td>
-            <td style="white-space:nowrap"><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">Salvar</button></td>
-          </form>
-          <td style="padding:0">
-            <form method="post" action="{{ url_for('config.excluir_categoria', cat_id=c.id) }}" onsubmit="return confirm('Excluir a categoria \'{{ c.nome }}\' permanentemente?');">
-              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--brick)">Excluir</button>
-            </form>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+            </select></div>
+          <div class="form-row"><label>Palavras-chave</label><input name="palavras_chave" value="{{ c.palavras_chave or '' }}"></div>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:normal;font-size:13px">
+            <input type="checkbox" name="ativa" {{ 'checked' if c.ativa }} style="width:auto"> Ativa
+          </label>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </form>
+        <form method="post" action="{{ url_for('config.excluir_categoria', cat_id=c.id) }}" data-confirmar="Excluir a categoria '{{ c.nome }}' permanentemente?" style="margin-top:8px">
+          <button class="btn btn-ghost" style="width:100%;justify-content:center;color:var(--brick)">Excluir</button>
+        </form>
+      </div>
+    </details>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:24px">Nenhuma categoria cadastrada.</div>
+    {% endfor %}
   </div>
-  <p style="font-size:12px;color:var(--graphite);margin-top:10px">"Excluir" só funciona se a categoria não tiver nenhum lançamento associado — se já tiver histórico, use "desativar" (desmarcar Ativa) em vez de excluir.</p>
 </div>
 {% endblock %}

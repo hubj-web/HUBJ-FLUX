@@ -27,9 +27,11 @@ def index():
     totais = db.totais_mes(usuario["organizacao_id"], mes_referencia)
     ultimos = db.ultimos_lancamentos(usuario["organizacao_id"], limite=5)
     frase_saldo = regras_negocio.frase_saldo_mes(totais["saldo"])
+    prefs = db.buscar_preferencias(usuario["organizacao_id"])
+    setup_concluido = bool(prefs and prefs.get("setup_concluido"))
 
     return render_template(
         "inicio.html", usuario=usuario, organizacao=organizacao,
         mes_referencia=mes_referencia, mes_anterior=mes_anterior, mes_seguinte=mes_seguinte,
-        totais=totais, ultimos=ultimos, frase_saldo=frase_saldo,
+        totais=totais, ultimos=ultimos, frase_saldo=frase_saldo, setup_concluido=setup_concluido,
     )

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Configuração Inicial · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:620px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Bem-vindo(a) à {{ organizacao.nome }}!</h1>
+    <p>Vamos deixar tudo pronto antes de começar a lançar. Nenhum passo aqui é obrigatório — as categorias e formas de pagamento padrão já vêm prontas, você pode ajustar quando quiser.</p>
+  </header>
+
+  <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:30px">
+    <div class="summary-cell" style="display:flex;align-items:center;justify-content:space-between">
+      <div><strong>{{ '✓' if checklist.categorias else '○' }} Categorias</strong>
+        <p style="font-size:12.5px;color:var(--graphite);margin:2px 0 0">Já vêm com um conjunto padrão — ajuste nomes, descrições ou crie novas.</p></div>
+      <a href="{{ url_for('config.categorias') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12px">{{ 'Revisar' if checklist.categorias else 'Configurar' }}</a>
+    </div>
+    <div class="summary-cell" style="display:flex;align-items:center;justify-content:space-between">
+      <div><strong>{{ '✓' if checklist.renda else '○' }} Renda mensal</strong>
+        <p style="font-size:12.5px;color:var(--graphite);margin:2px 0 0">Usada para sugerir automaticamente os limites do Planejamento.</p></div>
+      <a href="{{ url_for('plan.index') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12px">{{ 'Revisar' if checklist.renda else 'Configurar' }}</a>
+    </div>
+    <div class="summary-cell" style="display:flex;align-items:center;justify-content:space-between">
+      <div><strong>{{ '✓' if checklist.cartoes else '○' }} Cartões de crédito</strong>
+        <p style="font-size:12.5px;color:var(--graphite);margin:2px 0 0">Cadastre na mão ou importe a primeira fatura em PDF.</p></div>
+      <a href="{{ url_for('config.cartoes') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12px">{{ 'Revisar' if checklist.cartoes else 'Configurar' }}</a>
+    </div>
+    <div class="summary-cell" style="display:flex;align-items:center;justify-content:space-between">
+      <div><strong>{{ '✓' if checklist.contas else '○' }} Contas bancárias</strong>
+        <p style="font-size:12.5px;color:var(--graphite);margin:2px 0 0">Conta corrente, poupança, carteira — opcional.</p></div>
+      <a href="{{ url_for('config.contas') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12px">{{ 'Revisar' if checklist.contas else 'Configurar' }}</a>
+    </div>
+    <div class="summary-cell" style="display:flex;align-items:center;justify-content:space-between">
+      <div><strong>{{ '✓' if checklist.pessoas else '○' }} Pessoas</strong>
+        <p style="font-size:12.5px;color:var(--graphite);margin:2px 0 0">Quem vai aparecer pra marcar nos lançamentos (não precisa ter login).</p></div>
+      <a href="{{ url_for('config.pessoas') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12px">{{ 'Revisar' if checklist.pessoas else 'Configurar' }}</a>
+    </div>
+  </div>
+
+  <form method="post" action="{{ url_for('setup.concluir') }}">
+    <button type="submit" class="btn btn-primary">Concluir e ir para o Início</button>
+  </form>
+</div>
+{% endblock %}

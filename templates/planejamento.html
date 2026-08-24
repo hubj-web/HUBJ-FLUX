@@ -52,8 +52,29 @@
         </tbody>
       </table>
     </div>
-    <p class="mono" style="margin-bottom:16px">Total planejado: <strong>R$ {{ total_planejado|brl }}</strong></p>
+    <p class="mono" style="margin-bottom:16px">Total planejado (despesas): <strong>R$ {{ total_planejado|brl }}</strong></p>
     <button type="submit" class="btn btn-primary">Salvar planejamento</button>
+  </form>
+
+  <h3 style="margin-top:34px">Receitas planejadas</h3>
+  <form method="post" action="{{ url_for('plan.salvar') }}">
+    <input type="hidden" name="mes_referencia" value="{{ mes_referencia }}">
+    <div class="table-wrap" style="margin-bottom:20px">
+      <table class="data-table">
+        <thead><tr><th>Categoria</th><th class="num">Valor esperado (R$)</th></tr></thead>
+        <tbody>
+        {% for c in categorias_receita %}
+          <tr>
+            <td>{{ c.categoria_nome }}</td>
+            <td class="num"><input type="text" name="limite_{{ c.categoria_id }}" value="{{ c.valor_limite|brl }}"
+                style="width:120px;text-align:right;padding:6px 8px;border:1px solid var(--line);border-radius:8px"></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="mono" style="margin-bottom:16px">Total planejado (receitas): <strong>R$ {{ total_planejado_receita|brl }}</strong></p>
+    <button type="submit" class="btn btn-primary">Salvar receitas planejadas</button>
   </form>
 </div>
 {% endblock %}
