@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Barra de atalhos · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>🧭 Barra de atalhos</h1>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">Início, o botão <strong>+</strong> e Mais ficam sempre fixos (o Mais garante que você nunca perde o acesso às outras telas). Você escolhe os 2 atalhos do meio.</p>
+  </header>
+
+  {% macro escolha(atuais) %}
+  <div class="filters" style="flex-wrap:nowrap">
+    {% for i in [0, 1] %}
+    <select name="slot{{ i + 1 }}" style="flex:1;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:14px;background:var(--paper-raised)">
+      <option value="">— nenhum —</option>
+      {% for chave, dados in catalogo.items() %}
+      <option value="{{ chave }}" {{ 'selected' if atuais|length > i and atuais[i] == chave }}>{{ dados[0] }} {{ dados[1] }}</option>
+      {% endfor %}
+    </select>
+    {% endfor %}
+  </div>
+  {% endmacro %}
+
+  <div class="summary-cell" style="margin-bottom:20px">
+    <span class="label">Sua barra hoje</span>
+    <div class="mono" style="font-size:14px;margin-top:6px">
+      🏠 Início ·
+      {% for c in efetivos[:1] %}{{ catalogo[c][0] }} {{ catalogo[c][1] }} · {% endfor %}
+      ➕ ·
+      {% for c in efetivos[1:2] %}{{ catalogo[c][0] }} {{ catalogo[c][1] }} · {% endfor %}
+      ☰ Mais
+    </div>
+  </div>
+
+  <h3>Meus atalhos</h3>
+  <form method="post" class="form-grid" style="max-width:none;margin:12px 0 26px">
+    {{ escolha(meus or efetivos) }}
+    <button type="submit" name="acao" value="salvar_meu" class="btn btn-primary">Salvar minha barra</button>
+    {% if meus %}<button type="submit" name="acao" value="usar_padrao" class="btn btn-ghost">Voltar ao padrão da organização</button>{% endif %}
+  </form>
+
+  {% if eh_admin %}
+  <h3>Padrão da organização</h3>
+  <p style="color:var(--graphite);font-size:12.5px;margin:4px 0 0">Vale para todos que não personalizaram a própria barra.</p>
+  <form method="post" class="form-grid" style="max-width:none;margin-top:12px">
+    {{ escolha(padrao_org) }}
+    <button type="submit" name="acao" value="salvar_padrao_org" class="btn btn-primary">Salvar padrão da organização</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

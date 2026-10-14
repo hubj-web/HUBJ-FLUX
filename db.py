@@ -230,7 +230,7 @@ def excluir_lancamento(lancamento_id, organizacao_id):
 def listar_lancamentos(organizacao_id, filtros=None):
     filtros = filtros or {}
     sql = """SELECT l.*, c.nome AS categoria_nome, sc.nome AS subcategoria_nome,
-                    fp.nome AS forma_pagamento_nome, p.nome AS pessoa_nome, ca.nome AS cartao_nome
+                    fp.nome AS forma_pagamento_nome, p.nome AS pessoa_nome, p.avatar AS pessoa_avatar, ca.nome AS cartao_nome
              FROM lancamentos l
              LEFT JOIN categorias c ON c.id = l.categoria_id
              LEFT JOIN subcategorias sc ON sc.id = l.subcategoria_id
@@ -627,18 +627,19 @@ def listar_pessoas_todas(organizacao_id):
     )
 
 
-def criar_pessoa_manual(organizacao_id, nome, usuario_id=None):
+def criar_pessoa_manual(organizacao_id, nome, usuario_id=None, avatar=None, data_nascimento=None):
     return execute(
-        "INSERT INTO pessoas (organizacao_id, nome, usuario_id, disponivel_lancamento, criado_em) "
-        "VALUES (%s, %s, %s, true, now()) RETURNING *",
-        (organizacao_id, nome, usuario_id),
+        "INSERT INTO pessoas (organizacao_id, nome, usuario_id, avatar, data_nascimento, disponivel_lancamento, criado_em) "
+        "VALUES (%s, %s, %s, %s, %s, true, now()) RETURNING *",
+        (organizacao_id, nome, usuario_id, avatar, data_nascimento),
     )
 
 
-def atualizar_pessoa(pessoa_id, organizacao_id, nome, usuario_id, disponivel_lancamento):
+def atualizar_pessoa(pessoa_id, organizacao_id, nome, usuario_id, disponivel_lancamento, avatar=None, data_nascimento=None):
     execute(
-        "UPDATE pessoas SET nome=%s, usuario_id=%s, disponivel_lancamento=%s WHERE id=%s AND organizacao_id=%s",
-        (nome, usuario_id, disponivel_lancamento, pessoa_id, organizacao_id),
+        "UPDATE pessoas SET nome=%s, usuario_id=%s, disponivel_lancamento=%s, avatar=%s, data_nascimento=%s "
+        "WHERE id=%s AND organizacao_id=%s",
+        (nome, usuario_id, disponivel_lancamento, avatar, data_nascimento, pessoa_id, organizacao_id),
     )
 
 
@@ -677,6 +678,15 @@ def listar_metas(organizacao_id):
         "SELECT * FROM metas WHERE organizacao_id = %s ORDER BY status, data_alvo NULLS LAST, criado_em DESC",
         (organizacao_id,),
     )
+
+
+def total_reservado_metas(organizacao_id):
+    """Soma do que já foi guardado em todas as metas - informativo apenas,
+    NÃO entra como lançamento nem afeta Planejamento/Controle (guardar
+    dinheiro numa meta é irregular por natureza, não faz sentido tratar
+    como um "gasto mensal previsto" que pode "estourar")."""
+    row = query_one("SELECT COALESCE(SUM(valor_atual), 0) AS total FROM metas WHERE organizacao_id = %s", (organizacao_id,))
+    return float(row["total"]) if row else 0.0
 
 
 def criar_meta(organizacao_id, nome, descricao, valor_alvo, data_alvo):
@@ -777,3 +787,122 @@ def status_checklist_setup(organizacao_id):
         "contas": n_contas > 0,
         "pessoas": n_pessoas > 0,
     }
+
+
+
+# ---------- Barra de atalhos ----------
+
+def salvar_nav_usuario(usuario_id, valor):
+    execute("UPDATE usuarios SET nav_atalhos = %s WHERE id = %s", (valor, usuario_id))
+
+
+def salvar_nav_padrao_org(organizacao_id, valor):
+    execute("UPDATE organizacoes_preferencias SET nav_atalhos_padrao = %s WHERE organizacao_id = %s", (valor, organizacao_id))
+
+
+# ---------- Notificações (sininho) ----------
+
+def buscar_usuario_por_id(usuario_id):
+    return query_one("SELECT * FROM usuarios WHERE id = %s", (usuario_id,))
+
+
+def criar_notificacao(organizacao_id, usuario_id, tipo, titulo, mensagem=None, link=None):
+    execute(
+        "INSERT INTO notificacoes (organizacao_id, usuario_id, tipo, titulo, mensagem, link) VALUES (%s, %s, %s, %s, %s, %s)",
+        (organizacao_id, usuario_id, tipo, titulo, mensagem, link),
+    )
+
+
+def contar_nao_lidas(usuario_id):
+    row = query_one("SELECT COUNT(*) AS n FROM notificacoes WHERE usuario_id = %s AND lida = false", (usuario_id,))
+    return int(row["n"]) if row and "n" in row else 0
+
+
+def listar_notificacoes(usuario_id, limite=60):
+    return query_all(
+        "SELECT * FROM notificacoes WHERE usuario_id = %s ORDER BY criado_em DESC, id DESC LIMIT %s",
+        (usuario_id, limite),
+    )
+
+
+def marcar_todas_lidas(usuario_id):
+    execute("UPDATE notificacoes SET lida = true WHERE usuario_id = %s AND lida = false", (usuario_id,))
+
+
+# ---------- Quem acompanha o quê (definido pelo admin) ----------
+
+def listar_observacoes(organizacao_id, observador_id):
+    return query_all(
+        "SELECT * FROM alertas_observacao WHERE organizacao_id = %s AND observador_usuario_id = %s",
+        (organizacao_id, observador_id),
+    )
+
+
+def salvar_observacoes(organizacao_id, observador_id, regras):
+    """regras: lista de (observado_usuario_id|None, observado_pessoa_id|None, por_email).
+    Substitui todas as regras desse observador."""
+    execute("DELETE FROM alertas_observacao WHERE organizacao_id = %s AND observador_usuario_id = %s",
+            (organizacao_id, observador_id))
+    for usuario_id, pessoa_id, por_email in regras:
+        execute(
+            "INSERT INTO alertas_observacao (organizacao_id, observador_usuario_id, observado_usuario_id, "
+            "observado_pessoa_id, por_email) VALUES (%s, %s, %s, %s, %s)",
+            (organizacao_id, observador_id, usuario_id, pessoa_id, por_email),
+        )
+
+
+def regras_que_casam(organizacao_id, ator_usuario_id, pessoa_id):
+    return query_all(
+        """SELECT observador_usuario_id, por_email FROM alertas_observacao
+           WHERE organizacao_id = %s AND (
+                 (observado_usuario_id IS NULL AND observado_pessoa_id IS NULL)
+              OR observado_usuario_id = %s
+              OR (observado_pessoa_id IS NOT NULL AND observado_pessoa_id = %s))""",
+        (organizacao_id, ator_usuario_id, pessoa_id),
+    )
+
+
+# ---------- Lembretes de vencimento ----------
+
+def listar_lembretes(organizacao_id, usuario_id):
+    return query_all(
+        "SELECT * FROM lembretes_vencimento WHERE organizacao_id = %s AND usuario_id = %s ORDER BY dia_mes, nome",
+        (organizacao_id, usuario_id),
+    )
+
+
+def criar_lembrete(organizacao_id, usuario_id, nome, dia_mes, dias_antes, valor_estimado, por_email):
+    execute(
+        "INSERT INTO lembretes_vencimento (organizacao_id, usuario_id, nome, dia_mes, dias_antes, valor_estimado, por_email) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+        (organizacao_id, usuario_id, nome, dia_mes, dias_antes, valor_estimado, por_email),
+    )
+
+
+def atualizar_lembrete(lembrete_id, usuario_id, nome, dia_mes, dias_antes, valor_estimado, por_email, ativo):
+    execute(
+        "UPDATE lembretes_vencimento SET nome=%s, dia_mes=%s, dias_antes=%s, valor_estimado=%s, por_email=%s, ativo=%s "
+        "WHERE id=%s AND usuario_id=%s",
+        (nome, dia_mes, dias_antes, valor_estimado, por_email, ativo, lembrete_id, usuario_id),
+    )
+
+
+def excluir_lembrete(lembrete_id, usuario_id):
+    execute("DELETE FROM lembretes_vencimento WHERE id = %s AND usuario_id = %s", (lembrete_id, usuario_id))
+
+
+def lembretes_ativos_org(organizacao_id):
+    return query_all(
+        """SELECT l.*, u.email AS usuario_email FROM lembretes_vencimento l
+           JOIN usuarios u ON u.id = l.usuario_id
+           WHERE l.organizacao_id = %s AND l.ativo = true AND u.status != 'bloqueado'""",
+        (organizacao_id,),
+    )
+
+
+def marcar_disparo_lembrete(lembrete_id, data):
+    execute("UPDATE lembretes_vencimento SET ultimo_disparo = %s WHERE id = %s", (data, lembrete_id))
+
+
+def listar_ids_organizacoes_ativas():
+    return [r["id"] for r in query_all("SELECT id FROM organizacoes WHERE status = 'ativo'")]

@@ -6,11 +6,15 @@
     <h1>Mais</h1>
   </header>
   <div class="menu-list">
+    <a href="{{ url_for('alertas.index') }}" class="menu-item"><span class="menu-icon">🔔</span> Alertas
+      {% if alertas_nao_lidas %}<span class="chip-status vermelho" style="margin-left:auto">{{ alertas_nao_lidas }} novo(s)</span>{% endif %}</a>
+    <a href="{{ url_for('alertas.lembretes') }}" class="menu-item"><span class="menu-icon">⏰</span> Lembretes de vencimento</a>
     <a href="{{ url_for('lanc.recorrentes') }}" class="menu-item"><span class="menu-icon">🔁</span> Recorrentes</a>
     <a href="{{ url_for('plan.index') }}" class="menu-item"><span class="menu-icon">📝</span> Planejamento</a>
     <a href="{{ url_for('controle.index') }}" class="menu-item"><span class="menu-icon">🎛️</span> Controle</a>
     <a href="{{ url_for('metas.index') }}" class="menu-item"><span class="menu-icon">🎯</span> Metas</a>
     <a href="{{ url_for('relatorios.index') }}" class="menu-item"><span class="menu-icon">📊</span> Relatórios</a>
+    <a href="{{ url_for('mais.barra') }}" class="menu-item"><span class="menu-icon">🧭</span> Minha barra de atalhos</a>
     {% if g.usuario_atual.papel in ('super_admin', 'admin_cliente') %}
     <a href="{{ url_for('config.index') }}" class="menu-item"><span class="menu-icon">⚙️</span> Configurações</a>
     {% endif %}

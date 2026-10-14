@@ -270,3 +270,28 @@ body.com-nav-fixa{ padding-bottom:84px; }
 .resumo-flex .summary-cell{ flex:1; min-width:0; padding:14px 10px; text-align:center; }
 .resumo-flex .summary-cell .label{ font-size:9.5px; }
 .resumo-flex .summary-cell .value{ font-size:15px; }
+
+/* ---------- Alertas, sininho e avatares ---------- */
+.navbar-item{ position:relative; }
+.navbar-badge, .sino-badge{
+  position:absolute; min-width:17px; height:17px; padding:0 4px; border-radius:9px;
+  background:var(--danger-dark); color:#fff; font-size:10px; font-weight:700; line-height:17px; text-align:center;
+}
+.navbar-badge{ top:0; right:6px; }
+.sino{
+  position:relative; flex-shrink:0; font-size:22px; line-height:1; text-decoration:none;
+  padding:9px; background:var(--paper-raised); border-radius:50%; box-shadow:var(--shadow-card);
+}
+.sino-badge{ top:-4px; right:-4px; }
+.notif-nova{ border-left:4px solid var(--laranja-evolucao); }
+
+.avatar-grid{ display:flex; flex-wrap:wrap; gap:8px; }
+.avatar-opt{ position:relative; cursor:pointer; }
+.avatar-opt input{ position:absolute; opacity:0; pointer-events:none; }
+.avatar-opt span{
+  display:flex; width:44px; height:44px; align-items:center; justify-content:center; font-size:23px;
+  border-radius:14px; background:var(--gray-light); border:2px solid transparent;
+}
+.avatar-opt input:checked + span{
+  border-color:var(--laranja-evolucao); background:#fff; box-shadow:0 0 0 3px rgba(255,117,31,0.18);
+}

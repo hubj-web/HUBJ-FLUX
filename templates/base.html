@@ -31,15 +31,17 @@
   <a href="{{ url_for('inicio.index') }}" class="navbar-item {{ 'ativo' if request.path == '/' }}">
     <span class="navbar-icone">🏠</span><span>Início</span>
   </a>
-  <a href="{{ url_for('lanc.extrato') }}" class="navbar-item {{ 'ativo' if request.path == url_for('lanc.extrato') }}">
-    <span class="navbar-icone">🧾</span><span>Extrato</span>
-  </a>
+  {% set _atalhos = nav_atalhos if nav_atalhos is defined else [] %}
+  {% for a in _atalhos[:1] %}
+  <a href="{{ a.url }}" class="navbar-item {{ 'ativo' if a.ativo }}"><span class="navbar-icone">{{ a.icone }}</span><span>{{ a.rotulo }}</span></a>
+  {% endfor %}
   <button type="button" class="navbar-lancar" id="btn-navbar-lancar" aria-label="Novo lançamento">+</button>
-  <a href="{{ url_for('cartao.importar') }}" class="navbar-item {{ 'ativo' if '/cartao' in request.path }}">
-    <span class="navbar-icone">💳</span><span>Cartão</span>
-  </a>
-  <a href="{{ url_for('mais.index') }}" class="navbar-item {{ 'ativo' if request.path == url_for('mais.index') }}">
+  {% for a in _atalhos[1:2] %}
+  <a href="{{ a.url }}" class="navbar-item {{ 'ativo' if a.ativo }}"><span class="navbar-icone">{{ a.icone }}</span><span>{{ a.rotulo }}</span></a>
+  {% endfor %}
+  <a href="{{ url_for('mais.index') }}" class="navbar-item {{ 'ativo' if request.path.startswith('/mais') }}">
     <span class="navbar-icone">☰</span><span>Mais</span>
+    {% if alertas_nao_lidas %}<span class="navbar-badge">{{ alertas_nao_lidas if alertas_nao_lidas < 10 else '9+' }}</span>{% endif %}
   </a>
 </nav>
 <div class="navbar-popover" id="navbar-popover">

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Alertas · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>🔔 Alertas</h1>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
+       <a href="{{ url_for('alertas.lembretes') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">⏰ Meus lembretes</a>
+       {% if g.usuario_atual.papel in ('super_admin', 'admin_cliente') %}
+       <a href="{{ url_for('alertas.config_alertas') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">⚙️ Quem acompanhar</a>
+       {% endif %}</p>
+  </header>
+
+  <div class="card-lista">
+    {% for n in itens %}
+    <a href="{{ n.link or url_for('alertas.index') }}" class="card-item {{ 'notif-nova' if not n.lida }}" style="text-decoration:none;color:inherit">
+      <div class="card-item-icone">{{ '⏰' if n.tipo == 'lembrete' else '👀' }}</div>
+      <div class="card-item-corpo">
+        <div class="card-item-titulo" style="white-space:normal">{{ n.titulo }}</div>
+        {% if n.mensagem %}<div class="card-item-sub">{{ n.mensagem }}</div>{% endif %}
+        <div class="card-item-sub" style="font-size:11px">{{ n.criado_em|datahora }}{% if not n.lida %} · <strong style="color:var(--laranja-evolucao)">novo</strong>{% endif %}</div>
+      </div>
+    </a>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:36px 20px;background:var(--paper-raised);border-radius:var(--radius)">
+      Nenhum alerta por enquanto.<br>
+      <span style="font-size:12.5px">Crie um <a href="{{ url_for('alertas.lembretes') }}">lembrete de vencimento</a>{% if g.usuario_atual.papel in ('super_admin', 'admin_cliente') %} ou escolha <a href="{{ url_for('alertas.config_alertas') }}">quem acompanhar</a>{% endif %}.</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

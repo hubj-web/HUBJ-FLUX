@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 from flask import Blueprint, render_template, g, request
 
 import db
+import alertas
 from auth import login_required
 import regras_negocio
 
@@ -24,14 +25,18 @@ def index():
     mes_anterior = (ref_date - relativedelta(months=1)).strftime("%Y-%m")
     mes_seguinte = (ref_date + relativedelta(months=1)).strftime("%Y-%m")
 
+    alertas.disparar_lembretes(usuario["organizacao_id"])  # idempotente: não repete no mesmo dia
     totais = db.totais_mes(usuario["organizacao_id"], mes_referencia)
     ultimos = db.ultimos_lancamentos(usuario["organizacao_id"], limite=5)
     frase_saldo = regras_negocio.frase_saldo_mes(totais["saldo"])
     prefs = db.buscar_preferencias(usuario["organizacao_id"])
     setup_concluido = bool(prefs and prefs.get("setup_concluido"))
+    reservado_metas = db.total_reservado_metas(usuario["organizacao_id"])
+    saldo_livre = totais["saldo"] - reservado_metas
 
     return render_template(
         "inicio.html", usuario=usuario, organizacao=organizacao,
         mes_referencia=mes_referencia, mes_anterior=mes_anterior, mes_seguinte=mes_seguinte,
         totais=totais, ultimos=ultimos, frase_saldo=frase_saldo, setup_concluido=setup_concluido,
+        reservado_metas=reservado_metas, saldo_livre=saldo_livre,
     )

@@ -1,80 +1,90 @@
 {% extends "base.html" %}
 {% block title %}Planejamento · HUB-J FLUX{% endblock %}
 {% block content %}
-<div class="content" style="max-width:760px;margin:0 auto">
+<div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
     <h1>Planejamento</h1>
-    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
        <a href="{{ url_for('controle.index', mes=mes_referencia) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Ver Controle</a>
-       <a href="{{ url_for('plan.visualizar', mes=mes_referencia) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">👁 Só visualizar (sem editar)</a></p>
+       <a href="{{ url_for('plan.visualizar', mes=mes_referencia) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">👁 Visualizar</a></p>
   </header>
 
-  <div class="filters" style="align-items:center;margin-bottom:20px">
-    <a href="{{ url_for('plan.index', mes=mes_anterior) }}" class="btn btn-ghost" style="padding:6px 12px">← Mês anterior</a>
+  <div class="filters" style="align-items:center;margin-bottom:18px;justify-content:center">
+    <a href="{{ url_for('plan.index', mes=mes_anterior) }}" class="btn btn-ghost" style="padding:6px 12px">←</a>
     <strong class="mono" style="font-size:15px">{{ mes_referencia }}</strong>
-    <a href="{{ url_for('plan.index', mes=mes_seguinte) }}" class="btn btn-ghost" style="padding:6px 12px">Mês seguinte →</a>
+    <a href="{{ url_for('plan.index', mes=mes_seguinte) }}" class="btn btn-ghost" style="padding:6px 12px">→</a>
   </div>
 
-  <form method="post" action="{{ url_for('plan.salvar_renda') }}" class="filters" style="margin-bottom:20px">
-    <input type="hidden" name="mes_referencia" value="{{ mes_referencia }}">
-    <div class="form-row" style="margin:0">
-      <label>Renda mensal (usada na sugestão automática)</label>
-      <input type="text" name="renda_mensal" value="{{ renda_mensal|brl if renda_mensal else '' }}" placeholder="0,00" style="width:160px">
+  <details style="margin-bottom:20px">
+    <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--roxo-estrategico);padding:4px 0">⚙️ Renda mensal e atalhos</summary>
+    <div style="margin-top:14px">
+      <form method="post" action="{{ url_for('plan.salvar_renda') }}" class="filters" style="margin-bottom:12px">
+        <input type="hidden" name="mes_referencia" value="{{ mes_referencia }}">
+        <div class="form-row" style="margin:0;flex:1"><label>Renda mensal</label>
+          <input type="text" name="renda_mensal" value="{{ renda_mensal|brl if renda_mensal else '' }}" placeholder="0,00"></div>
+        <button type="submit" class="btn btn-ghost" style="align-self:flex-end">Salvar</button>
+      </form>
+      <div class="filters">
+        <form method="post" action="{{ url_for('plan.copiar_mes_anterior') }}">
+          <input type="hidden" name="mes_referencia" value="{{ mes_referencia }}">
+          <button type="submit" class="btn btn-ghost" style="font-size:12px">Copiar mês anterior</button>
+        </form>
+        <form method="post" action="{{ url_for('plan.sugestao_automatica') }}">
+          <input type="hidden" name="mes_referencia" value="{{ mes_referencia }}">
+          <button type="submit" class="btn btn-ghost" style="font-size:12px">Sugestão automática</button>
+        </form>
+      </div>
     </div>
-    <button type="submit" class="btn btn-ghost" style="align-self:flex-end">Salvar renda</button>
-  </form>
+  </details>
 
-  <div class="filters" style="margin-bottom:20px">
-    <form method="post" action="{{ url_for('plan.copiar_mes_anterior') }}">
-      <input type="hidden" name="mes_referencia" value="{{ mes_referencia }}">
-      <button type="submit" class="btn btn-ghost">Copiar mês anterior</button>
-    </form>
-    <form method="post" action="{{ url_for('plan.sugestao_automatica') }}">
-      <input type="hidden" name="mes_referencia" value="{{ mes_referencia }}">
-      <button type="submit" class="btn btn-ghost">Usar sugestão automática</button>
-    </form>
+  <div class="summary-cell" style="text-align:center;margin-bottom:20px;padding:20px">
+    <span class="label">Total planejado (despesas)</span>
+    <div style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:26px;color:var(--danger-dark);margin-top:4px">R$ {{ total_planejado|brl }}</div>
   </div>
 
   <form method="post" action="{{ url_for('plan.salvar') }}">
     <input type="hidden" name="mes_referencia" value="{{ mes_referencia }}">
-    <div class="table-wrap" style="margin-bottom:20px">
-      <table class="data-table">
-        <thead><tr><th>Categoria</th><th class="num">Média últimos 3 meses</th><th class="num">Limite mensal (R$)</th></tr></thead>
-        <tbody>
-        {% for c in categorias %}
-          <tr>
-            <td>{{ c.categoria_nome }}</td>
-            <td class="num mono" style="color:var(--graphite)">R$ {{ c.media_historica|brl }}</td>
-            <td class="num"><input type="text" name="limite_{{ c.categoria_id }}" value="{{ c.valor_limite|brl }}"
-                style="width:120px;text-align:right;padding:6px 8px;border:1px solid var(--line);border-radius:8px"></td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+    <div class="card-lista" style="margin-bottom:18px">
+      {% for c in categorias %}
+      <div class="card-item">
+        <div class="card-item-icone">📂</div>
+        <div class="card-item-corpo">
+          <div class="card-item-titulo">{{ c.categoria_nome }}</div>
+          <div class="card-item-sub">Média 3 meses: R$ {{ c.media_historica|brl }}</div>
+        </div>
+        <input type="text" name="limite_{{ c.categoria_id }}" value="{{ c.valor_limite|brl }}"
+               style="width:100px;text-align:right;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-weight:700;color:var(--danger-dark);flex-shrink:0">
+      </div>
+      {% else %}
+      <div style="text-align:center;color:var(--graphite);padding:24px">Nenhuma categoria de despesa cadastrada.</div>
+      {% endfor %}
     </div>
-    <p class="mono" style="margin-bottom:16px">Total planejado (despesas): <strong>R$ {{ total_planejado|brl }}</strong></p>
-    <button type="submit" class="btn btn-primary">Salvar planejamento</button>
+    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">Salvar planejamento de despesas</button>
   </form>
 
   <h3 style="margin-top:34px">Receitas planejadas</h3>
+  <div class="summary-cell" style="text-align:center;margin-bottom:20px;padding:20px">
+    <span class="label">Total planejado (receitas)</span>
+    <div style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:26px;color:var(--success-dark);margin-top:4px">R$ {{ total_planejado_receita|brl }}</div>
+  </div>
+
   <form method="post" action="{{ url_for('plan.salvar') }}">
     <input type="hidden" name="mes_referencia" value="{{ mes_referencia }}">
-    <div class="table-wrap" style="margin-bottom:20px">
-      <table class="data-table">
-        <thead><tr><th>Categoria</th><th class="num">Valor esperado (R$)</th></tr></thead>
-        <tbody>
-        {% for c in categorias_receita %}
-          <tr>
-            <td>{{ c.categoria_nome }}</td>
-            <td class="num"><input type="text" name="limite_{{ c.categoria_id }}" value="{{ c.valor_limite|brl }}"
-                style="width:120px;text-align:right;padding:6px 8px;border:1px solid var(--line);border-radius:8px"></td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+    <div class="card-lista" style="margin-bottom:18px">
+      {% for c in categorias_receita %}
+      <div class="card-item">
+        <div class="card-item-icone">💰</div>
+        <div class="card-item-corpo">
+          <div class="card-item-titulo">{{ c.categoria_nome }}</div>
+        </div>
+        <input type="text" name="limite_{{ c.categoria_id }}" value="{{ c.valor_limite|brl }}"
+               style="width:100px;text-align:right;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-weight:700;color:var(--success-dark);flex-shrink:0">
+      </div>
+      {% else %}
+      <div style="text-align:center;color:var(--graphite);padding:24px">Nenhuma categoria de receita cadastrada.</div>
+      {% endfor %}
     </div>
-    <p class="mono" style="margin-bottom:16px">Total planejado (receitas): <strong>R$ {{ total_planejado_receita|brl }}</strong></p>
-    <button type="submit" class="btn btn-primary">Salvar receitas planejadas</button>
+    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">Salvar planejamento de receitas</button>
   </form>
 </div>
 {% endblock %}

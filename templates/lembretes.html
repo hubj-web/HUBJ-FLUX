@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Lembretes · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>⏰ Lembretes de vencimento</h1>
+    <p><a href="{{ url_for('alertas.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">Ex: conta de energia vence todo dia 8 — o app te avisa antes e no dia. São só seus.</p>
+  </header>
+
+  <form method="post" action="{{ url_for('alertas.lembretes') }}" class="form-grid" style="max-width:none;margin-bottom:24px">
+    <div class="form-row"><label>O que vence? *</label><input name="nome" required placeholder="Ex: Conta de energia"></div>
+    <div class="form-row"><label>Todo dia do mês *</label><input name="dia_mes" type="number" min="1" max="31" required placeholder="Ex: 8"></div>
+    <div class="form-row"><label>Avisar</label>
+      <select name="dias_antes">
+        <option value="0">No dia do vencimento</option><option value="1">1 dia antes</option><option value="2">2 dias antes</option>
+        <option value="3">3 dias antes</option><option value="5">5 dias antes</option><option value="7">7 dias antes</option>
+      </select></div>
+    <div class="form-row"><label>Valor estimado (opcional)</label><input name="valor_estimado" placeholder="0,00"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:normal;font-size:13px">
+      <input type="checkbox" name="por_email" style="width:auto"> Também me avisar por e-mail
+    </label>
+    <button type="submit" class="btn btn-primary">Criar lembrete</button>
+  </form>
+
+  <h3>Meus lembretes</h3>
+  <div class="card-lista" style="margin-top:12px">
+    {% for l in lembretes %}
+    <details class="card-item-expandivel">
+      <summary class="card-item" style="cursor:pointer">
+        <div class="card-item-icone">⏰</div>
+        <div class="card-item-corpo">
+          <div class="card-item-titulo">{{ l.nome }}</div>
+          <div class="card-item-sub">Todo dia {{ l.dia_mes }}{% if l.dias_antes %} · avisa {{ l.dias_antes }} dia(s) antes{% endif %}{% if l.por_email %} · e-mail{% endif %}{% if not l.ativo %} · pausado{% endif %}</div>
+        </div>
+        {% if l.valor_estimado is not none %}<div class="card-item-valor">R$ {{ l.valor_estimado|brl }}</div>{% endif %}
+      </summary>
+      <div style="padding:4px 16px 16px">
+        <form method="post" action="{{ url_for('alertas.salvar_lembrete', lembrete_id=l.id) }}" class="form-grid" style="max-width:none">
+          <div class="form-row"><label>Nome</label><input name="nome" value="{{ l.nome }}"></div>
+          <div class="form-row"><label>Todo dia do mês</label><input name="dia_mes" type="number" min="1" max="31" value="{{ l.dia_mes }}"></div>
+          <div class="form-row"><label>Avisar</label>
+            <select name="dias_antes">
+              {% for d in [0, 1, 2, 3, 5, 7] %}<option value="{{ d }}" {{ 'selected' if l.dias_antes == d }}>{{ 'No dia do vencimento' if d == 0 else d ~ ' dia(s) antes' }}</option>{% endfor %}
+            </select></div>
+          <div class="form-row"><label>Valor estimado</label><input name="valor_estimado" value="{{ l.valor_estimado|brl if l.valor_estimado is not none else '' }}"></div>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:normal;font-size:13px"><input type="checkbox" name="por_email" {{ 'checked' if l.por_email }} style="width:auto"> Também por e-mail</label>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:normal;font-size:13px"><input type="checkbox" name="ativo" {{ 'checked' if l.ativo }} style="width:auto"> Ativo</label>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </form>
+        <form method="post" action="{{ url_for('alertas.excluir_lembrete', lembrete_id=l.id) }}" data-confirmar="Excluir o lembrete '{{ l.nome }}'?" style="margin-top:8px">
+          <button class="btn btn-ghost" style="width:100%;justify-content:center;color:var(--brick)">Excluir</button>
+        </form>
+      </div>
+    </details>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:24px;background:var(--paper-raised);border-radius:var(--radius)">Nenhum lembrete ainda.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

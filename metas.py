@@ -3,6 +3,7 @@ from datetime import date
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g
 
 import db
+import alertas
 from auth import login_required, requer_organizacao
 
 metas_bp = Blueprint("metas", __name__, url_prefix="/metas")
@@ -69,6 +70,11 @@ def depositar(meta_id):
         flash("🎉 Meta atingida! Parabéns.", "ok")
     else:
         flash("Valor registrado na meta.", "ok")
+    if novo_status:
+        _meta = db.buscar_meta(meta_id, org_id)
+        alertas.registrar_acao(org_id, g.usuario_atual, "guardou numa meta",
+                               f"{_meta['nome'] if _meta else 'Meta'} — R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                               url_for("metas.index"))
     return redirect(url_for("metas.index"))
 
 

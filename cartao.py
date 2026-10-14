@@ -6,6 +6,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g
 
 import db
+import alertas
 from auth import login_required, requer_organizacao
 from parsers import caixa
 import categorias_cartao
@@ -175,6 +176,8 @@ def confirmar():
 
     del _pendentes[token]
     flash(f"Fatura importada com sucesso: {len(cartoes_atualizados)} cartão(ões) atualizados.", "ok")
+    alertas.registrar_acao(org_id, g.usuario_atual, "fatura de cartão importada",
+                           f"Mês {mes_referencia} — {len(cartoes_atualizados)} cartão(ões)", url_for("cartao.painel"))
     return redirect(url_for("cartao.painel"))
 
 

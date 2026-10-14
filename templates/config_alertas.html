@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Quem acompanhar · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>🔔 Quem acompanhar</h1>
+    <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">Escolha de quem você quer receber um aviso sempre que lançar, editar, excluir ou importar algo. Vale só para você.</p>
+  </header>
+
+  {% macro seletor(nome, atual) %}
+  <select name="{{ nome }}" style="padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:12.5px;max-width:170px">
+    <option value="nao" {{ 'selected' if atual == 'nao' }}>Não avisar</option>
+    <option value="app" {{ 'selected' if atual == 'app' }}>Avisar no app</option>
+    <option value="email" {{ 'selected' if atual == 'email' }}>App + e-mail</option>
+  </select>
+  {% endmacro %}
+
+  <form method="post">
+    <div class="card-lista" style="margin-bottom:18px">
+      <div class="card-item">
+        <div class="card-item-icone">👥</div>
+        <div class="card-item-corpo"><div class="card-item-titulo">Qualquer pessoa</div><div class="card-item-sub">Toda ação de qualquer usuário</div></div>
+        {{ seletor('obs_todos', atuais.get('todos', 'nao')) }}
+      </div>
+    </div>
+
+    <h3 style="margin-bottom:10px">Usuários</h3>
+    <div class="card-lista" style="margin-bottom:18px">
+      {% for u in usuarios %}
+      <div class="card-item">
+        <div class="card-item-icone">👤</div>
+        <div class="card-item-corpo"><div class="card-item-titulo">{{ u.nome or u.email }}</div><div class="card-item-sub">{{ u.email }}</div></div>
+        {{ seletor('obs_u_' ~ u.id, atuais.get('u_' ~ u.id, 'nao')) }}
+      </div>
+      {% else %}
+      <div style="color:var(--graphite);padding:14px;background:var(--paper-raised);border-radius:var(--radius);font-size:13px">Não há outros usuários na organização ainda.</div>
+      {% endfor %}
+    </div>
+
+    <h3 style="margin-bottom:4px">Pessoas</h3>
+    <p style="color:var(--graphite);font-size:12px;margin:0 0 10px">Avisa quando qualquer usuário fizer um lançamento marcado com essa pessoa — útil para filhos que não têm login.</p>
+    <div class="card-lista" style="margin-bottom:22px">
+      {% for p in pessoas %}
+      <div class="card-item">
+        <div class="card-item-icone">{{ p.avatar or '🙂' }}</div>
+        <div class="card-item-corpo"><div class="card-item-titulo">{{ p.nome }}</div></div>
+        {{ seletor('obs_p_' ~ p.id, atuais.get('p_' ~ p.id, 'nao')) }}
+      </div>
+      {% else %}
+      <div style="color:var(--graphite);padding:14px;background:var(--paper-raised);border-radius:var(--radius);font-size:13px">Nenhuma pessoa cadastrada. Cadastre em Configurações → Pessoas.</div>
+      {% endfor %}
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center">Salvar</button>
+  </form>
+</div>
+{% endblock %}

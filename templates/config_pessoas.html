@@ -1,17 +1,26 @@
 {% extends "base.html" %}
 {% block title %}Pessoas · HUB-J FLUX{% endblock %}
+{% macro grade_avatar(avatares, atual) %}
+<div class="avatar-grid">
+  {% for a in avatares %}
+  <label class="avatar-opt"><input type="radio" name="avatar" value="{{ a }}" {{ 'checked' if a == atual }}><span>{{ a }}</span></label>
+  {% endfor %}
+</div>
+{% endmacro %}
 {% block content %}
 <div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
     <h1>Pessoas</h1>
     <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
-    <p style="color:var(--graphite);font-size:12.5px">Não precisa ter login pra aparecer aqui (ex: um filho que não usa o app).</p>
+    <p style="color:var(--graphite);font-size:12.5px">Não precisa ter login pra aparecer aqui (ex: um filho que não usa o app). Com a data de nascimento, o app sabe se é criança ou adulto.</p>
   </header>
 
   <details style="margin-bottom:20px">
     <summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:var(--roxo-estrategico);padding:4px 0">+ Nova pessoa</summary>
     <form method="post" action="{{ url_for('config.nova_pessoa') }}" class="form-grid" style="margin-top:14px">
       <div class="form-row"><label>Nome</label><input name="nome" required></div>
+      <div class="form-row"><label>Avatar</label>{{ grade_avatar(avatares, '🙂') }}</div>
+      <div class="form-row"><label>Data de nascimento (opcional)</label><input type="date" name="data_nascimento"></div>
       <div class="form-row"><label>Vincular a um usuário (opcional)</label>
         <select name="usuario_id"><option value="">— nenhum —</option>{% for u in usuarios %}<option value="{{ u.id }}">{{ u.email }}</option>{% endfor %}</select></div>
       <button type="submit" class="btn btn-primary">Criar</button>
@@ -20,17 +29,22 @@
 
   <div class="card-lista">
     {% for p in pessoas %}
+    {% set anos = p.data_nascimento|idade %}
     <details class="card-item-expandivel">
       <summary class="card-item" style="cursor:pointer">
-        <div class="card-item-icone">🙂</div>
+        <div class="card-item-icone" style="font-size:22px">{{ p.avatar or '🙂' }}</div>
         <div class="card-item-corpo">
           <div class="card-item-titulo">{{ p.nome }}</div>
-          <div class="card-item-sub">{{ 'Aparece no Lançamento' if p.disponivel_lancamento else 'Oculta no Lançamento' }}</div>
+          <div class="card-item-sub">
+            {% if anos is not none %}{{ 'Criança' if anos < 18 else 'Adulto' }} · {{ anos }} anos · {% endif %}{{ 'Aparece no Lançamento' if p.disponivel_lancamento else 'Oculta no Lançamento' }}
+          </div>
         </div>
       </summary>
       <div style="padding:4px 16px 16px">
         <form method="post" action="{{ url_for('config.salvar_pessoa', pessoa_id=p.id) }}" class="form-grid">
           <div class="form-row"><label>Nome</label><input name="nome" value="{{ p.nome }}"></div>
+          <div class="form-row"><label>Avatar</label>{{ grade_avatar(avatares, p.avatar) }}</div>
+          <div class="form-row"><label>Data de nascimento</label><input type="date" name="data_nascimento" value="{{ p.data_nascimento or '' }}"></div>
           <div class="form-row"><label>Usuário vinculado</label>
             <select name="usuario_id"><option value="">— nenhum —</option>{% for u in usuarios %}<option value="{{ u.id }}" {{ 'selected' if u.id == p.usuario_id }}>{{ u.email }}</option>{% endfor %}</select></div>
           <label style="display:flex;align-items:center;gap:8px;font-weight:normal;font-size:13px">

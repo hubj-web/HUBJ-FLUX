@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g
 
 import db
@@ -6,6 +7,22 @@ import email_service
 from auth import login_required, requer_organizacao, requer_papel
 
 config_bp = Blueprint("config", __name__, url_prefix="/configuracoes")
+
+AVATARES = ["🙂", "😎", "👨", "👩", "🧔", "👴", "👵", "🧑", "👦", "👧", "🧒", "👶",
+            "🦸", "🦊", "🐶", "🐱", "🐼", "⚽", "🎮", "🎨", "🎸", "🚀"]
+
+
+def _avatar():
+    escolhido = request.form.get("avatar")
+    return escolhido if escolhido in AVATARES else None
+
+
+def _data_nasc():
+    texto = (request.form.get("data_nascimento") or "").strip()
+    try:
+        return datetime.strptime(texto, "%Y-%m-%d").date() if texto else None
+    except ValueError:
+        return None
 
 
 @config_bp.route("/")
@@ -249,7 +266,7 @@ def excluir_cartao(cartao_id):
 @requer_organizacao
 def pessoas():
     org_id = g.usuario_atual["organizacao_id"]
-    return render_template("config_pessoas.html", pessoas=db.listar_pessoas_todas(org_id),
+    return render_template("config_pessoas.html", avatares=AVATARES, pessoas=db.listar_pessoas_todas(org_id),
                             usuarios=db.listar_usuarios_por_organizacao(org_id))
 
 
@@ -262,7 +279,7 @@ def nova_pessoa():
     if not nome:
         flash("Informe o nome da pessoa.", "erro")
         return redirect(url_for("config.pessoas"))
-    db.criar_pessoa_manual(org_id, nome, request.form.get("usuario_id") or None)
+    db.criar_pessoa_manual(org_id, nome, request.form.get("usuario_id") or None, _avatar(), _data_nasc())
     flash(f"Pessoa \"{nome}\" cadastrada - já aparece no seletor de Lançamento.", "ok")
     return redirect(url_for("config.pessoas"))
 
@@ -274,7 +291,7 @@ def salvar_pessoa(pessoa_id):
     org_id = g.usuario_atual["organizacao_id"]
     db.atualizar_pessoa(
         pessoa_id, org_id, request.form.get("nome", "").strip(),
-        request.form.get("usuario_id") or None, request.form.get("disponivel_lancamento") == "on",
+        request.form.get("usuario_id") or None, request.form.get("disponivel_lancamento") == "on", _avatar(), _data_nasc(),
     )
     flash("Pessoa atualizada.", "ok")
     return redirect(url_for("config.pessoas"))

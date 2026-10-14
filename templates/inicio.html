@@ -2,9 +2,12 @@
 {% block title %}Início · HUB-J FLUX{% endblock %}
 {% block content %}
 <div class="content" style="max-width:780px;margin:0 auto">
-  <header class="panel-head">
-    <h1>Olá, {{ usuario.nome or usuario.email }}</h1>
-    <p>{{ organizacao.nome if organizacao else '' }}</p>
+  <header class="panel-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+    <div style="min-width:0">
+      <h1>Olá, {{ usuario.nome or usuario.email }}</h1>
+      <p>{{ organizacao.nome if organizacao else '' }}</p>
+    </div>
+    <a href="{{ url_for('alertas.index') }}" class="sino" aria-label="Alertas">🔔{% if alertas_nao_lidas %}<span class="sino-badge">{{ alertas_nao_lidas if alertas_nao_lidas < 10 else '9+' }}</span>{% endif %}</a>
   </header>
 
   {% if not setup_concluido %}
@@ -23,6 +26,11 @@
   <div class="summary-cell" style="text-align:center;margin-bottom:14px;padding:24px">
     <span class="label">Saldo do mês</span>
     <div class="value" style="font-size:32px;margin-top:6px;color:{{ 'var(--success-dark)' if totais.saldo >= 0 else 'var(--danger-dark)' }}">R$ {{ totais.saldo|brl }}</div>
+    {% if reservado_metas > 0 %}
+    <div style="font-size:12px;color:var(--graphite);margin-top:6px">
+      🎯 R$ {{ reservado_metas|brl }} já reservados em metas — R$ {{ saldo_livre|brl }} realmente livres
+    </div>
+    {% endif %}
   </div>
 
   <div class="review-summary resumo-flex">

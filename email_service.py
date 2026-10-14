@@ -46,3 +46,21 @@ def enviar_convite_admin_cliente(email, nome_organizacao):
 def enviar_convite_membro(email, nome_organizacao):
     link = Config.APP_BASE_URL.rstrip("/") + "/login-page"
     return _enviar(email, f"Você foi convidado para {nome_organizacao} — HUB-J FLUX", _template(email, nome_organizacao, link))
+
+
+def enviar_alerta(email, titulo, mensagem, link_relativo=None):
+    """E-mail de alerta (ação de outra pessoa ou lembrete de vencimento)."""
+    import html as _html
+    link = Config.APP_BASE_URL.rstrip("/") + (link_relativo or "/alertas")
+    corpo = f"""
+    <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto">
+      <h2 style="color:#3E007B">HUB-J FLUX</h2>
+      <p style="font-size:16px"><strong>{_html.escape(titulo)}</strong></p>
+      <p>{_html.escape(mensagem or "")}</p>
+      <p style="margin:26px 0">
+        <a href="{link}" style="background:#FF751F;color:#fff;padding:12px 22px;border-radius:24px;text-decoration:none;font-weight:bold">Abrir no app</a>
+      </p>
+      <p style="color:#8B84A0;font-size:12px">Você recebe este e-mail porque ativou esse alerta no HUB-J FLUX.</p>
+    </div>
+    """
+    return _enviar(email, f"HUB-J FLUX · {titulo}", corpo)

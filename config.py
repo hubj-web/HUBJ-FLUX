@@ -10,4 +10,5 @@ class Config:
     SUPER_ADMIN_EMAIL = os.environ["SUPER_ADMIN_EMAIL"].strip().lower()
     APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
     RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+    CRON_SECRET = os.environ.get("CRON_SECRET")
     EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE", "HUB-J FLUX <onboarding@resend.dev>")

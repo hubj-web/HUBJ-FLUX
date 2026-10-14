@@ -4,7 +4,8 @@
 <div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
     <h1>Relatórios</h1>
-    <p><a href="{{ url_for('relatorios.exportar_csv', mes=mes_referencia) }}" class="btn btn-primary" style="padding:6px 14px;font-size:12.5px">⬇ Exportar CSV</a></p>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
+       <a href="{{ url_for('relatorios.exportar_csv', mes=mes_referencia) }}" class="btn btn-primary" style="padding:6px 14px;font-size:12.5px">⬇ Exportar CSV</a></p>
   </header>
 
   <div class="filters" style="align-items:center;margin-bottom:20px;justify-content:center">

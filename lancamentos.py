@@ -5,6 +5,7 @@ from dateutil.relativedelta import relativedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, Response, abort
 
 import db
+import alertas
 from auth import login_required, requer_organizacao
 import regras_negocio
 
@@ -158,6 +159,12 @@ def novo():
             db.salvar_anexo(lanc["id"], arquivo_anexo.filename, arquivo_anexo.mimetype, conteudo_anexo)
         flash("Lançamento criado com sucesso.", "ok")
 
+    _rotulo = "despesa" if tipo == "despesa" else "receita"
+    _extra = f" em {num_parcelas}x" if (parcelado and num_parcelas > 1) else ""
+    alertas.registrar_acao(
+        org_id, g.usuario_atual, f"nova {_rotulo}",
+        f"{descricao} — {_fmt_moeda(valor_total)}{_extra}", url_for("lanc.extrato"), pessoa_id)
+
     return redirect(url_for("lanc.novo", tipo=tipo))
 
 
@@ -207,8 +214,14 @@ def extrato():
 @login_required
 @requer_organizacao
 def excluir(lid):
-    db.excluir_lancamento(lid, g.usuario_atual["organizacao_id"])
+    _org = g.usuario_atual["organizacao_id"]
+    _l = db.buscar_lancamento(lid, _org)
+    db.excluir_lancamento(lid, _org)
     flash("Lançamento excluído.", "ok")
+    if _l:
+        alertas.registrar_acao(_org, g.usuario_atual, "lançamento excluído",
+                               f"{_l['descricao'] or 'Sem descrição'} — {_fmt_moeda(float(_l['valor']))}",
+                               url_for("lanc.extrato"), _l["pessoa_id"])
     return redirect(url_for("lanc.extrato"))
 
 
@@ -230,6 +243,9 @@ def duplicar(lid):
         "observacao": original["observacao"], "taxa_juros_mensal": None,
     }, g.usuario_atual["id"])
     flash("Lançamento duplicado com a data de hoje.", "ok")
+    alertas.registrar_acao(org_id, g.usuario_atual, "lançamento duplicado",
+                           f"{original['descricao'] or 'Sem descrição'} — {_fmt_moeda(float(original['valor']))}",
+                           url_for("lanc.extrato"), original["pessoa_id"])
     return redirect(url_for("lanc.extrato"))
 
 
@@ -270,6 +286,9 @@ def editar(lid):
         "pessoa_id": request.form.get("pessoa_id") or None, "observacao": request.form.get("observacao", "").strip(),
     })
     flash("Lançamento atualizado.", "ok")
+    alertas.registrar_acao(org_id, g.usuario_atual, "lançamento editado",
+                           f"{descricao} — {_fmt_moeda(valor)}", url_for("lanc.extrato"),
+                           request.form.get("pessoa_id") or None)
     return redirect(url_for("lanc.extrato"))
 
 
@@ -318,6 +337,8 @@ def lancar_recorrente(tid):
         "observacao": f"Lançado a partir do modelo recorrente \"{tpl['nome']}\"",
     }, g.usuario_atual["id"])
     flash(f"\"{tpl['nome']}\" lançado hoje.", "ok")
+    alertas.registrar_acao(org_id, g.usuario_atual, "despesa recorrente lançada",
+                           f"{tpl['nome']} — {_fmt_moeda(float(tpl['valor']))}", url_for("lanc.extrato"))
     return redirect(url_for("lanc.recorrentes"))
 
 
