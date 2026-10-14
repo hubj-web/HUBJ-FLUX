@@ -5,7 +5,7 @@ são sempre fixos (Mais garante que ninguém fique sem acesso às telas)."""
 # chave: (ícone, rótulo, endpoint, prefixos de URL para marcar como ativo)
 CATALOGO = {
     "extrato": ("🧾", "Extrato", "lanc.extrato", ["/extrato"]),
-    "cartao": ("💳", "Cartão", "cartao.importar", ["/cartao"]),
+    "cartao": ("💳", "Cartão", "cartao.painel", ["/cartao"]),
     "planejamento": ("📝", "Planejamento", "plan.index", ["/planejamento"]),
     "controle": ("🎛️", "Controle", "controle.index", ["/controle"]),
     "metas": ("🎯", "Metas", "metas.index", ["/metas"]),

@@ -99,16 +99,32 @@
     });
   }
 
+  // <<SUBMIT-GUARD
   document.querySelectorAll('form:not([data-confirmar])').forEach(function (form) {
-    form.addEventListener('submit', function () {
-      var btn = form.querySelector('button[type="submit"]');
-      if (btn && !btn.disabled) {
-        btn.dataset.textoOriginal = btn.textContent;
-        btn.textContent = 'Salvando...';
-        btn.disabled = true;
+    form.addEventListener('submit', function (ev) {
+      if (form.dataset.enviando === 'true') { ev.preventDefault(); return; }
+      form.dataset.enviando = 'true';
+      var btn = ev.submitter || form.querySelector('button[type="submit"]');
+      if (btn) {
+        // O botão só é desabilitado DEPOIS que o navegador monta os dados do formulário:
+        // botão desabilitado não envia seu name/value (era o que impedia salvar os atalhos).
+        setTimeout(function () {
+          btn.dataset.textoOriginal = btn.textContent;
+          btn.textContent = 'Salvando...';
+          btn.disabled = true;
+        }, 0);
       }
     });
   });
+  // Voltar pelo botão do celular/navegador não pode deixar o botão preso em "Salvando..."
+  window.addEventListener('pageshow', function (ev) {
+    if (!ev.persisted) return;
+    document.querySelectorAll('form').forEach(function (f) { f.dataset.enviando = ''; });
+    document.querySelectorAll('button[disabled][data-texto-original]').forEach(function (b) {
+      b.textContent = b.dataset.textoOriginal; b.disabled = false;
+    });
+  });
+  // SUBMIT-GUARD>>
 </script>
 
 <div class="modal-overlay" id="modal-confirmar">

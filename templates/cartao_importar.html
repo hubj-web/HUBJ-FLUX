@@ -7,7 +7,7 @@
     <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
        <a href="{{ url_for('cartao.faturas') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Faturas importadas</a>
        <a href="{{ url_for('cartao.painel') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Painel do cartão</a>
-       <a href="{{ url_for('cartao.transacoes') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Transações</a></p>
+       <a href="{{ url_for('cartao.transacoes') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Compras</a></p>
   </header>
   <p style="color:var(--ink-soft)">Hoje o sistema lê faturas <strong>Cartões CAIXA</strong> em PDF. Cada pessoa identificada na fatura (titular + adicionais) vira um cartão próprio no sistema, consolidado por pessoa (não por número de cartão).</p>
   <form method="post" enctype="multipart/form-data" class="form-grid">

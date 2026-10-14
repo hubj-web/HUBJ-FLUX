@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Fornecedores do cartão · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>🏷️ Fornecedores do cartão</h1>
+    <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">Ensine o app: <strong>quando a fatura trouxer um texto</strong>, ele usa o nome e a categoria que você definir — nas compras já importadas e nas próximas faturas. Resolve nomes que mudam de um mês para outro (ex: "LOJA X*SP" e "LOJA X" viram o mesmo fornecedor).</p>
+  </header>
+
+  <h3>Nova regra</h3>
+  <form method="post" action="{{ url_for('config.nova_regra_fornecedor') }}" class="form-grid" style="max-width:none;margin:10px 0 24px">
+    <div class="form-row"><label>Quando a fatura contiver *</label><input name="padrao" value="{{ prefill }}" required placeholder="Ex: UBER"></div>
+    <div class="form-row"><label>Chamar de</label><input name="nome" placeholder="Ex: Uber (se vazio, usa o texto acima)"></div>
+    <div class="form-row"><label>Categoria</label>
+      <select name="categoria_id"><option value="">— manter a atual —</option>{% for c in categorias %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}</select></div>
+    <button type="submit" class="btn btn-primary">Criar e aplicar</button>
+  </form>
+
+  {% if sugestoes %}
+  <h3>Compras sem categoria</h3>
+  <p style="color:var(--graphite);font-size:12px;margin:2px 0 10px">Os fornecedores que mais pesam e ainda estão sem categoria. Toque para criar uma regra.</p>
+  <div class="card-lista" style="margin-bottom:24px">
+    {% for s in sugestoes %}
+    <a href="{{ url_for('config.fornecedores', padrao=s.fornecedor) }}" class="card-item" style="text-decoration:none;color:inherit;padding:10px 14px">
+      <div class="card-item-corpo"><div class="card-item-titulo" style="font-size:13px">{{ s.fornecedor }}</div><div class="card-item-sub">{{ s.n }} compra(s)</div></div>
+      <div class="card-item-valor" style="font-size:13px">R$ {{ s.total|brl }}</div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <h3>Minhas regras</h3>
+  <div class="card-lista" style="margin-top:10px">
+    {% for r in regras %}
+    <details class="card-item-expandivel">
+      <summary class="card-item" style="cursor:pointer">
+        <div class="card-item-icone">🏷️</div>
+        <div class="card-item-corpo"><div class="card-item-titulo">{{ r.nome }}</div><div class="card-item-sub">contém "{{ r.padrao }}"{% if r.categoria_nome %} · {{ r.categoria_nome }}{% endif %}</div></div>
+      </summary>
+      <div style="padding:4px 16px 16px">
+        <form method="post" action="{{ url_for('config.salvar_regra_fornecedor', regra_id=r.id) }}" class="form-grid">
+          <div class="form-row"><label>Quando a fatura contiver</label><input name="padrao" value="{{ r.padrao }}" required></div>
+          <div class="form-row"><label>Chamar de</label><input name="nome" value="{{ r.nome }}"></div>
+          <div class="form-row"><label>Categoria</label>
+            <select name="categoria_id"><option value="">— manter a atual —</option>{% for c in categorias %}<option value="{{ c.id }}" {{ 'selected' if c.id == r.categoria_id }}>{{ c.nome }}</option>{% endfor %}</select></div>
+          <button type="submit" class="btn btn-primary">Salvar e aplicar de novo</button>
+        </form>
+        <form method="post" action="{{ url_for('config.excluir_regra_fornecedor', regra_id=r.id) }}" data-confirmar="Excluir a regra '{{ r.nome }}'? As compras já ajustadas continuam como estão." style="margin-top:8px">
+          <button class="btn btn-ghost" style="width:100%;justify-content:center;color:var(--brick)">Excluir regra</button>
+        </form>
+      </div>
+    </details>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:22px;background:var(--paper-raised);border-radius:var(--radius);font-size:13px">Nenhuma regra ainda.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

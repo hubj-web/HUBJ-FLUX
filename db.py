@@ -489,10 +489,10 @@ def inserir_lancamento_cartao(fatura_id, dados):
     execute(
         """INSERT INTO lancamentos_cartao
              (fatura_id, data_iso, descricao, cidade, valor, sinal, parcela_atual,
-              parcela_total, parcelada, tipo, categoria_id, pessoa_id)
+              parcela_total, parcelada, tipo, categoria_id, pessoa_id, fornecedor)
            VALUES (%(fatura_id)s, %(data_iso)s, %(descricao)s, %(cidade)s, %(valor)s, %(sinal)s,
-                   %(parcela_atual)s, %(parcela_total)s, %(parcelada)s, %(tipo)s, %(categoria_id)s, %(pessoa_id)s)""",
-        {**dados, "fatura_id": fatura_id},
+                   %(parcela_atual)s, %(parcela_total)s, %(parcelada)s, %(tipo)s, %(categoria_id)s, %(pessoa_id)s, %(fornecedor)s)""",
+        {**dados, "fatura_id": fatura_id, "fornecedor": dados.get("fornecedor")},
     )
 
 
@@ -526,7 +526,8 @@ def ultimas_faturas_por_cartao(organizacao_id):
 
 def listar_lancamentos_cartao(organizacao_id, filtros=None):
     filtros = filtros or {}
-    sql = """SELECT lc.*, f.mes_referencia, c.nome AS cartao_nome, cat.nome AS categoria_nome, p.nome AS pessoa_nome
+    sql = """SELECT lc.*, f.mes_referencia, c.nome AS cartao_nome, cat.nome AS categoria_nome, p.nome AS pessoa_nome,
+                    COALESCE(NULLIF(TRIM(lc.fornecedor), ''), lc.descricao) AS fornecedor_exibicao
              FROM lancamentos_cartao lc
              JOIN faturas f ON f.id = lc.fatura_id JOIN cartoes c ON c.id = f.cartao_id
              LEFT JOIN categorias cat ON cat.id = lc.categoria_id LEFT JOIN pessoas p ON p.id = lc.pessoa_id
@@ -540,6 +541,13 @@ def listar_lancamentos_cartao(organizacao_id, filtros=None):
         sql += " AND lc.pessoa_id = %(pessoa_id)s"; params["pessoa_id"] = filtros["pessoa_id"]
     if filtros.get("busca"):
         sql += " AND lc.descricao ILIKE %(busca)s"; params["busca"] = f"%{filtros['busca']}%"
+    if filtros.get("categoria_id"):
+        if str(filtros["categoria_id"]) == "sem":
+            sql += " AND lc.categoria_id IS NULL"
+        else:
+            sql += " AND lc.categoria_id = %(categoria_id)s"; params["categoria_id"] = filtros["categoria_id"]
+    if filtros.get("fornecedor"):
+        sql += " AND " + _FORN_SQL + " = %(fornecedor)s"; params["fornecedor"] = filtros["fornecedor"].strip().upper()
     sql += " ORDER BY lc.data_iso DESC, lc.id DESC"
     return query_all(sql, params)
 
@@ -906,3 +914,205 @@ def marcar_disparo_lembrete(lembrete_id, data):
 
 def listar_ids_organizacoes_ativas():
     return [r["id"] for r in query_all("SELECT id FROM organizacoes WHERE status = 'ativo'")]
+
+
+
+# ---------- Análise do cartão (resumo por mês, categoria, fornecedor, parcelas) ----------
+
+_BASE_LC = """FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id
+              JOIN cartoes c ON c.id = f.cartao_id
+              LEFT JOIN categorias cat ON cat.id = lc.categoria_id
+              WHERE c.organizacao_id = %s"""
+
+
+def resumo_meses_cartao(organizacao_id):
+    """Uma linha por mês de fatura, com todos os cartões/pessoas somados."""
+    return query_all(
+        """SELECT f.mes_referencia, SUM(f.valor_total) AS total, MIN(f.vencimento) AS vencimento,
+                  MAX(f.limite_disponivel) AS limite_disponivel, MAX(f.limite_total) AS limite_total,
+                  COUNT(*) AS n_cartoes
+           FROM faturas f JOIN cartoes c ON c.id = f.cartao_id
+           WHERE c.organizacao_id = %s GROUP BY f.mes_referencia ORDER BY f.mes_referencia DESC""",
+        (organizacao_id,),
+    )
+
+
+def faturas_do_mes(organizacao_id, mes):
+    return query_all(
+        """SELECT f.id, f.valor_total, f.vencimento, c.nome AS cartao_nome,
+                  (SELECT COUNT(*) FROM lancamentos_cartao lc WHERE lc.fatura_id = f.id) AS n_transacoes
+           FROM faturas f JOIN cartoes c ON c.id = f.cartao_id
+           WHERE c.organizacao_id = %s AND f.mes_referencia = %s ORDER BY f.valor_total DESC""",
+        (organizacao_id, mes),
+    )
+
+
+def gastos_por_categoria_cartao(organizacao_id, mes):
+    return query_all(
+        "SELECT cat.id AS categoria_id, COALESCE(cat.nome, 'Sem categoria') AS categoria, "
+        "SUM(lc.valor) AS total, COUNT(*) AS n " + _BASE_LC +
+        " AND f.mes_referencia = %s AND lc.sinal = 'D' GROUP BY cat.id, cat.nome ORDER BY total DESC",
+        (organizacao_id, mes),
+    )
+
+
+def gastos_por_fornecedor_cartao(organizacao_id, mes, limite=8):
+    return query_all(
+        "SELECT " + _FORN_SQL + " AS fornecedor, SUM(lc.valor) AS total, COUNT(*) AS n " + _BASE_LC +
+        " AND f.mes_referencia = %s AND lc.sinal = 'D' GROUP BY " + _FORN_SQL + " ORDER BY total DESC LIMIT %s",
+        (organizacao_id, mes, limite),
+    )
+
+
+def creditos_cartao_mes(organizacao_id, mes):
+    row = query_one(
+        "SELECT COALESCE(SUM(lc.valor), 0) AS total " + _BASE_LC + " AND f.mes_referencia = %s AND lc.sinal = 'C'",
+        (organizacao_id, mes),
+    )
+    return float(row["total"]) if row else 0.0
+
+
+def compras_parceladas_cartao(organizacao_id):
+    return query_all(
+        """SELECT lc.id, COALESCE(NULLIF(TRIM(lc.fornecedor), ''), lc.descricao) AS descricao, lc.nao_projetar,
+                  lc.valor, lc.parcela_atual, lc.parcela_total, lc.pessoa_id,
+                  f.mes_referencia, p.nome AS pessoa_nome
+           FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id
+                JOIN cartoes c ON c.id = f.cartao_id LEFT JOIN pessoas p ON p.id = lc.pessoa_id
+           WHERE c.organizacao_id = %s AND lc.sinal = 'D' AND lc.parcela_total > 1 AND lc.parcela_atual IS NOT NULL""",
+        (organizacao_id,),
+    )
+
+
+def excluir_faturas_mes(organizacao_id, mes):
+    execute(
+        "DELETE FROM faturas WHERE mes_referencia = %s AND cartao_id IN (SELECT id FROM cartoes WHERE organizacao_id = %s)",
+        (mes, organizacao_id),
+    )
+
+
+
+# ---------- Correções manuais do cartão ----------
+
+# nome "canônico" do fornecedor: o que foi definido à mão/por regra, senão o texto da fatura
+_FORN_SQL = "UPPER(TRIM(COALESCE(NULLIF(TRIM(lc.fornecedor), ''), lc.descricao)))"
+
+
+def buscar_lancamento_cartao(lc_id, organizacao_id):
+    return query_one(
+        """SELECT lc.*, f.mes_referencia, f.cartao_id, c.nome AS cartao_nome,
+                  COALESCE(NULLIF(TRIM(lc.fornecedor), ''), lc.descricao) AS fornecedor_exibicao
+           FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id JOIN cartoes c ON c.id = f.cartao_id
+           WHERE lc.id = %s AND c.organizacao_id = %s""",
+        (lc_id, organizacao_id),
+    )
+
+
+def _ajustar_total_fatura(fatura_id, delta):
+    if delta:
+        execute("UPDATE faturas SET valor_total = valor_total + %s WHERE id = %s", (delta, fatura_id))
+
+
+def atualizar_lancamento_cartao(lc_id, organizacao_id, d):
+    """Corrige a compra e acerta o total da fatura pela diferença de valor."""
+    from decimal import Decimal
+    antigo = buscar_lancamento_cartao(lc_id, organizacao_id)
+    if not antigo:
+        return False
+    execute(
+        """UPDATE lancamentos_cartao SET fornecedor = %s, data_iso = %s, valor = %s, categoria_id = %s,
+                  pessoa_id = %s, parcela_atual = %s, parcela_total = %s, parcelada = %s, nao_projetar = %s
+           WHERE id = %s""",
+        (d["fornecedor"], d["data_iso"], d["valor"], d["categoria_id"], d["pessoa_id"], d["parcela_atual"],
+         d["parcela_total"], bool(d["parcela_total"] and d["parcela_total"] > 1), bool(d["nao_projetar"]), lc_id),
+    )
+    sinal = 1 if antigo["sinal"] == "D" else -1
+    delta = (Decimal(str(d["valor"])) - Decimal(antigo["valor"])).quantize(Decimal("0.01")) * sinal
+    _ajustar_total_fatura(antigo["fatura_id"], delta)
+    return True
+
+
+def excluir_lancamento_cartao(lc_id, organizacao_id):
+    antigo = buscar_lancamento_cartao(lc_id, organizacao_id)
+    if not antigo:
+        return False
+    execute("DELETE FROM lancamentos_cartao WHERE id = %s", (lc_id,))
+    _ajustar_total_fatura(antigo["fatura_id"], -antigo["valor"] * (1 if antigo["sinal"] == "D" else -1))
+    return True
+
+
+# ---- regras de fornecedor ----
+
+def listar_regras_fornecedor(organizacao_id):
+    return query_all(
+        """SELECT r.*, c.nome AS categoria_nome FROM regras_fornecedor r
+           LEFT JOIN categorias c ON c.id = r.categoria_id
+           WHERE r.organizacao_id = %s ORDER BY LENGTH(r.padrao) DESC, r.nome""",
+        (organizacao_id,),
+    )
+
+
+def criar_regra_fornecedor(organizacao_id, padrao, nome, categoria_id):
+    return execute(
+        """INSERT INTO regras_fornecedor (organizacao_id, padrao, nome, categoria_id) VALUES (%s, %s, %s, %s)
+           ON CONFLICT (organizacao_id, padrao) DO UPDATE SET nome = EXCLUDED.nome, categoria_id = EXCLUDED.categoria_id
+           RETURNING *""",
+        (organizacao_id, padrao, nome, categoria_id),
+    )
+
+
+def atualizar_regra_fornecedor(regra_id, organizacao_id, padrao, nome, categoria_id):
+    execute("UPDATE regras_fornecedor SET padrao = %s, nome = %s, categoria_id = %s WHERE id = %s AND organizacao_id = %s",
+            (padrao, nome, categoria_id, regra_id, organizacao_id))
+
+
+def excluir_regra_fornecedor(regra_id, organizacao_id):
+    execute("DELETE FROM regras_fornecedor WHERE id = %s AND organizacao_id = %s", (regra_id, organizacao_id))
+
+
+def aplicar_regra_fornecedor(organizacao_id, padrao, nome, categoria_id):
+    """Aplica a regra nas compras JÁ importadas (a busca é por trecho do texto, sem diferenciar
+    maiúsculas). Devolve quantas compras foram ajustadas."""
+    n = query_one(
+        """SELECT COUNT(*) AS n FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id
+           JOIN cartoes c ON c.id = f.cartao_id
+           WHERE c.organizacao_id = %s AND POSITION(%s IN UPPER(lc.descricao)) > 0""",
+        (organizacao_id, padrao),
+    )["n"]
+    execute(
+        """UPDATE lancamentos_cartao lc SET fornecedor = %s, categoria_id = COALESCE(%s, lc.categoria_id)
+           FROM faturas f JOIN cartoes c ON c.id = f.cartao_id
+           WHERE lc.fatura_id = f.id AND c.organizacao_id = %s AND POSITION(%s IN UPPER(lc.descricao)) > 0""",
+        (nome, categoria_id, organizacao_id, padrao),
+    )
+    return int(n)
+
+
+def fornecedores_sem_categoria(organizacao_id, limite=10):
+    return query_all(
+        "SELECT " + _FORN_SQL + " AS fornecedor, SUM(lc.valor) AS total, COUNT(*) AS n " + _BASE_LC +
+        " AND lc.sinal = 'D' AND lc.categoria_id IS NULL GROUP BY " + _FORN_SQL + " ORDER BY total DESC LIMIT %s",
+        (organizacao_id, limite),
+    )
+
+
+# ---- compras parceladas cadastradas à mão ----
+
+def listar_compromissos(organizacao_id):
+    return query_all(
+        """SELECT k.*, p.nome AS pessoa_nome FROM compromissos_cartao k LEFT JOIN pessoas p ON p.id = k.pessoa_id
+           WHERE k.organizacao_id = %s ORDER BY k.mes_inicial, k.id""",
+        (organizacao_id,),
+    )
+
+
+def criar_compromisso(organizacao_id, descricao, valor_parcela, num_parcelas, mes_inicial, pessoa_id):
+    execute(
+        "INSERT INTO compromissos_cartao (organizacao_id, descricao, valor_parcela, num_parcelas, mes_inicial, pessoa_id) "
+        "VALUES (%s, %s, %s, %s, %s, %s)",
+        (organizacao_id, descricao, valor_parcela, num_parcelas, mes_inicial, pessoa_id),
+    )
+
+
+def excluir_compromisso(compromisso_id, organizacao_id):
+    execute("DELETE FROM compromissos_cartao WHERE id = %s AND organizacao_id = %s", (compromisso_id, organizacao_id))

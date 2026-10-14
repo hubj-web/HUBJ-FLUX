@@ -1,34 +1,49 @@
 {% extends "base.html" %}
-{% block title %}Faturas Importadas · HUB-J FLUX{% endblock %}
+{% block title %}Faturas · HUB-J FLUX{% endblock %}
 {% block content %}
-<div class="content" style="max-width:900px;margin:0 auto">
+<div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
-    <h1>Faturas importadas</h1>
-    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
+    <h1>🧾 Faturas importadas</h1>
+    <p><a href="{{ url_for('cartao.painel') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
        <a href="{{ url_for('cartao.importar') }}" class="btn btn-primary" style="padding:4px 10px;font-size:12px">+ Importar fatura</a></p>
+    {% if meses %}<p style="color:var(--graphite);font-size:12.5px">{{ meses|length }} fatura(s) · total R$ {{ total_geral|brl }}. Toque numa fatura para ver os cartões dela.</p>{% endif %}
   </header>
-  <div class="table-wrap">
-    <table class="data-table">
-      <thead><tr><th>Mês ref.</th><th>Cartão</th><th>Vencimento</th><th class="num">Valor total</th><th class="num">Lançamentos</th><th></th></tr></thead>
-      <tbody>
-      {% for f in faturas %}
-        <tr>
-          <td class="mono">{{ f.mes_referencia }}</td>
-          <td>{{ f.cartao_nome }}</td>
-          <td class="mono">{{ f.vencimento }}</td>
-          <td class="num">R$ {{ (f.valor_total or 0)|brl }}</td>
-          <td class="num mono">{{ f.n_transacoes }}</td>
-          <td>
-            <form method="post" action="{{ url_for('cartao.excluir_fatura', fatura_id=f.id) }}" style="display:inline" data-confirmar="Excluir esta fatura e seus lançamentos?">
-              <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px;color:var(--brick)">Excluir</button>
+
+  <div class="card-lista">
+    {% for m in meses %}
+    <details class="card-item-expandivel">
+      <summary class="card-item" style="cursor:pointer">
+        <div class="card-item-icone">🧾</div>
+        <div class="card-item-corpo">
+          <div class="card-item-titulo">Fatura de {{ m.mes_referencia|mes_label }}</div>
+          <div class="card-item-sub">{% if m.vencimento %}vence {{ m.vencimento.strftime('%d/%m') }} · {% endif %}{{ m.cartoes|length }} cartão(ões) · {{ m.n_transacoes }} lançamentos</div>
+        </div>
+        <div class="card-item-valor">R$ {{ m.total|brl }}</div>
+      </summary>
+      <div style="padding:0 14px 14px">
+        <div class="card-lista">
+          {% for f in m.cartoes %}
+          <div class="card-item" style="box-shadow:none;background:var(--bg-app);padding:10px 12px">
+            <div class="card-item-corpo"><div class="card-item-titulo" style="font-size:13px;white-space:normal">{{ f.cartao_nome }}</div><div class="card-item-sub">{{ f.n_transacoes }} lançamentos</div></div>
+            <div class="card-item-valor" style="font-size:13px">R$ {{ f.valor_total|brl }}</div>
+            <form method="post" action="{{ url_for('cartao.excluir_fatura', fatura_id=f.id) }}" data-confirmar="Excluir só a parte de '{{ f.cartao_nome }}' desta fatura?">
+              <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--brick)">Excluir</button>
             </form>
-          </td>
-        </tr>
-      {% else %}
-        <tr><td colspan="6" style="text-align:center;color:var(--graphite);padding:24px">Nenhuma fatura importada ainda.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="filters" style="margin-top:12px">
+          <a href="{{ url_for('cartao.painel', mes=m.mes_referencia) }}" class="btn btn-ghost" style="padding:6px 12px;font-size:12px">📊 Resumo</a>
+          <a href="{{ url_for('cartao.transacoes', mes=m.mes_referencia) }}" class="btn btn-ghost" style="padding:6px 12px;font-size:12px">🛍️ Compras</a>
+          <form method="post" action="{{ url_for('cartao.excluir_mes', mes=m.mes_referencia) }}" data-confirmar="Excluir a fatura inteira de {{ m.mes_referencia|mes_label }}, com todos os cartões e lançamentos?">
+            <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--brick)">🗑 Excluir fatura inteira</button>
+          </form>
+        </div>
+      </div>
+    </details>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:30px 20px;background:var(--paper-raised);border-radius:var(--radius)">Nenhuma fatura importada ainda.</div>
+    {% endfor %}
   </div>
 </div>
 {% endblock %}

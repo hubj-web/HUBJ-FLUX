@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Compras parceladas à mão · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:560px;margin:0 auto">
+  <header class="panel-head">
+    <h1>📆 Compras parceladas à mão</h1>
+    <p><a href="{{ url_for('cartao.painel') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">Comprou parcelado depois que a fatura fechou? Cadastre aqui para a projeção dos próximos meses já contar com essas parcelas.
+      {% if ultimo %}Última fatura importada: <strong>{{ ultimo|mes_label }}</strong>. Quando a fatura que traz a compra for importada, o app passa a usar a fatura e deixa de contar a parcela cadastrada, então não há contagem dobrada.{% endif %}</p>
+  </header>
+
+  <form method="post" class="form-grid" style="max-width:none;margin-bottom:26px">
+    <div class="form-row"><label>O que foi comprado? *</label><input name="descricao" required placeholder="Ex: Geladeira"></div>
+    <div class="form-row"><label>Valor de cada parcela (R$) *</label><input name="valor_parcela" required placeholder="0,00"></div>
+    <div class="form-row"><label>Número de parcelas *</label><input type="number" name="num_parcelas" min="1" max="60" required placeholder="Ex: 10"></div>
+    <div class="form-row"><label>Mês da 1ª parcela *</label><input type="month" name="mes_inicial" required {% if mes_minimo %}min="{{ mes_minimo }}" value="{{ mes_minimo }}"{% endif %}></div>
+    <div class="form-row"><label>Pessoa</label>
+      <select name="pessoa_id"><option value="">— nenhuma —</option>{% for p in pessoas %}<option value="{{ p.id }}">{{ (p.avatar ~ ' ') if p.avatar else '' }}{{ p.nome }}</option>{% endfor %}</select></div>
+    <button type="submit" class="btn btn-primary">Cadastrar</button>
+  </form>
+
+  <h3>Cadastradas</h3>
+  <div class="card-lista" style="margin-top:10px">
+    {% for k in compromissos %}
+    <div class="card-item" style="{{ '' if k.ativo else 'opacity:.6' }}">
+      <div class="card-item-icone">📆</div>
+      <div class="card-item-corpo">
+        <div class="card-item-titulo">{{ k.descricao }}</div>
+        <div class="card-item-sub">{{ k.num_parcelas }}x de R$ {{ k.valor_parcela|brl }} a partir de {{ k.mes_inicial|mes_label }}{% if k.pessoa_nome %} · {{ k.pessoa_nome }}{% endif %}<br>
+          {% if k.ativo %}<strong style="color:var(--laranja-evolucao)">contando na projeção</strong>{% else %}já chegou às faturas importadas — não conta mais aqui{% endif %}</div>
+      </div>
+      <form method="post" action="{{ url_for('cartao.excluir_compromisso', compromisso_id=k.id) }}" data-confirmar="Remover '{{ k.descricao }}' da projeção?">
+        <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;color:var(--brick)">Excluir</button>
+      </form>
+    </div>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:22px;background:var(--paper-raised);border-radius:var(--radius);font-size:13px">Nenhuma compra cadastrada à mão.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

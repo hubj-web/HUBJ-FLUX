@@ -1,41 +1,119 @@
 {% extends "base.html" %}
-{% block title %}Painel do Cartão · HUB-J FLUX{% endblock %}
+{% block title %}Cartão · HUB-J FLUX{% endblock %}
 {% block content %}
-<div class="content" style="max-width:820px;margin:0 auto">
+<div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
-    <h1>Painel do cartão</h1>
-    <p><a href="{{ url_for('inicio.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
-       <a href="{{ url_for('cartao.importar') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Importar fatura</a>
-       <a href="{{ url_for('cartao.faturas') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Ver todas as faturas</a>
-       <a href="{{ url_for('cartao.transacoes') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Transações</a></p>
-    <p style="color:var(--graphite);font-size:13px">Mostra a fatura mais recente de cada cartão cadastrado (1 cartão por pessoa).</p>
+    <h1>💳 Cartão de crédito</h1>
+    <p><a href="{{ url_for('cartao.importar') }}" class="btn btn-primary" style="padding:6px 14px;font-size:12.5px">+ Importar fatura</a>
+       <a href="{{ url_for('cartao.faturas') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12.5px">🧾 Faturas</a>
+       <a href="{{ url_for('cartao.transacoes') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12.5px">🛍️ Compras</a></p>
   </header>
 
-  {% if faturas %}
-  <div class="review-summary">
-    <div class="summary-cell"><span class="label">Total das faturas mostradas</span><span class="value">R$ {{ total_faturas|brl }}</span></div>
-    <div class="summary-cell"><span class="label">Total de limite disponível</span><span class="value">R$ {{ total_disponivel|brl }}</span></div>
-    <div class="summary-cell"><span class="label">Cartões</span><span class="value">{{ faturas|length }}</span></div>
-  </div>
-
-  <div class="table-wrap">
-    <table class="data-table">
-      <thead><tr><th>Cartão</th><th>Mês</th><th>Vencimento</th><th class="num">Valor total</th><th class="num">Limite disponível</th></tr></thead>
-      <tbody>
-      {% for fatura in faturas %}
-        <tr>
-          <td>{{ fatura.cartao_nome }}</td>
-          <td class="mono">{{ fatura.mes_referencia }}</td>
-          <td class="mono">{{ fatura.vencimento }}</td>
-          <td class="num">R$ {{ (fatura.valor_total or 0)|brl }}</td>
-          <td class="num">R$ {{ (fatura.limite_disponivel or 0)|brl }}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+  {% if not resumo %}
+  <div style="text-align:center;color:var(--graphite);padding:36px 20px;background:var(--paper-raised);border-radius:var(--radius)">
+    Nenhuma fatura importada ainda.<br>
+    <span style="font-size:12.5px">Toque em <strong>+ Importar fatura</strong> e envie o PDF da fatura do cartão.</span>
   </div>
   {% else %}
-  <p style="color:var(--graphite)">Nenhuma fatura importada ainda.</p>
+
+  <div class="filters" style="align-items:center;justify-content:center;margin-bottom:16px">
+    {% if mes_anterior %}<a href="{{ url_for('cartao.painel', mes=mes_anterior) }}" class="btn btn-ghost" style="padding:6px 14px">←</a>
+    {% else %}<span class="btn btn-ghost" style="padding:6px 14px;opacity:.35">←</span>{% endif %}
+    <strong class="mono" style="font-size:15px;min-width:90px;text-align:center">{{ mes|mes_label }}</strong>
+    {% if mes_seguinte %}<a href="{{ url_for('cartao.painel', mes=mes_seguinte) }}" class="btn btn-ghost" style="padding:6px 14px">→</a>
+    {% else %}<span class="btn btn-ghost" style="padding:6px 14px;opacity:.35">→</span>{% endif %}
+  </div>
+
+  <div class="summary-cell" style="text-align:center;padding:22px;margin-bottom:12px">
+    <span class="label">Fatura de {{ mes|mes_label }}</span>
+    <div style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:32px;margin-top:6px;color:var(--danger-dark)">R$ {{ atual.total|brl }}</div>
+    <div style="font-size:12.5px;color:var(--graphite);margin-top:4px">
+      {% if atual.vencimento %}vence {{ atual.vencimento.strftime('%d/%m/%Y') }}{% endif %}
+      {% if creditos %}<br>compras R$ {{ compras|brl }} − créditos R$ {{ creditos|brl }}{% endif %}
+    </div>
+    {% if atual.limite_disponivel %}
+    <div style="font-size:12px;color:var(--graphite);margin-top:8px">Limite disponível R$ {{ atual.limite_disponivel|brl }}{% if atual.limite_total %} de R$ {{ atual.limite_total|brl }}{% endif %}</div>
+    {% endif %}
+  </div>
+
+  {% if cartoes_mes|length > 1 %}
+  <div class="card-lista" style="margin-bottom:24px">
+    {% for c in cartoes_mes %}
+    <div class="card-item" style="padding:10px 14px">
+      <div class="card-item-icone">🙂</div>
+      <div class="card-item-corpo"><div class="card-item-titulo" style="font-size:13px;white-space:normal">{{ c.cartao_nome }}</div><div class="card-item-sub">{{ c.n_transacoes }} lançamentos</div></div>
+      <div class="card-item-valor" style="font-size:13.5px">R$ {{ c.valor_total|brl }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <h3>📆 Já comprometido nos próximos meses</h3>
+  <p style="margin:2px 0 8px;font-size:12.5px"><a href="{{ url_for('cartao.compromissos') }}">+ Adicionar compra parcelada que ainda não está nas faturas</a></p>
+  {% if proximos %}
+  <div class="summary-cell" style="margin:10px 0 12px;text-align:center">
+    <span class="label">Parcelas que ainda vão cair</span>
+    <div style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:24px;color:var(--danger-dark)">R$ {{ total_comprometido|brl }}</div>
+    <div style="font-size:11.5px;color:var(--graphite)">somando as parcelas restantes das compras já importadas</div>
+  </div>
+  <div class="card-lista" style="margin-bottom:24px">
+    {% for m in proximos %}
+    <details class="card-item-expandivel">
+      <summary class="card-item" style="cursor:pointer">
+        <div class="card-item-icone">📆</div>
+        <div class="card-item-corpo"><div class="card-item-titulo">{{ m.mes|mes_label }}</div><div class="card-item-sub">{{ m.itens|length }} parcela(s)</div></div>
+        <div class="card-item-valor val-despesa">R$ {{ m.total|brl }}</div>
+      </summary>
+      <div class="card-lista" style="padding:0 14px 14px">
+        {% for it in m.itens %}
+        <div class="card-item" style="box-shadow:none;background:var(--bg-app);padding:9px 12px">
+          <div class="card-item-corpo"><div class="card-item-titulo" style="font-size:12.5px">{{ it.descricao }}</div>
+            <div class="card-item-sub">parcela {{ it.parcela }}{% if it.pessoa %} · {{ it.pessoa }}{% endif %}{% if it.manual_id %} · <strong style="color:var(--laranja-evolucao)">cadastrada à mão</strong>{% endif %}</div></div>
+          <div class="card-item-valor" style="font-size:12.5px">R$ {{ it.valor|brl }}</div>
+          {% if it.compra_id %}<a href="{{ url_for('cartao.editar_compra', lc_id=it.compra_id) }}" title="Ajustar esta compra" style="text-decoration:none;padding:4px 6px">✎</a>
+          {% elif it.manual_id %}<a href="{{ url_for('cartao.compromissos') }}" title="Gerenciar" style="text-decoration:none;padding:4px 6px">✎</a>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color:var(--graphite);font-size:13px;margin:8px 0 24px">Nenhuma parcela futura nas faturas importadas.</p>
+  {% endif %}
+
+  <h3>Mês a mês</h3>
+  <p style="color:var(--graphite);font-size:12px;margin:2px 0 10px">{{ resumo|length }} fatura(s) importada(s) · total R$ {{ total_importado|brl }}</p>
+  <div class="card-lista" style="margin-bottom:24px">
+    {% for r in resumo %}
+    <a href="{{ url_for('cartao.painel', mes=r.mes_referencia) }}" class="card-item {{ 'notif-nova' if r.mes_referencia == mes }}" style="text-decoration:none;color:inherit;flex-direction:column;align-items:stretch;gap:6px;padding:10px 14px">
+      <div class="filters" style="justify-content:space-between"><strong style="font-size:13px">{{ r.mes_referencia|mes_label }}</strong><span class="mono" style="font-size:13px">R$ {{ r.total|brl }}</span></div>
+      <div style="background:var(--gray-light);border-radius:var(--radius-pill);height:7px;overflow:hidden"><div style="width:{{ barras[r.mes_referencia] }}%;height:100%;background:linear-gradient(135deg, var(--roxo-estrategico), #7B2FD0)"></div></div>
+    </a>
+    {% endfor %}
+  </div>
+
+  <h3>Por categoria · {{ mes|mes_label }}</h3>
+  <div class="card-lista" style="margin:10px 0 24px">
+    {% for c in categorias %}
+    <a href="{{ url_for('cartao.transacoes', mes=mes, categoria_id=(c.categoria_id or 'sem')) }}" class="card-item" style="text-decoration:none;color:inherit;flex-direction:column;align-items:stretch;gap:6px;padding:10px 14px">
+      <div class="filters" style="justify-content:space-between"><strong style="font-size:13px">{{ c.categoria }}</strong><span class="mono" style="font-size:12.5px">R$ {{ c.total|brl }} · {{ c.pct }}%</span></div>
+      <div style="background:var(--gray-light);border-radius:var(--radius-pill);height:7px;overflow:hidden"><div style="width:{{ c.pct }}%;height:100%;background:linear-gradient(135deg, var(--laranja-evolucao), #FF8B3D)"></div></div>
+    </a>
+    {% else %}
+    <div style="color:var(--graphite);padding:14px;background:var(--paper-raised);border-radius:var(--radius);font-size:13px">Sem compras neste mês.</div>
+    {% endfor %}
+  </div>
+
+  <h3>Maiores fornecedores · {{ mes|mes_label }}</h3>
+  <div class="card-lista" style="margin-top:10px">
+    {% for f in fornecedores %}
+    <a href="{{ url_for('cartao.transacoes', mes=mes, fornecedor=f.fornecedor) }}" class="card-item" style="text-decoration:none;color:inherit;padding:10px 14px">
+      <div class="card-item-corpo"><div class="card-item-titulo" style="font-size:13px">{{ f.fornecedor }}</div><div class="card-item-sub">{{ f.n }} compra(s) · {{ f.pct }}%</div></div>
+      <div class="card-item-valor" style="font-size:13px">R$ {{ f.total|brl }}</div>
+    </a>
+    {% endfor %}
+  </div>
   {% endif %}
 </div>
 {% endblock %}

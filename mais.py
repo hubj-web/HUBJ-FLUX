@@ -37,6 +37,8 @@ def barra():
                 abort(403)
             db.salvar_nav_padrao_org(org_id, valor)
             flash("Padrão da organização atualizado (vale para quem não personalizou a própria barra).", "ok")
+        else:
+            flash("Não foi possível identificar a ação. Tente de novo.", "erro")
         return redirect(url_for("mais.barra"))
 
     prefs = db.buscar_preferencias(org_id)

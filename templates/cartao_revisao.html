@@ -36,7 +36,7 @@
         {% for t in grupo.transacoes %}
         <div class="card-item" style="box-shadow:none;background:var(--bg-app);padding:10px 12px">
           <div class="card-item-corpo">
-            <div class="card-item-titulo" style="font-size:13px">{{ t.descricao }}</div>
+            <div class="card-item-titulo" style="font-size:13px">{{ t.fornecedor or t.descricao }}</div>
             <div class="card-item-sub">{{ t.data_iso or t.data }}{% if t.cidade %} · {{ t.cidade }}{% endif %}{% if t.categoria_sugerida %} · {{ t.categoria_sugerida }}{% endif %}{% if t.parcela_atual %} · {{ t.parcela_atual }}/{{ t.parcela_total }}{% endif %}</div>
           </div>
           <div class="card-item-valor {{ 'val-despesa' if t.sinal == 'D' else 'val-receita' }}" style="font-size:13px">{{ '' if t.sinal == 'D' else '-' }} R$ {{ t.valor|brl }}</div>

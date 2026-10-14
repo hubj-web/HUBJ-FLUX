@@ -390,3 +390,62 @@ def reativar_usuario(usuario_id):
     db.reativar_usuario_organizacao(usuario_id, org_id)
     flash("Usuário reativado.", "ok")
     return redirect(url_for("config.usuarios"))
+
+
+
+# ---------- Fornecedores do cartão (regras) ----------
+
+def _dados_regra():
+    padrao = request.form.get("padrao", "").strip().upper()
+    nome = request.form.get("nome", "").strip() or padrao
+    return padrao, nome, request.form.get("categoria_id") or None
+
+
+@config_bp.route("/fornecedores")
+@login_required
+@requer_organizacao
+def fornecedores():
+    org_id = g.usuario_atual["organizacao_id"]
+    return render_template("config_fornecedores.html", regras=db.listar_regras_fornecedor(org_id),
+                           categorias=db.listar_categorias(org_id, tipo="despesa"),
+                           sugestoes=db.fornecedores_sem_categoria(org_id, 10),
+                           prefill=request.args.get("padrao", ""))
+
+
+@config_bp.route("/fornecedores/nova", methods=["POST"])
+@login_required
+@requer_organizacao
+def nova_regra_fornecedor():
+    org_id = g.usuario_atual["organizacao_id"]
+    padrao, nome, categoria_id = _dados_regra()
+    if not padrao:
+        flash("Informe o texto que aparece na fatura.", "erro")
+        return redirect(url_for("config.fornecedores"))
+    db.criar_regra_fornecedor(org_id, padrao, nome, categoria_id)
+    n = db.aplicar_regra_fornecedor(org_id, padrao, nome, categoria_id)
+    flash(f"Regra criada e aplicada em {n} compra(s) já importada(s). As próximas faturas também seguem a regra.", "ok")
+    return redirect(url_for("config.fornecedores"))
+
+
+@config_bp.route("/fornecedores/<int:regra_id>/salvar", methods=["POST"])
+@login_required
+@requer_organizacao
+def salvar_regra_fornecedor(regra_id):
+    org_id = g.usuario_atual["organizacao_id"]
+    padrao, nome, categoria_id = _dados_regra()
+    if not padrao:
+        flash("Informe o texto que aparece na fatura.", "erro")
+        return redirect(url_for("config.fornecedores"))
+    db.atualizar_regra_fornecedor(regra_id, org_id, padrao, nome, categoria_id)
+    n = db.aplicar_regra_fornecedor(org_id, padrao, nome, categoria_id)
+    flash(f"Regra atualizada e aplicada em {n} compra(s).", "ok")
+    return redirect(url_for("config.fornecedores"))
+
+
+@config_bp.route("/fornecedores/<int:regra_id>/excluir", methods=["POST"])
+@login_required
+@requer_organizacao
+def excluir_regra_fornecedor(regra_id):
+    db.excluir_regra_fornecedor(regra_id, g.usuario_atual["organizacao_id"])
+    flash("Regra excluída. As compras já ajustadas continuam como estão; as próximas faturas não usarão mais essa regra.", "ok")
+    return redirect(url_for("config.fornecedores"))

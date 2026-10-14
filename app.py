@@ -32,6 +32,17 @@ def fmt_brl(v):
     return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+MESES_ABREV = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+
+
+def fmt_mes(mes):
+    """'2026-02' -> 'fev/2026'."""
+    try:
+        return f"{MESES_ABREV[int(mes[5:7]) - 1]}/{mes[:4]}"
+    except Exception:
+        return mes or ""
+
+
 def calc_idade(data_nasc):
     """Idade em anos a partir da data de nascimento (None se não informada)."""
     if not data_nasc:
@@ -62,6 +73,7 @@ def create_app():
     )
     app.jinja_env.filters["brl"] = fmt_brl
     app.jinja_env.filters["idade"] = calc_idade
+    app.jinja_env.filters["mes_label"] = fmt_mes
     app.jinja_env.filters["datahora"] = fmt_datahora
 
     init_oauth(app)
