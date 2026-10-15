@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Planejamento mensal · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>🧮 Planejamento mensal</h1>
+    <p><a href="{{ url_for('mensal.fixos') }}" class="btn btn-primary" style="padding:6px 14px;font-size:12.5px">📌 Gastos fixos</a>
+       <a href="{{ url_for('mensal.assistente') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12.5px">🤖 Assistente</a>
+       <a href="{{ url_for('cartao.painel') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12.5px">💳 Cartão</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">O que já está comprometido em cada mês — gastos fixos e cartão — e quanto sobra da sua renda.</p>
+  </header>
+
+  {% if not renda_padrao and not (meses|selectattr('renda')|list) %}
+  <div class="summary-cell" style="margin-bottom:12px;border-left:4px solid var(--laranja-evolucao);font-size:13px">
+    Informe a <strong>renda mensal</strong> para o app calcular quanto sobra. <a href="{{ url_for('plan.index') }}">Planejamento → Renda mensal</a>
+  </div>
+  {% endif %}
+  {% if not fixos %}
+  <div class="summary-cell" style="margin-bottom:12px;border-left:4px solid var(--laranja-evolucao);font-size:13px">
+    Nenhum gasto fixo cadastrado. <a href="{{ url_for('mensal.fixos') }}">Cadastre aluguel, escola, assinaturas...</a> uma vez e o app projeta os meses seguintes.
+  </div>
+  {% endif %}
+  {% if cartao_defasado %}
+  <div class="summary-cell" style="margin-bottom:12px;border-left:4px solid var(--laranja-evolucao);font-size:13px">
+    A última fatura importada é de <strong>{{ ultimo|mes_label }}</strong>. Os meses de hoje em diante mostram só as <strong>parcelas já compradas</strong>; <a href="{{ url_for('cartao.importar') }}">importe as faturas mais recentes</a> para o cartão ficar completo.
+  </div>
+  {% endif %}
+
+  {% if ia_ativa %}
+  <div class="summary-cell" style="margin-bottom:16px">
+    <span class="label">🤖 Análise de {{ mes_atual|mes_label }}</span>
+    {% if analise %}
+    <div class="md" style="font-size:13.5px;line-height:1.5">{{ analise.texto|md_simples }}</div>
+    {% else %}
+    <p style="font-size:13px;color:var(--graphite);margin:4px 0 8px">Ainda não há análise deste mês.</p>
+    {% endif %}
+    {% if ia_pronta %}
+    <form method="post" action="{{ url_for('mensal.analisar') }}" data-texto-envio="Analisando..." style="margin-top:10px">
+      <button type="submit" class="btn btn-ghost" style="padding:6px 14px;font-size:12.5px">{{ '↻ Atualizar análise' if analise else '✨ Analisar com IA' }}</button>
+    </form>
+    {% else %}
+    <p style="font-size:12px;color:var(--graphite);margin-top:8px">A chave da IA ainda não foi configurada no servidor.</p>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="summary-cell" style="margin-bottom:16px;font-size:13px">
+    🤖 <strong>Quer uma análise do seu planejamento?</strong> Ligue a IA em <a href="{{ url_for('mensal.assistente') }}">Assistente financeiro</a> (um administrador faz isso).
+  </div>
+  {% endif %}
+
+  <div class="filters" style="justify-content:center;margin-bottom:14px">
+    {% for opcao in [3, 6, 12] %}
+    <a href="{{ url_for('mensal.index', n=opcao) }}" class="btn {{ 'btn-primary' if opcao == n else 'btn-ghost' }}" style="padding:5px 14px;font-size:12.5px">{{ opcao }} meses</a>
+    {% endfor %}
+  </div>
+
+  <div class="card-lista">
+    {% for m in meses %}
+    <details class="card-item-expandivel" {{ 'open' if loop.first }}>
+      <summary class="card-item" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:8px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="card-item-icone">📅</div>
+          <div class="card-item-corpo">
+            <div class="card-item-titulo">{{ m.mes|mes_label }}{% if m.mes == mes_atual %} <span style="font-weight:400;color:var(--graphite);font-size:11.5px">· este mês</span>{% endif %}</div>
+            <div class="card-item-sub">Comprometido R$ {{ m.comprometido|brl }}{% if m.pct is not none %} · {{ m.pct }}% da renda{% endif %}</div>
+          </div>
+          {% if m.livre is not none %}
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:10.5px;color:var(--graphite);text-transform:uppercase;letter-spacing:.4px">Livre</div>
+            <div class="card-item-valor {{ 'val-despesa' if m.livre < 0 else 'val-receita' }}">R$ {{ m.livre|brl }}</div>
+          </div>
+          {% endif %}
+        </div>
+        {% if m.pct is not none %}
+        <div style="background:var(--gray-light);border-radius:var(--radius-pill);height:8px;overflow:hidden">
+          <div style="width:{{ [m.pct, 100]|min }}%;height:100%;background:{{ 'var(--danger-dark)' if m.nivel == 'vermelho' else ('var(--warning-dark)' if m.nivel == 'amarelo' else 'var(--success-dark)') }}"></div>
+        </div>
+        {% endif %}
+      </summary>
+      <div style="padding:2px 16px 16px;font-size:13px">
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--gray-light)">
+          <span>Renda esperada</span><strong>{{ ('R$ ' ~ (m.renda|brl)) if m.renda else 'não informada' }}</strong></div>
+
+        <div style="display:flex;justify-content:space-between;padding:9px 0 4px"><strong>📌 Gastos fixos</strong><strong>R$ {{ m.total_fixos|brl }}</strong></div>
+        {% for i in m.fixos %}
+        <div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0 3px 12px;color:var(--ink-soft)">
+          <span>dia {{ i.dia }} · {{ i.nome }}{% if i.estimado %} <em style="color:var(--graphite)">(estimado)</em>{% endif %}</span><span>R$ {{ i.valor|brl }}</span></div>
+        {% else %}
+        <div style="padding:3px 0 3px 12px;color:var(--graphite)">Nenhum gasto fixo neste mês.</div>
+        {% endfor %}
+
+        <div style="display:flex;justify-content:space-between;padding:12px 0 4px"><strong>💳 Cartão</strong><strong>R$ {{ m.cartao.total|brl }}</strong></div>
+        {% if m.cartao.origem == 'fatura' %}
+        <div style="padding:3px 0 3px 12px;color:var(--graphite)">Fatura já importada.</div>
+        {% elif m.cartao.origem == 'parcelas' %}
+        <div style="padding:3px 0 3px 12px;color:var(--graphite)">Só parcelas já compradas ({{ m.cartao.itens|length }}). Compras novas ainda vão se somar.</div>
+        {% for i in m.cartao.itens %}
+        <div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0 3px 12px;color:var(--ink-soft)"><span>{{ i.descricao }} · {{ i.parcela }}</span><span>R$ {{ i.valor|brl }}</span></div>
+        {% endfor %}
+        {% else %}
+        <div style="padding:3px 0 3px 12px;color:var(--graphite)">Nada de cartão conhecido para este mês.</div>
+        {% endif %}
+
+        <div style="display:flex;justify-content:space-between;padding:12px 0 0;margin-top:8px;border-top:1px solid var(--line)">
+          <strong>Comprometido</strong><strong>R$ {{ m.comprometido|brl }}</strong></div>
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+  <p style="font-size:11.5px;color:var(--graphite);margin-top:16px;line-height:1.5">"Livre" é a renda menos o que já está comprometido. Os gastos do dia a dia (mercado, combustível, lazer) ainda vão sair desse valor.</p>
+</div>
+{% endblock %}

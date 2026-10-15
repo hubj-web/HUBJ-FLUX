@@ -11,4 +11,8 @@ class Config:
     APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
     RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
     CRON_SECRET = os.environ.get("CRON_SECRET")
+    # Assistente de IA (opcional): sem a chave, o app funciona normalmente e só a IA fica indisponível
+    ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+    ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5-5")
+    IA_LIMITE_24H = int(os.environ.get("IA_LIMITE_24H", "30"))  # trava de custo: chamadas por organização a cada 24h
     EMAIL_REMETENTE = os.environ.get("EMAIL_REMETENTE", "HUB-J FLUX <onboarding@resend.dev>")

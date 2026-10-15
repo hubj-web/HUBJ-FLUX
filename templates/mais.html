@@ -6,6 +6,8 @@
     <h1>Mais</h1>
   </header>
   <div class="menu-list">
+    <a href="{{ url_for('mensal.index') }}" class="menu-item"><span class="menu-icon">🧮</span> Planejamento mensal</a>
+    <a href="{{ url_for('mensal.assistente') }}" class="menu-item"><span class="menu-icon">🤖</span> Assistente financeiro</a>
     <a href="{{ url_for('alertas.index') }}" class="menu-item"><span class="menu-icon">🔔</span> Alertas
       {% if alertas_nao_lidas %}<span class="chip-status vermelho" style="margin-left:auto">{{ alertas_nao_lidas }} novo(s)</span>{% endif %}</a>
     <a href="{{ url_for('alertas.lembretes') }}" class="menu-item"><span class="menu-icon">⏰</span> Lembretes de vencimento</a>

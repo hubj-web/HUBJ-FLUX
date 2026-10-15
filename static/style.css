@@ -295,3 +295,13 @@ body.com-nav-fixa{ padding-bottom:84px; }
 .avatar-opt input:checked + span{
   border-color:var(--laranja-evolucao); background:#fff; box-shadow:0 0 0 3px rgba(255,117,31,0.18);
 }
+
+/* ---------- Assistente de IA ---------- */
+.chat{ display:flex; flex-direction:column; gap:10px; }
+.bolha{ max-width:90%; padding:10px 14px; border-radius:16px; font-size:13.5px; line-height:1.5; box-shadow:var(--shadow-card); word-wrap:break-word; }
+.bolha-user{ align-self:flex-end; background:var(--roxo-estrategico); color:#fff; border-bottom-right-radius:4px; white-space:pre-wrap; }
+.bolha-ia{ align-self:flex-start; background:var(--paper-raised); border-bottom-left-radius:4px; }
+.md p{ margin:0 0 8px; } .md p:last-child{ margin-bottom:0; }
+.md ul{ margin:4px 0 8px 18px; padding:0; } .md li{ margin-bottom:3px; }
+.bloco-codigo{ background:var(--paper-raised); border-radius:var(--radius); padding:14px; font-size:11.5px; line-height:1.5;
+  white-space:pre-wrap; word-break:break-word; box-shadow:var(--shadow-card); font-family:'IBM Plex Mono',monospace; }

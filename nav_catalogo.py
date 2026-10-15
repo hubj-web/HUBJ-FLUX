@@ -12,6 +12,7 @@ CATALOGO = {
     "relatorios": ("📊", "Relatórios", "relatorios.index", ["/relatorios"]),
     "recorrentes": ("🔁", "Recorrentes", "lanc.recorrentes", ["/lancamentos/recorrentes"]),
     "alertas": ("🔔", "Alertas", "alertas.index", ["/alertas", "/lembretes"]),
+    "mensal": ("🧮", "Mensal", "mensal.index", ["/mensal"]),
 }
 PADRAO = ["extrato", "cartao"]
 MAXIMO = 2

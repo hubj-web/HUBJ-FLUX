@@ -18,6 +18,8 @@ from relatorios import relatorios_bp
 from setup import setup_bp
 from mais import mais_bp
 from alertas import alertas_bp
+from mensal import mensal_bp
+import ia
 import nav_catalogo
 
 
@@ -74,6 +76,7 @@ def create_app():
     app.jinja_env.filters["brl"] = fmt_brl
     app.jinja_env.filters["idade"] = calc_idade
     app.jinja_env.filters["mes_label"] = fmt_mes
+    app.jinja_env.filters["md_simples"] = ia.md_simples
     app.jinja_env.filters["datahora"] = fmt_datahora
 
     init_oauth(app)
@@ -91,6 +94,7 @@ def create_app():
     app.register_blueprint(setup_bp)
     app.register_blueprint(mais_bp)
     app.register_blueprint(alertas_bp)
+    app.register_blueprint(mensal_bp)
 
     app.teardown_appcontext(db.close_conn)
 

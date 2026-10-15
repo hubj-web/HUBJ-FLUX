@@ -110,7 +110,7 @@
         // botão desabilitado não envia seu name/value (era o que impedia salvar os atalhos).
         setTimeout(function () {
           btn.dataset.textoOriginal = btn.textContent;
-          btn.textContent = 'Salvando...';
+          btn.textContent = form.dataset.textoEnvio || 'Salvando...';
           btn.disabled = true;
         }, 0);
       }

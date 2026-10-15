@@ -1116,3 +1116,92 @@ def criar_compromisso(organizacao_id, descricao, valor_parcela, num_parcelas, me
 
 def excluir_compromisso(compromisso_id, organizacao_id):
     execute("DELETE FROM compromissos_cartao WHERE id = %s AND organizacao_id = %s", (compromisso_id, organizacao_id))
+
+
+
+# ---------- Planejamento mensal: gastos fixos e recorrentes ----------
+
+def listar_gastos_fixos(organizacao_id):
+    return query_all(
+        """SELECT g.*, c.nome AS categoria_nome FROM gastos_fixos g LEFT JOIN categorias c ON c.id = g.categoria_id
+           WHERE g.organizacao_id = %s ORDER BY g.ativo DESC, g.dia_mes, g.nome""",
+        (organizacao_id,),
+    )
+
+
+def criar_gasto_fixo(organizacao_id, d):
+    execute(
+        """INSERT INTO gastos_fixos (organizacao_id, nome, valor, estimado, dia_mes, frequencia, mes_inicio, mes_fim, no_cartao, categoria_id)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+        (organizacao_id, d["nome"], d["valor"], d["estimado"], d["dia_mes"], d["frequencia"], d["mes_inicio"],
+         d["mes_fim"], d["no_cartao"], d["categoria_id"]),
+    )
+
+
+def atualizar_gasto_fixo(gasto_id, organizacao_id, d):
+    execute(
+        """UPDATE gastos_fixos SET nome=%s, valor=%s, estimado=%s, dia_mes=%s, frequencia=%s, mes_inicio=%s,
+                  mes_fim=%s, no_cartao=%s, categoria_id=%s, ativo=%s
+           WHERE id=%s AND organizacao_id=%s""",
+        (d["nome"], d["valor"], d["estimado"], d["dia_mes"], d["frequencia"], d["mes_inicio"], d["mes_fim"],
+         d["no_cartao"], d["categoria_id"], d["ativo"], gasto_id, organizacao_id),
+    )
+
+
+def excluir_gasto_fixo(gasto_id, organizacao_id):
+    execute("DELETE FROM gastos_fixos WHERE id = %s AND organizacao_id = %s", (gasto_id, organizacao_id))
+
+
+def renda_planejada_por_mes(organizacao_id, mes_ini, mes_fim):
+    """Soma das receitas planejadas (tela Planejamento) por mês, no intervalo."""
+    linhas = query_all(
+        """SELECT p.mes_referencia, SUM(p.valor_limite) AS total FROM planejamentos p
+           JOIN categorias c ON c.id = p.categoria_id
+           WHERE c.organizacao_id = %s AND c.tipo = 'receita' AND p.mes_referencia BETWEEN %s AND %s
+           GROUP BY p.mes_referencia""",
+        (organizacao_id, mes_ini, mes_fim),
+    )
+    return {r["mes_referencia"]: float(r["total"] or 0) for r in linhas}
+
+
+# ---------- Assistente de IA ----------
+
+def salvar_config_ia(organizacao_id, ativa, analise_automatica):
+    execute("UPDATE organizacoes_preferencias SET ia_ativa = %s, ia_analise_automatica = %s WHERE organizacao_id = %s",
+            (ativa, analise_automatica, organizacao_id))
+
+
+def salvar_mensagem_ia(organizacao_id, usuario_id, tipo, texto, mes=None):
+    execute("INSERT INTO ia_mensagens (organizacao_id, usuario_id, tipo, mes_referencia, texto) VALUES (%s, %s, %s, %s, %s)",
+            (organizacao_id, usuario_id, tipo, mes, texto))
+
+
+def listar_mensagens_ia(organizacao_id, usuario_id, limite=40):
+    return query_all(
+        """SELECT * FROM (SELECT * FROM ia_mensagens WHERE organizacao_id = %s AND usuario_id = %s
+                          AND tipo IN ('pergunta', 'resposta') ORDER BY criado_em DESC, id DESC LIMIT %s) t
+           ORDER BY criado_em, id""",
+        (organizacao_id, usuario_id, limite),
+    )
+
+
+def ultima_analise_ia(organizacao_id, mes):
+    return query_one(
+        "SELECT * FROM ia_mensagens WHERE organizacao_id = %s AND tipo = 'analise' AND mes_referencia = %s "
+        "ORDER BY criado_em DESC, id DESC LIMIT 1",
+        (organizacao_id, mes),
+    )
+
+
+def contar_chamadas_ia(organizacao_id, horas=24):
+    row = query_one(
+        "SELECT COUNT(*) AS n FROM ia_mensagens WHERE organizacao_id = %s AND tipo IN ('pergunta', 'analise') "
+        "AND criado_em > now() - (%s * interval '1 hour')",
+        (organizacao_id, horas),
+    )
+    return int(row["n"]) if row else 0
+
+
+def limpar_mensagens_ia(organizacao_id, usuario_id):
+    execute("DELETE FROM ia_mensagens WHERE organizacao_id = %s AND usuario_id = %s AND tipo IN ('pergunta', 'resposta')",
+            (organizacao_id, usuario_id))

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}O que é enviado à IA · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>🔎 O que é enviado à IA</h1>
+    <p><a href="{{ url_for('mensal.assistente') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">Este é exatamente o conteúdo que acompanha cada pergunta ou análise (as instruções e os dados de hoje). Nada além disso sai do app.</p>
+  </header>
+  <h3>Instruções para a IA</h3>
+  <pre class="bloco-codigo">{{ instrucoes }}</pre>
+  <h3 style="margin-top:20px">Dados</h3>
+  <pre class="bloco-codigo">{{ dados }}</pre>
+</div>
+{% endblock %}
