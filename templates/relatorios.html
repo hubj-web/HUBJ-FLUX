@@ -23,6 +23,7 @@
     <div class="summary-cell"><span class="label">Planejado</span><span class="value">R$ {{ total_planejado|brl }}</span></div>
   </div>
 
+  {% if modulo_empresa %}<p style="font-size:12.5px;color:var(--graphite);text-align:center;margin:-6px 0 14px">Esta tela mostra só a Família. O que é de uma empresa fica de fora{% if cartao_empresa %} (R$ {{ cartao_empresa|brl }} no cartão){% endif %}: veja o <a href="{{ url_for('empresas.acerto') }}">Acerto</a>.</p>{% endif %}
   {% if cartao_total %}<p style="font-size:12.5px;color:var(--graphite);text-align:center;margin:-6px 0 14px">Inclui R$ {{ cartao_total|brl }} do cartão (fatura de {{ mes_referencia|mes_label }}{% if cartao_previa %}, prévia{% endif %}).</p>{% endif %}
 
   <h3>Despesas por categoria</h3>

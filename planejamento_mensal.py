@@ -43,16 +43,19 @@ def calcular_deslocamento(faturas):
         return 1
 
 
-def visao_mensal(hoje, n, fixos, faturas, parcelas, renda_por_mes, renda_padrao, deslocamento=1):
+def visao_mensal(hoje, n, fixos, faturas, parcelas, renda_por_mes, renda_padrao, deslocamento=1, empresa_cartao_por_mes=None):
     """faturas: [{mes_referencia, total, vencimento}] já importadas; parcelas: saída de
     cartao_analise.projetar_parcelas (meses de FATURA). Devolve n meses a partir do mês de hoje."""
     mes0 = hoje.strftime("%Y-%m")
-    caixa_faturas = {}
+    caixa_faturas, empresa_contada = {}, set()
     for f in faturas:
         venc = f.get("vencimento")
         chave = venc.strftime("%Y-%m") if venc else somar_meses(f["mes_referencia"], deslocamento)
-        d = caixa_faturas.setdefault(chave, {"total": 0.0, "previa": False})
+        d = caixa_faturas.setdefault(chave, {"total": 0.0, "previa": False, "empresa": 0.0})
         d["total"] += float(f["total"] or 0)
+        if f["mes_referencia"] not in empresa_contada:  # a parte da empresa é por mês: não soma de novo se o mês vier em mais de uma linha
+            empresa_contada.add(f["mes_referencia"])
+            d["empresa"] += float((empresa_cartao_por_mes or {}).get(f["mes_referencia"], 0))
         d["previa"] = d["previa"] or bool(f.get("previa"))
     ultimo_caixa = max(caixa_faturas) if caixa_faturas else ""
     caixa_parcelas = {somar_meses(m["mes"], deslocamento): m for m in parcelas}
@@ -67,7 +70,7 @@ def visao_mensal(hoje, n, fixos, faturas, parcelas, renda_por_mes, renda_padrao,
             if g.get("no_cartao") and ultimo_caixa and mes <= ultimo_caixa:
                 continue  # já está dentro da fatura importada deste mês: contar de novo seria dobrar
             itens.append({"id": g.get("id"), "nome": g["nome"], "valor": float(g["valor"]), "dia": dia_efetivo(mes, g["dia_mes"]),
-                          "estimado": bool(g.get("estimado")), "no_cartao": bool(g.get("no_cartao"))})
+                          "estimado": bool(g.get("estimado")), "no_cartao": bool(g.get("no_cartao")), "destino": g.get("destino_empresa_id")})
         itens.sort(key=lambda x: (x["dia"], x["nome"]))
         total_fixos = round(sum(x["valor"] for x in itens), 2)
 
@@ -78,6 +81,11 @@ def visao_mensal(hoje, n, fixos, faturas, parcelas, renda_por_mes, renda_padrao,
         else:
             cartao = {"total": 0.0, "origem": None, "itens": []}
 
+        da_empresa = sum(x["valor"] for x in itens if x.get("destino"))
+        if cartao["origem"] in ("fatura", "previa"):
+            da_empresa += caixa_faturas[mes].get("empresa", 0.0)
+        elif cartao["origem"] == "parcelas":
+            da_empresa += sum(i["valor"] for i in cartao["itens"] if i.get("destino"))
         renda = renda_por_mes.get(mes) or renda_padrao
         renda = float(renda) if renda else None
         comprometido = round(total_fixos + cartao["total"], 2)
@@ -87,5 +95,5 @@ def visao_mensal(hoje, n, fixos, faturas, parcelas, renda_por_mes, renda_padrao,
         if livre is not None and livre < 0:
             nivel = "vermelho"
         meses.append({"mes": mes, "renda": renda, "fixos": itens, "total_fixos": total_fixos, "cartao": cartao,
-                      "comprometido": comprometido, "livre": livre, "pct": pct, "nivel": nivel})
+                      "comprometido": comprometido, "livre": livre, "pct": pct, "nivel": nivel, "da_empresa": round(da_empresa, 2)})
     return meses

@@ -61,7 +61,8 @@ def projetar_parcelas(linhas, ultimo_mes, compromissos=None):
         c = compras.setdefault(chave, {"ocorrencias": {}, "ignorar": False})
         c["ignorar"] = c["ignorar"] or bool(r.get("nao_projetar"))
         info = c["ocorrencias"].setdefault((int(r["parcela_atual"]), r["mes_referencia"]),
-                                           {"qtd": 0, "descricao": r["descricao"], "pessoa": r.get("pessoa_nome"), "id": r.get("id")})
+                                           {"qtd": 0, "descricao": r["descricao"], "pessoa": r.get("pessoa_nome"), "id": r.get("id"),
+                                            "destino": r.get("destino_empresa_id")})
         info["qtd"] += 1  # duas compras idênticas no mesmo mês contam as duas
 
     # a prévia da fatura trunca o nome da loja (ex.: "MP INTERCELLUDI" x "MP INTERCELLUDIL"): junta o que for a mesma compra
@@ -99,7 +100,7 @@ def projetar_parcelas(linhas, ultimo_mes, compromissos=None):
                 continue
             nome = max((i["descricao"] or "" for i in c["ocorrencias"].values()), key=len)  # a prévia trunca o nome: mostra o mais completo
             somar(mes, {"descricao": nome, "parcela": f"{parcela + k}/{total}",
-                        "valor": valor * info["qtd"], "pessoa": info["pessoa"], "compra_id": info["id"]})
+                        "valor": valor * info["qtd"], "pessoa": info["pessoa"], "compra_id": info["id"], "destino": info.get("destino")})
 
     for k in compromissos or []:
         if ultimo_mes and k["mes_inicial"] <= ultimo_mes:

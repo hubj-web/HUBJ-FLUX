@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Empresas · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Empresas</h1>
+    <p><a href="{{ url_for('config.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">Cadastre as empresas cujos gastos passam pelo seu dinheiro. Cada compra e lançamento pode ser marcado como "da empresa", e o app calcula o <a href="{{ url_for('empresas.acerto') }}">acerto</a> com a Família. Cartões e contas ganham um dono em Configurações.</p>
+  </header>
+
+  <details style="margin-bottom:20px" {{ 'open' if not empresas }}>
+    <summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:var(--roxo-estrategico);padding:4px 0">+ Nova empresa</summary>
+    <form method="post" action="{{ url_for('empresas.nova') }}" class="form-grid" style="margin-top:14px">
+      <div class="form-row"><label>Nome</label><input name="nome" required placeholder="Ex: HUB-J Gestão e Inovação"></div>
+      <button type="submit" class="btn btn-primary">Criar</button>
+    </form>
+  </details>
+
+  <div class="card-lista">
+    {% for e in empresas %}
+    <details class="card-item-expandivel">
+      <summary class="card-item" style="cursor:pointer">
+        <div class="card-item-icone">🏢</div>
+        <div class="card-item-corpo">
+          <div class="card-item-titulo">{{ e.nome }}</div>
+          <div class="card-item-sub">{{ 'ativa' if e.ativa else 'desativada' }}</div>
+        </div>
+      </summary>
+      <div style="padding:12px 4px">
+        <form method="post" action="{{ url_for('empresas.salvar', empresa_id=e.id) }}" class="form-grid">
+          <div class="form-row"><label>Nome</label><input name="nome" value="{{ e.nome }}" required></div>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:normal;font-size:13px"><input type="checkbox" name="ativa" {{ 'checked' if e.ativa }} style="width:auto"> Ativa</label>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </form>
+        <form method="post" action="{{ url_for('empresas.excluir', empresa_id=e.id) }}" data-confirmar="Excluir a empresa '{{ e.nome }}'? Só é possível se nada estiver ligado a ela." style="margin-top:8px">
+          <button class="btn btn-ghost" style="color:var(--brick)">Excluir</button>
+        </form>
+      </div>
+    </details>
+    {% else %}
+    <p style="color:var(--graphite);font-size:13px">Nenhuma empresa ainda.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -12,6 +12,7 @@
       {% if alertas_nao_lidas %}<span class="chip-status vermelho" style="margin-left:auto">{{ alertas_nao_lidas }} novo(s)</span>{% endif %}</a>
     <a href="{{ url_for('alertas.lembretes') }}" class="menu-item"><span class="menu-icon">⏰</span> Lembretes de vencimento</a>
     <a href="{{ url_for('cartao.painel') }}" class="menu-item"><span class="menu-icon">💳</span> Cartão de crédito</a>
+    {% if modulo_empresa %}<a href="{{ url_for('empresas.acerto') }}" class="menu-item"><span class="menu-icon">🏢</span> Acerto Família × Empresa</a>{% endif %}
     <a href="{{ url_for('lanc.recorrentes') }}" class="menu-item"><span class="menu-icon">🔁</span> Recorrentes</a>
     <a href="{{ url_for('plan.index') }}" class="menu-item"><span class="menu-icon">📝</span> Planejamento</a>
     <a href="{{ url_for('controle.index') }}" class="menu-item"><span class="menu-icon">🎛️</span> Controle</a>

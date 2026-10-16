@@ -17,6 +17,7 @@
           <option value="carteira">Carteira</option><option value="investimento">Investimento</option>
         </select></div>
       <div class="form-row"><label>Saldo inicial (R$)</label><input name="saldo_inicial" placeholder="0,00"></div>
+      {% if modulo_empresa %}<div class="form-row"><label>Quem é o dono da conta</label><select name="dono_empresa_id"><option value="">Família</option>{% for e in empresas_org %}<option value="{{ e.id }}" >{{ e.nome }}</option>{% endfor %}</select></div>{% endif %}
       <button type="submit" class="btn btn-primary">Criar</button>
     </form>
   </details>
@@ -43,6 +44,7 @@
               <option value="investimento" {{ 'selected' if c.tipo=='investimento' }}>Investimento</option>
             </select></div>
           <div class="form-row"><label>Saldo inicial (R$)</label><input name="saldo_inicial" value="{{ c.saldo_inicial|brl }}"></div>
+          {% if modulo_empresa %}<div class="form-row"><label>Quem é o dono da conta</label><select name="dono_empresa_id"><option value="">Família</option>{% for e in empresas_org %}<option value="{{ e.id }}" {{ 'selected' if e.id == c.dono_empresa_id }}>{{ e.nome }}</option>{% endfor %}</select></div>{% endif %}
           <label style="display:flex;align-items:center;gap:8px;font-weight:normal;font-size:13px">
             <input type="checkbox" name="ativa" {{ 'checked' if c.ativa }} style="width:auto"> Ativa
           </label>

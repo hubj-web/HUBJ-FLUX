@@ -40,6 +40,7 @@
       </select>
     </div>
     {% endif %}
+    {% if modulo_empresa %}<div class="form-row"><label>Para quem?</label><select name="destino_empresa_id"><option value="">Família</option>{% for e in empresas_org %}<option value="{{ e.id }}" {{ 'selected' if e.id == lancamento.destino_empresa_id }}>{{ e.nome }}</option>{% endfor %}</select></div>{% endif %}
     <div class="form-row"><label>Observação</label><textarea name="observacao" rows="2">{{ lancamento.observacao or '' }}</textarea></div>
     <button type="submit" class="btn btn-primary" style="margin-top:10px">Salvar alterações</button>
   </form>

@@ -19,6 +19,7 @@ from setup import setup_bp
 from mais import mais_bp
 from alertas import alertas_bp
 from mensal import mensal_bp
+from empresas import empresas_bp
 import ia
 import nav_catalogo
 
@@ -95,6 +96,7 @@ def create_app():
     app.register_blueprint(mais_bp)
     app.register_blueprint(alertas_bp)
     app.register_blueprint(mensal_bp)
+    app.register_blueprint(empresas_bp)
 
     app.teardown_appcontext(db.close_conn)
 
@@ -109,13 +111,15 @@ def create_app():
         try:
             prefs = db.buscar_preferencias(usuario["organizacao_id"])
             chaves = nav_catalogo.resolver_chaves(usuario, prefs)
+            modulo_empresa = bool(prefs and prefs.get("modulo_empresa"))
+            empresas_org = db.listar_empresas(usuario["organizacao_id"]) if modulo_empresa else []
             nao_lidas = db.contar_nao_lidas(usuario["id"])
         except Exception:
             try:
                 db.get_conn().rollback()
             except Exception:
                 pass
-            chaves, nao_lidas = list(nav_catalogo.PADRAO), 0
+            chaves, nao_lidas, modulo_empresa, empresas_org = list(nav_catalogo.PADRAO), 0, False, []
         itens = []
         for chave in chaves:
             icone, rotulo, endpoint, prefixos = nav_catalogo.CATALOGO[chave]
@@ -123,7 +127,7 @@ def create_app():
                 "chave": chave, "icone": icone, "rotulo": rotulo, "url": url_for(endpoint),
                 "ativo": any(request.path.startswith(p) for p in prefixos),
             })
-        return {"nav_atalhos": itens, "alertas_nao_lidas": nao_lidas}
+        return {"nav_atalhos": itens, "alertas_nao_lidas": nao_lidas, "modulo_empresa": modulo_empresa, "empresas_org": empresas_org}
     return app
 
 

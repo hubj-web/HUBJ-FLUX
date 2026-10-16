@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 from flask import Blueprint, render_template, g, request
 
 import db
+import empresa as empresa_mod
 import alertas
 from auth import login_required
 import regras_negocio
@@ -33,10 +34,15 @@ def index():
     setup_concluido = bool(prefs and prefs.get("setup_concluido"))
     reservado_metas = db.total_reservado_metas(usuario["organizacao_id"])
     saldo_livre = totais["saldo"] - reservado_metas
+    acertos_empresas = []
+    if prefs and prefs.get("modulo_empresa"):
+        nomes = {e["id"]: e["nome"] for e in db.listar_empresas(usuario["organizacao_id"], apenas_ativas=False)}
+        consolidado = empresa_mod.consolidar(db.acerto_itens(usuario["organizacao_id"]), db.listar_acertos(usuario["organizacao_id"]), nomes)
+        acertos_empresas = [s for s in consolidado.values() if abs(s["saldo"]) >= 0.005]
 
     return render_template(
         "inicio.html", usuario=usuario, organizacao=organizacao,
         mes_referencia=mes_referencia, mes_anterior=mes_anterior, mes_seguinte=mes_seguinte,
         totais=totais, ultimos=ultimos, frase_saldo=frase_saldo, setup_concluido=setup_concluido,
-        reservado_metas=reservado_metas, saldo_livre=saldo_livre,
+        reservado_metas=reservado_metas, saldo_livre=saldo_livre, acertos_empresas=acertos_empresas,
     )

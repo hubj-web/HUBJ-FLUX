@@ -5,6 +5,7 @@ from dateutil.relativedelta import relativedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, Response, abort
 
 import db
+import empresa as empresa_mod
 import alertas
 from auth import login_required, requer_organizacao
 import regras_negocio
@@ -46,6 +47,7 @@ def novo():
     cartao_id = request.form.get("cartao_id") or None
     pessoa_id = request.form.get("pessoa_id") or None
     conta_bancaria_id = request.form.get("conta_bancaria_id") or None
+    destino_empresa_id = empresa_mod.destino_valido(request.form.get("destino_empresa_id"), db.empresas_ids(org_id))
     observacao = request.form.get("observacao", "").strip()
     data_str = request.form.get("data") or date.today().isoformat()
     parcelado = request.form.get("parcelado") == "on"
@@ -116,7 +118,7 @@ def novo():
         "tipo": tipo, "descricao": descricao, "categoria_id": categoria_id,
         "subcategoria_id": subcategoria_id, "forma_pagamento_id": forma_pagamento_id,
         "cartao_id": cartao_id, "pessoa_id": pessoa_id, "observacao": observacao,
-        "conta_bancaria_id": conta_bancaria_id,
+        "conta_bancaria_id": conta_bancaria_id, "destino_empresa_id": destino_empresa_id,
     }
 
     if parcelado and num_parcelas > 1:
@@ -279,12 +281,15 @@ def editar(lid):
         flash("Valor inválido.", "erro")
         return redirect(url_for("lanc.editar", lid=lid))
 
-    db.atualizar_lancamento(lid, org_id, {
+    dados_edicao = {
         "data": data_str, "tipo": request.form.get("tipo"), "valor": valor, "descricao": descricao,
         "categoria_id": categoria_id, "subcategoria_id": request.form.get("subcategoria_id") or None,
         "forma_pagamento_id": forma_pagamento_id, "cartao_id": request.form.get("cartao_id") or None,
         "pessoa_id": request.form.get("pessoa_id") or None, "observacao": request.form.get("observacao", "").strip(),
-    })
+    }
+    if db.modulo_empresa_ativo(org_id):  # sem o módulo, o destino que já existe não é mexido
+        dados_edicao["destino_empresa_id"] = empresa_mod.destino_valido(request.form.get("destino_empresa_id"), db.empresas_ids(org_id))
+    db.atualizar_lancamento(lid, org_id, dados_edicao)
     flash("Lançamento atualizado.", "ok")
     alertas.registrar_acao(org_id, g.usuario_atual, "lançamento editado",
                            f"{descricao} — {_fmt_moeda(valor)}", url_for("lanc.extrato"),

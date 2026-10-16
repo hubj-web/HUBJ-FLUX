@@ -43,6 +43,17 @@
     {% endif %}
   </div>
 
+  {% if modulo_empresa and destinos|length > 1 %}
+  <h2 style="font-size:14px;margin:18px 0 8px">Para quem foi</h2>
+  <div class="card-lista">
+    {% for d in destinos %}
+    <div class="card-item"><div class="card-item-icone">{{ '🏢' if d.empresa_id else '🏠' }}</div>
+      <div class="card-item-corpo"><div class="card-item-titulo">{{ d.empresa_nome or 'Família' }}</div><div class="card-item-sub">{{ d.n }} lançamento(s)</div></div>
+      <div class="card-item-valor">R$ {{ d.total|brl }}</div></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {% if titulares %}
   <div class="card-lista" style="margin-bottom:24px">
     {% for c in titulares %}

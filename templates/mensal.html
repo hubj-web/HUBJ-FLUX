@@ -62,7 +62,7 @@
           <div class="card-item-icone">📅</div>
           <div class="card-item-corpo">
             <div class="card-item-titulo">{{ m.mes|mes_label }}{% if m.mes == mes_atual %} <span style="font-weight:400;color:var(--graphite);font-size:11.5px">· este mês</span>{% endif %}</div>
-            <div class="card-item-sub">Comprometido R$ {{ m.comprometido|brl }}{% if m.pct is not none %} · {{ m.pct }}% da renda{% endif %}</div>
+            <div class="card-item-sub">Comprometido R$ {{ m.comprometido|brl }}{% if m.pct is not none %} · {{ m.pct }}% da renda{% endif %}{% if m.da_empresa %} · R$ {{ m.da_empresa|brl }} da empresa{% endif %}</div>
           </div>
           {% if m.livre is not none %}
           <div style="text-align:right;flex-shrink:0">
@@ -105,6 +105,7 @@
 
         <div style="display:flex;justify-content:space-between;padding:12px 0 0;margin-top:8px;border-top:1px solid var(--line)">
           <strong>Comprometido</strong><strong>R$ {{ m.comprometido|brl }}</strong></div>
+          {% if m.da_empresa %}<div style="font-size:12px;color:var(--graphite);padding:2px 0 6px">Desse valor, R$ {{ m.da_empresa|brl }} é da empresa: você paga agora e recebe de volta no acerto.</div>{% endif %}
       </div>
     </details>
     {% endfor %}

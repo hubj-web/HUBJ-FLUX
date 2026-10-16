@@ -46,6 +46,14 @@
   </a>
   {% endif %}
 
+  {% for a in acertos_empresas %}
+  <a href="{{ url_for('empresas.acerto', empresa_id=a.empresa_id) }}" class="card-item" style="text-decoration:none;color:inherit;margin-top:10px">
+    <div class="card-item-icone">🏢</div>
+    <div class="card-item-corpo"><div class="card-item-titulo" style="white-space:normal">{{ a.frase }}</div><div class="card-item-sub">acerto Família × {{ a.nome }} · toque para ver</div></div>
+    <div class="card-item-valor {{ 'val-receita' if a.saldo > 0 else 'val-despesa' }}">R$ {{ (a.saldo|abs)|brl }}</div>
+  </a>
+  {% endfor %}
+
   <p style="color:var(--ink-soft);font-size:13.5px;margin:14px 0 24px;text-align:center">{{ frase_saldo }}</p>
 
   <h3>Últimos lançamentos</h3>

@@ -19,6 +19,8 @@ def listar_organizacoes():
     )
     for org in organizacoes:
         org["usuarios"] = db.listar_usuarios_por_organizacao(org["id"])
+        prefs = db.buscar_preferencias(org["id"])
+        org["modulo_empresa"] = bool(prefs and prefs.get("modulo_empresa"))
     return render_template("organizacoes.html", organizacoes=organizacoes)
 
 
@@ -69,6 +71,20 @@ def ajustar_limite(org_id):
     novo_limite = int(request.form.get("limite_usuarios") or 1)
     db.execute("UPDATE organizacoes SET limite_usuarios = %s WHERE id = %s", (novo_limite, org_id))
     flash("Limite de usuários atualizado.", "ok")
+    return redirect(url_for("admin.listar_organizacoes"))
+
+
+@admin_bp.route("/organizacoes/<int:org_id>/modulo-empresa", methods=["POST"])
+@login_required
+@requer_papel("super_admin")
+def alternar_modulo_empresa(org_id):
+    prefs = db.buscar_preferencias(org_id)
+    if prefs is None:
+        flash("Organização não encontrada.", "erro")
+        return redirect(url_for("admin.listar_organizacoes"))
+    novo = not bool(prefs.get("modulo_empresa"))
+    db.salvar_modulo_empresa(org_id, novo)
+    flash("Módulo Pessoa + Empresa " + ("ligado" if novo else "desligado") + " para esta organização.", "ok")
     return redirect(url_for("admin.listar_organizacoes"))
 
 

@@ -3,6 +3,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g
 
 import db
+import empresa as empresa_mod
 import email_service
 from auth import login_required, requer_organizacao, requer_papel
 
@@ -169,7 +170,7 @@ def nova_conta():
         saldo_inicial = float(saldo_inicial_str)
     except ValueError:
         saldo_inicial = 0
-    db.criar_conta_bancaria(org_id, nome, tipo, saldo_inicial)
+    db.criar_conta_bancaria(org_id, nome, tipo, saldo_inicial, dono_empresa_id=empresa_mod.destino_valido(request.form.get("dono_empresa_id"), db.empresas_ids(org_id)))
     flash(f"Conta \"{nome}\" criada.", "ok")
     return redirect(url_for("config.contas"))
 
@@ -186,8 +187,7 @@ def salvar_conta(conta_id):
         saldo_inicial = 0
     db.atualizar_conta_bancaria(
         conta_id, org_id, request.form.get("nome", "").strip(), request.form.get("tipo", "corrente"),
-        saldo_inicial, request.form.get("ativa") == "on",
-    )
+        saldo_inicial, request.form.get("ativa") == "on", dono_empresa_id=empresa_mod.destino_valido(request.form.get("dono_empresa_id"), db.empresas_ids(org_id)))
     flash("Conta atualizada.", "ok")
     return redirect(url_for("config.contas"))
 
@@ -226,8 +226,7 @@ def novo_cartao():
     db.criar_cartao_manual(
         org_id, nome, request.form.get("limite_total") or None,
         request.form.get("dia_fechamento") or None, request.form.get("dia_vencimento") or None,
-        request.form.get("pessoa_id") or None,
-    )
+        request.form.get("pessoa_id") or None, dono_empresa_id=empresa_mod.destino_valido(request.form.get("dono_empresa_id"), db.empresas_ids(org_id)))
     flash(f"Cartão \"{nome}\" criado.", "ok")
     return redirect(url_for("config.cartoes"))
 
@@ -240,8 +239,7 @@ def salvar_cartao(cartao_id):
     db.atualizar_cartao(
         cartao_id, org_id, request.form.get("nome", "").strip(), request.form.get("limite_total") or None,
         request.form.get("dia_fechamento") or None, request.form.get("dia_vencimento") or None,
-        request.form.get("ativo") == "on", request.form.get("pessoa_id") or None,
-    )
+        request.form.get("ativo") == "on", request.form.get("pessoa_id") or None, dono_empresa_id=empresa_mod.destino_valido(request.form.get("dono_empresa_id"), db.empresas_ids(org_id)))
     flash("Cartão atualizado.", "ok")
     return redirect(url_for("config.cartoes"))
 
@@ -398,7 +396,9 @@ def reativar_usuario(usuario_id):
 def _dados_regra():
     padrao = request.form.get("padrao", "").strip().upper()
     nome = request.form.get("nome", "").strip() or padrao
-    return padrao, nome, request.form.get("categoria_id") or None
+    org_id = g.usuario_atual["organizacao_id"]
+    define_destino, destino = empresa_mod.ler_destino_regra(request.form.get("destino"), db.empresas_ids(org_id))
+    return padrao, nome, request.form.get("categoria_id") or None, define_destino, destino
 
 
 @config_bp.route("/fornecedores")
@@ -417,12 +417,12 @@ def fornecedores():
 @requer_organizacao
 def nova_regra_fornecedor():
     org_id = g.usuario_atual["organizacao_id"]
-    padrao, nome, categoria_id = _dados_regra()
+    padrao, nome, categoria_id, define_destino, destino = _dados_regra()
     if not padrao:
         flash("Informe o texto que aparece na fatura.", "erro")
         return redirect(url_for("config.fornecedores"))
-    db.criar_regra_fornecedor(org_id, padrao, nome, categoria_id)
-    n = db.aplicar_regra_fornecedor(org_id, padrao, nome, categoria_id)
+    db.criar_regra_fornecedor(org_id, padrao, nome, categoria_id, define_destino, destino)
+    n = db.aplicar_regra_fornecedor(org_id, padrao, nome, categoria_id, define_destino, destino)
     flash(f"Regra criada e aplicada em {n} compra(s) já importada(s). As próximas faturas também seguem a regra.", "ok")
     return redirect(url_for("config.fornecedores"))
 
@@ -432,12 +432,12 @@ def nova_regra_fornecedor():
 @requer_organizacao
 def salvar_regra_fornecedor(regra_id):
     org_id = g.usuario_atual["organizacao_id"]
-    padrao, nome, categoria_id = _dados_regra()
+    padrao, nome, categoria_id, define_destino, destino = _dados_regra()
     if not padrao:
         flash("Informe o texto que aparece na fatura.", "erro")
         return redirect(url_for("config.fornecedores"))
-    db.atualizar_regra_fornecedor(regra_id, org_id, padrao, nome, categoria_id)
-    n = db.aplicar_regra_fornecedor(org_id, padrao, nome, categoria_id)
+    db.atualizar_regra_fornecedor(regra_id, org_id, padrao, nome, categoria_id, define_destino, destino)
+    n = db.aplicar_regra_fornecedor(org_id, padrao, nome, categoria_id, define_destino, destino)
     flash(f"Regra atualizada e aplicada em {n} compra(s).", "ok")
     return redirect(url_for("config.fornecedores"))
 

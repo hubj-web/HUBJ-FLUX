@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Acerto · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>🏢 Acerto Família × Empresa</h1>
+    <p style="color:var(--graphite);font-size:12.5px">Quando você paga com o seu dinheiro algo que é da empresa (ou o contrário), o saldo aparece aqui. Registre cada reembolso para ele sair do saldo.</p>
+  </header>
+
+  {% if not empresas %}
+  <div class="card-item" style="margin-top:10px"><div class="card-item-corpo">
+    <div class="card-item-titulo" style="white-space:normal">Nenhuma empresa cadastrada.</div>
+    <div class="card-item-sub" style="white-space:normal">{% if g.usuario_atual.papel in ('super_admin', 'admin_cliente') %}<a href="{{ url_for('empresas.index') }}">Cadastre a primeira empresa</a> para começar.{% else %}Peça ao administrador para cadastrar a empresa.{% endif %}</div>
+  </div></div>
+  {% else %}
+
+  {% if empresas|length > 1 %}
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px">
+    {% for e in empresas %}<a href="{{ url_for('empresas.acerto', empresa_id=e.id) }}" class="btn {{ 'btn-primary' if e.id == sel.empresa_id else 'btn-ghost' }}" style="padding:6px 12px;font-size:12.5px">{{ e.nome }}</a>{% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="summary-cell" style="text-align:center;padding:18px 10px;margin-bottom:12px">
+    <span class="label">{{ sel.frase }}</span>
+    <span class="value {{ 'val-receita' if sel.saldo > 0 else ('val-despesa' if sel.saldo < 0 else '') }}" style="font-size:28px">R$ {{ (sel.saldo|abs)|brl }}</span>
+    <span style="font-size:12px;color:var(--graphite)">
+      Pendências R$ {{ sel.total_pendencias|brl }}
+      {% if sel.acertos_empresa %} · reembolsado pela empresa R$ {{ sel.acertos_empresa|brl }}{% endif %}
+      {% if sel.acertos_familia %} · pago pela Família R$ {{ sel.acertos_familia|brl }}{% endif %}
+    </span>
+  </div>
+
+  <p style="text-align:center;margin:0 0 16px"><a href="{{ url_for('empresas.acerto_csv', empresa_id=sel.empresa_id) }}" class="btn btn-ghost" style="padding:6px 12px;font-size:12.5px">⬇️ Baixar para o contador (CSV)</a></p>
+
+  {% if g.usuario_atual.papel in ('super_admin', 'admin_cliente') %}
+  <details style="margin-bottom:20px">
+    <summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:var(--roxo-estrategico);padding:4px 0">+ Registrar acerto</summary>
+    <form method="post" action="{{ url_for('empresas.novo_acerto') }}" class="form-grid" style="margin-top:14px">
+      <input type="hidden" name="empresa_id" value="{{ sel.empresa_id }}">
+      <div class="form-row"><label>Data</label><input type="date" name="data" value="{{ hoje }}" required></div>
+      <div class="form-row"><label>Valor (R$)</label><input name="valor" placeholder="0,00" required></div>
+      <div class="form-row"><label>O que aconteceu</label>
+        <select name="sentido">
+          <option value="empresa_paga">A empresa pagou / reembolsou a Família</option>
+          <option value="familia_paga">A Família pagou à empresa</option>
+        </select></div>
+      <div class="form-row"><label>Observação (opcional)</label><input name="descricao" maxlength="250" placeholder="Ex: transferência de 12/11"></div>
+      <button type="submit" class="btn btn-primary">Registrar</button>
+    </form>
+  </details>
+  {% endif %}
+
+  {% if sel.acertos %}
+  <h2 style="font-size:14px;margin:18px 0 8px">Acertos registrados</h2>
+  <div class="card-lista">
+    {% for a in sel.acertos %}
+    <div class="card-item">
+      <div class="card-item-icone">🤝</div>
+      <div class="card-item-corpo">
+        <div class="card-item-titulo">{{ 'A empresa pagou' if a.sentido == 'empresa_paga' else 'A Família pagou' }}</div>
+        <div class="card-item-sub">{{ a.data }}{% if a.descricao %} · {{ a.descricao }}{% endif %}</div>
+      </div>
+      <div class="card-item-valor">R$ {{ a.valor|brl }}</div>
+      {% if g.usuario_atual.papel in ('super_admin', 'admin_cliente') %}
+      <form method="post" action="{{ url_for('empresas.excluir_acerto', acerto_id=a.id) }}" data-confirmar="Remover este acerto? O valor volta a contar no saldo.">
+        <input type="hidden" name="empresa_id" value="{{ sel.empresa_id }}">
+        <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px;color:var(--brick)">✕</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <h2 style="font-size:14px;margin:22px 0 8px">O que compõe o saldo</h2>
+  {% for gr in grupos %}
+  <details style="margin-bottom:8px">
+    <summary style="cursor:pointer;display:flex;justify-content:space-between;padding:8px 0;font-size:13.5px">
+      <strong>{{ gr.mes|mes_label }}</strong>
+      <strong class="{{ 'val-receita' if gr.saldo > 0 else 'val-despesa' }}">{{ '+' if gr.saldo > 0 else '−' }} R$ {{ (gr.saldo|abs)|brl }}</strong>
+    </summary>
+    <div class="card-lista">
+      {% for it in gr['itens'] %}
+      <div class="card-item">
+        <div class="card-item-icone">{{ '💳' if it.origem == 'cartao' else '💸' }}</div>
+        <div class="card-item-corpo">
+          <div class="card-item-titulo" style="white-space:normal">{{ it.descricao or 'Sem descrição' }}</div>
+          <div class="card-item-sub">{{ it.data }} · {{ 'Família pagou, é da ' ~ sel.nome if it.efeito > 0 else sel.nome ~ ' pagou, é da Família' }}</div>
+        </div>
+        <div class="card-item-valor {{ 'val-receita' if it.efeito > 0 else 'val-despesa' }}">{{ '+' if it.efeito > 0 else '−' }} R$ {{ (it.efeito|abs)|brl }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% else %}
+  <p style="color:var(--graphite);font-size:13px">Nada pendente. Marque compras e lançamentos como "da empresa" (ou defina o dono do cartão/conta) e o acerto aparece aqui.</p>
+  {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

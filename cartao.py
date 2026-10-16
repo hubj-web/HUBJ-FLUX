@@ -7,6 +7,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, abort
 
 import db
+import empresa as empresa_mod
 import alertas
 import cartao_analise
 from auth import login_required, requer_organizacao
@@ -106,6 +107,7 @@ def importar():
         t["data_iso"] = _infer_year_and_iso(t["data"], ref_ano)
         regra = cartao_analise.regra_para(regras, t["descricao"])
         t["fornecedor"] = regra["nome"] if regra else None
+        t["destino_empresa_id"] = regra.get("destino_empresa_id") if regra and regra.get("define_destino") else None
         t["categoria_sugerida"] = (regra["categoria_nome"] if regra else None) or categorias_cartao.sugerir_categoria(t["descricao"])
         grupo["transacoes"].append(t)
         grupo["soma"] += t["valor"] if t["sinal"] == "D" else -t["valor"]
@@ -169,6 +171,7 @@ def confirmar():
                 "data_iso": t["data_iso"], "descricao": t["descricao"], "cidade": t.get("cidade"), "valor": t["valor"], "sinal": t["sinal"],
                 "parcela_atual": t.get("parcela_atual"), "parcela_total": t.get("parcela_total"), "parcelada": bool(t.get("parcelada")),
                 "tipo": t.get("tipo"), "categoria_id": categoria_id, "fornecedor": t.get("fornecedor"), "pessoa_id": pessoa["id"] if pessoa else None,
+                "destino_empresa_id": t.get("destino_empresa_id"),
             })
             n += 1
     del _pendentes[request.form.get("token")]
@@ -290,7 +293,10 @@ def editar_compra(lc_id):
         return redirect(url_for("cartao.editar_compra", lc_id=lc_id))
 
     categoria_id = request.form.get("categoria_id") or None
+    modulo = db.modulo_empresa_ativo(org_id)
+    destino = empresa_mod.destino_valido(request.form.get("destino_empresa_id"), db.empresas_ids(org_id)) if modulo else l.get("destino_empresa_id")
     db.atualizar_lancamento_cartao(lc_id, org_id, {
+        "destino_empresa_id": destino,
         "fornecedor": fornecedor, "data_iso": data_iso, "valor": valor, "categoria_id": categoria_id,
         "pessoa_id": request.form.get("pessoa_id") or None, "parcela_atual": parcela_atual,
         "parcela_total": parcela_total, "nao_projetar": request.form.get("nao_projetar") == "on",
@@ -298,8 +304,8 @@ def editar_compra(lc_id):
     mensagem = "Compra atualizada."
     padrao = (l["descricao"] or "").strip().upper()
     if request.form.get("criar_regra") == "on" and padrao:
-        db.criar_regra_fornecedor(org_id, padrao, fornecedor, categoria_id)
-        n = db.aplicar_regra_fornecedor(org_id, padrao, fornecedor, categoria_id)
+        db.criar_regra_fornecedor(org_id, padrao, fornecedor, categoria_id, modulo, destino)
+        n = db.aplicar_regra_fornecedor(org_id, padrao, fornecedor, categoria_id, modulo, destino)
         mensagem = f"Compra atualizada. Regra criada e aplicada em {n} compra(s) que contêm \"{padrao}\"."
     flash(mensagem, "ok")
     return redirect(url_for("cartao.transacoes", mes=l["mes_referencia"]))
@@ -404,6 +410,7 @@ def painel():
         fornecedores=_com_percentual(db.gastos_por_fornecedor_cartao(org_id, mes, 8, lente), compras),
         compras=compras, creditos=db.creditos_cartao_mes(org_id, mes, lente),
         proximos=proximos, total_comprometido=sum(m["total"] for m in proximos),
+        destinos=[{**dict(d), "total": float(d["total"])} for d in db.destinos_do_mes(org_id, mes, lente)] if db.modulo_empresa_ativo(org_id) else [],
         total_importado=sum(r["total"] for r in resumo), maximo=maximo,
         barras={r["mes_referencia"]: round(r["total"] / maximo * 100) for r in resumo},
     )

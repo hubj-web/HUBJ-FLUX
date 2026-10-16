@@ -38,6 +38,9 @@
               <input type="number" name="limite_usuarios" value="{{ org.limite_usuarios }}" min="1" style="width:60px;padding:4px">
               <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">Salvar limite</button>
             </form>
+            <form method="post" action="{{ url_for('admin.alternar_modulo_empresa', org_id=org.id) }}" style="display:inline">
+              <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">{{ '🏢 Empresa: ligado' if org.modulo_empresa else '🏢 Ligar Empresa' }}</button>
+            </form>
             <form method="post" action="{{ url_for('admin.alternar_status', org_id=org.id) }}" style="display:inline">
               <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">{{ 'Suspender' if org.status == 'ativo' else 'Reativar' }}</button>
             </form>

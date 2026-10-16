@@ -23,6 +23,7 @@
         <option value="">— nenhuma —</option>
         {% for p in pessoas %}<option value="{{ p.id }}" {{ 'selected' if p.id == l.pessoa_id }}>{{ (p.avatar ~ ' ') if p.avatar else '' }}{{ p.nome }}</option>{% endfor %}
       </select></div>
+    {% if modulo_empresa %}<div class="form-row"><label>Para quem?</label><select name="destino_empresa_id"><option value="">Família</option>{% for e in empresas_org %}<option value="{{ e.id }}" {{ 'selected' if e.id == l.destino_empresa_id }}>{{ e.nome }}</option>{% endfor %}</select></div>{% endif %}
     <div class="form-row"><label>Parcela (deixe em branco se for à vista)</label>
       <div class="filters" style="flex-wrap:nowrap;align-items:center">
         <input type="number" name="parcela_atual" min="1" max="60" value="{{ l.parcela_atual or '' }}" placeholder="atual" style="flex:1">

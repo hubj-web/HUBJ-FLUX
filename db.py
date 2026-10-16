@@ -187,17 +187,17 @@ def sugerir_categoria_por_descricao(organizacao_id, descricao):
 # ---------- Lançamentos ----------
 
 def criar_lancamento(organizacao_id, dados, criado_por):
-    dados = {**dados, "taxa_juros_mensal": dados.get("taxa_juros_mensal"), "conta_bancaria_id": dados.get("conta_bancaria_id")}
+    dados = {**dados, "taxa_juros_mensal": dados.get("taxa_juros_mensal"), "conta_bancaria_id": dados.get("conta_bancaria_id"), "destino_empresa_id": dados.get("destino_empresa_id")}
     return execute(
         """INSERT INTO lancamentos
              (organizacao_id, data, tipo, valor, descricao, categoria_id, subcategoria_id,
               forma_pagamento_id, cartao_id, pessoa_id, grupo_parcelamento_id,
-              parcela_atual, parcela_total, observacao, taxa_juros_mensal, conta_bancaria_id, criado_por, criado_em)
+              parcela_atual, parcela_total, observacao, taxa_juros_mensal, conta_bancaria_id, destino_empresa_id, criado_por, criado_em)
            VALUES (%(organizacao_id)s, %(data)s, %(tipo)s, %(valor)s, %(descricao)s,
                    %(categoria_id)s, %(subcategoria_id)s, %(forma_pagamento_id)s,
                    %(cartao_id)s, %(pessoa_id)s, %(grupo_parcelamento_id)s,
                    %(parcela_atual)s, %(parcela_total)s, %(observacao)s, %(taxa_juros_mensal)s,
-                   %(conta_bancaria_id)s, %(criado_por)s, now())
+                   %(conta_bancaria_id)s, %(destino_empresa_id)s, %(criado_por)s, now())
            RETURNING *""",
         {**dados, "organizacao_id": organizacao_id, "criado_por": criado_por},
     )
@@ -212,7 +212,7 @@ def buscar_lancamento(lancamento_id, organizacao_id):
 
 def atualizar_lancamento(lancamento_id, organizacao_id, dados):
     campos = ["data", "tipo", "valor", "descricao", "categoria_id", "subcategoria_id",
-              "forma_pagamento_id", "cartao_id", "pessoa_id", "observacao"]
+              "forma_pagamento_id", "cartao_id", "pessoa_id", "observacao", "destino_empresa_id"]
     sets = ", ".join(f"{c} = %({c})s" for c in campos if c in dados)
     if not sets:
         return
@@ -230,8 +230,9 @@ def excluir_lancamento(lancamento_id, organizacao_id):
 def listar_lancamentos(organizacao_id, filtros=None):
     filtros = filtros or {}
     sql = """SELECT l.*, c.nome AS categoria_nome, sc.nome AS subcategoria_nome,
-                    fp.nome AS forma_pagamento_nome, p.nome AS pessoa_nome, p.avatar AS pessoa_avatar, ca.nome AS cartao_nome
+                    fp.nome AS forma_pagamento_nome, p.nome AS pessoa_nome, p.avatar AS pessoa_avatar, ca.nome AS cartao_nome, en.nome AS destino_nome
              FROM lancamentos l
+             LEFT JOIN empresas en ON en.id = l.destino_empresa_id
              LEFT JOIN categorias c ON c.id = l.categoria_id
              LEFT JOIN subcategorias sc ON sc.id = l.subcategoria_id
              LEFT JOIN formas_pagamento fp ON fp.id = l.forma_pagamento_id
@@ -461,10 +462,10 @@ def inserir_lancamento_cartao(fatura_id, dados):
     execute(
         """INSERT INTO lancamentos_cartao
              (fatura_id, data_iso, descricao, cidade, valor, sinal, parcela_atual,
-              parcela_total, parcelada, tipo, categoria_id, pessoa_id, fornecedor)
+              parcela_total, parcelada, tipo, categoria_id, pessoa_id, fornecedor, destino_empresa_id)
            VALUES (%(fatura_id)s, %(data_iso)s, %(descricao)s, %(cidade)s, %(valor)s, %(sinal)s,
-                   %(parcela_atual)s, %(parcela_total)s, %(parcelada)s, %(tipo)s, %(categoria_id)s, %(pessoa_id)s, %(fornecedor)s)""",
-        {**dados, "fatura_id": fatura_id, "fornecedor": dados.get("fornecedor")},
+                   %(parcela_atual)s, %(parcela_total)s, %(parcelada)s, %(tipo)s, %(categoria_id)s, %(pessoa_id)s, %(fornecedor)s, %(destino_empresa_id)s)""",
+        {**dados, "fatura_id": fatura_id, "fornecedor": dados.get("fornecedor"), "destino_empresa_id": dados.get("destino_empresa_id")},
     )
 
 
@@ -499,9 +500,10 @@ def ultimas_faturas_por_cartao(organizacao_id):
 def listar_lancamentos_cartao(organizacao_id, filtros=None):
     filtros = filtros or {}
     sql = """SELECT lc.*, f.mes_referencia, c.nome AS cartao_nome, cat.nome AS categoria_nome, p.nome AS pessoa_nome,
-                    COALESCE(NULLIF(TRIM(lc.fornecedor), ''), lc.descricao) AS fornecedor_exibicao
+                    COALESCE(NULLIF(TRIM(lc.fornecedor), ''), lc.descricao) AS fornecedor_exibicao, en.nome AS destino_nome
              FROM lancamentos_cartao lc
              JOIN faturas f ON f.id = lc.fatura_id JOIN cartoes c ON c.id = f.cartao_id
+             LEFT JOIN empresas en ON en.id = lc.destino_empresa_id
              LEFT JOIN categorias cat ON cat.id = lc.categoria_id LEFT JOIN pessoas p ON p.id = lc.pessoa_id
              WHERE c.organizacao_id = %(organizacao_id)s AND COALESCE(lc.tipo, '') NOT IN ('SALDO_ANTERIOR', 'PAGAMENTO')"""
     params = {"organizacao_id": organizacao_id}
@@ -579,19 +581,19 @@ def listar_cartoes_todos(organizacao_id):
     )
 
 
-def criar_cartao_manual(organizacao_id, nome, limite_total, dia_fechamento, dia_vencimento, pessoa_id=None):
+def criar_cartao_manual(organizacao_id, nome, limite_total, dia_fechamento, dia_vencimento, pessoa_id=None, dono_empresa_id=None):
     return execute(
-        """INSERT INTO cartoes (organizacao_id, nome, limite_total, dia_fechamento, dia_vencimento, pessoa_id, ativo)
-           VALUES (%s, %s, %s, %s, %s, %s, true) RETURNING *""",
-        (organizacao_id, nome, limite_total, dia_fechamento, dia_vencimento, pessoa_id),
+        """INSERT INTO cartoes (organizacao_id, nome, limite_total, dia_fechamento, dia_vencimento, pessoa_id, ativo, dono_empresa_id)
+           VALUES (%s, %s, %s, %s, %s, %s, true, %s) RETURNING *""",
+        (organizacao_id, nome, limite_total, dia_fechamento, dia_vencimento, pessoa_id, dono_empresa_id),
     )
 
 
-def atualizar_cartao(cartao_id, organizacao_id, nome, limite_total, dia_fechamento, dia_vencimento, ativo, pessoa_id=None):
+def atualizar_cartao(cartao_id, organizacao_id, nome, limite_total, dia_fechamento, dia_vencimento, ativo, pessoa_id=None, dono_empresa_id=None):
     execute(
-        """UPDATE cartoes SET nome=%s, limite_total=%s, dia_fechamento=%s, dia_vencimento=%s, ativo=%s, pessoa_id=%s
+        """UPDATE cartoes SET nome=%s, limite_total=%s, dia_fechamento=%s, dia_vencimento=%s, ativo=%s, pessoa_id=%s, dono_empresa_id=%s
            WHERE id=%s AND organizacao_id=%s""",
-        (nome, limite_total, dia_fechamento, dia_vencimento, ativo, pessoa_id, cartao_id, organizacao_id),
+        (nome, limite_total, dia_fechamento, dia_vencimento, ativo, pessoa_id, dono_empresa_id, cartao_id, organizacao_id),
     )
 
 
@@ -716,18 +718,18 @@ def listar_contas_bancarias(organizacao_id, apenas_ativas=True):
     return query_all(sql, (organizacao_id,))
 
 
-def criar_conta_bancaria(organizacao_id, nome, tipo, saldo_inicial):
+def criar_conta_bancaria(organizacao_id, nome, tipo, saldo_inicial, dono_empresa_id=None):
     return execute(
-        """INSERT INTO contas_bancarias (organizacao_id, nome, tipo, saldo_inicial, ativa, criado_em)
-           VALUES (%s, %s, %s, %s, true, now()) RETURNING *""",
-        (organizacao_id, nome, tipo, saldo_inicial),
+        """INSERT INTO contas_bancarias (organizacao_id, nome, tipo, saldo_inicial, ativa, criado_em, dono_empresa_id)
+           VALUES (%s, %s, %s, %s, true, now(), %s) RETURNING *""",
+        (organizacao_id, nome, tipo, saldo_inicial, dono_empresa_id),
     )
 
 
-def atualizar_conta_bancaria(conta_id, organizacao_id, nome, tipo, saldo_inicial, ativa):
+def atualizar_conta_bancaria(conta_id, organizacao_id, nome, tipo, saldo_inicial, ativa, dono_empresa_id=None):
     execute(
-        "UPDATE contas_bancarias SET nome=%s, tipo=%s, saldo_inicial=%s, ativa=%s WHERE id=%s AND organizacao_id=%s",
-        (nome, tipo, saldo_inicial, ativa, conta_id, organizacao_id),
+        "UPDATE contas_bancarias SET nome=%s, tipo=%s, saldo_inicial=%s, ativa=%s, dono_empresa_id=%s WHERE id=%s AND organizacao_id=%s",
+        (nome, tipo, saldo_inicial, ativa, dono_empresa_id, conta_id, organizacao_id),
     )
 
 
@@ -897,18 +899,6 @@ _BASE_LC = """FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id
               WHERE c.organizacao_id = %s AND COALESCE(lc.tipo, '') NOT IN ('SALDO_ANTERIOR', 'PAGAMENTO')"""
 
 
-def compras_parceladas_cartao(organizacao_id):
-    return query_all(
-        """SELECT lc.id, COALESCE(NULLIF(TRIM(lc.fornecedor), ''), lc.descricao) AS descricao, lc.nao_projetar,
-                  lc.valor, lc.parcela_atual, lc.parcela_total, lc.pessoa_id,
-                  f.mes_referencia, p.nome AS pessoa_nome
-           FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id
-                JOIN cartoes c ON c.id = f.cartao_id LEFT JOIN pessoas p ON p.id = lc.pessoa_id
-           WHERE c.organizacao_id = %s AND lc.sinal = 'D' AND lc.parcela_total > 1 AND lc.parcela_atual IS NOT NULL""",
-        (organizacao_id,),
-    )
-
-
 def excluir_faturas_mes(organizacao_id, mes):
     execute(
         "DELETE FROM faturas WHERE mes_referencia = %s AND cartao_id IN (SELECT id FROM cartoes WHERE organizacao_id = %s)",
@@ -946,10 +936,10 @@ def atualizar_lancamento_cartao(lc_id, organizacao_id, d):
         return False
     execute(
         """UPDATE lancamentos_cartao SET fornecedor = %s, data_iso = %s, valor = %s, categoria_id = %s,
-                  pessoa_id = %s, parcela_atual = %s, parcela_total = %s, parcelada = %s, nao_projetar = %s
+                  pessoa_id = %s, parcela_atual = %s, parcela_total = %s, parcelada = %s, nao_projetar = %s, destino_empresa_id = %s
            WHERE id = %s""",
         (d["fornecedor"], d["data_iso"], d["valor"], d["categoria_id"], d["pessoa_id"], d["parcela_atual"],
-         d["parcela_total"], bool(d["parcela_total"] and d["parcela_total"] > 1), bool(d["nao_projetar"]), lc_id),
+         d["parcela_total"], bool(d["parcela_total"] and d["parcela_total"] > 1), bool(d["nao_projetar"]), d.get("destino_empresa_id"), lc_id),
     )
     sinal = 1 if antigo["sinal"] == "D" else -1
     delta = (Decimal(str(d["valor"])) - Decimal(antigo["valor"])).quantize(Decimal("0.01")) * sinal
@@ -968,49 +958,8 @@ def excluir_lancamento_cartao(lc_id, organizacao_id):
 
 # ---- regras de fornecedor ----
 
-def listar_regras_fornecedor(organizacao_id):
-    return query_all(
-        """SELECT r.*, c.nome AS categoria_nome FROM regras_fornecedor r
-           LEFT JOIN categorias c ON c.id = r.categoria_id
-           WHERE r.organizacao_id = %s ORDER BY LENGTH(r.padrao) DESC, r.nome""",
-        (organizacao_id,),
-    )
-
-
-def criar_regra_fornecedor(organizacao_id, padrao, nome, categoria_id):
-    return execute(
-        """INSERT INTO regras_fornecedor (organizacao_id, padrao, nome, categoria_id) VALUES (%s, %s, %s, %s)
-           ON CONFLICT (organizacao_id, padrao) DO UPDATE SET nome = EXCLUDED.nome, categoria_id = EXCLUDED.categoria_id
-           RETURNING *""",
-        (organizacao_id, padrao, nome, categoria_id),
-    )
-
-
-def atualizar_regra_fornecedor(regra_id, organizacao_id, padrao, nome, categoria_id):
-    execute("UPDATE regras_fornecedor SET padrao = %s, nome = %s, categoria_id = %s WHERE id = %s AND organizacao_id = %s",
-            (padrao, nome, categoria_id, regra_id, organizacao_id))
-
-
 def excluir_regra_fornecedor(regra_id, organizacao_id):
     execute("DELETE FROM regras_fornecedor WHERE id = %s AND organizacao_id = %s", (regra_id, organizacao_id))
-
-
-def aplicar_regra_fornecedor(organizacao_id, padrao, nome, categoria_id):
-    """Aplica a regra nas compras JÁ importadas (a busca é por trecho do texto, sem diferenciar
-    maiúsculas). Devolve quantas compras foram ajustadas."""
-    n = query_one(
-        """SELECT COUNT(*) AS n FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id
-           JOIN cartoes c ON c.id = f.cartao_id
-           WHERE c.organizacao_id = %s AND POSITION(%s IN UPPER(lc.descricao)) > 0""",
-        (organizacao_id, padrao),
-    )["n"]
-    execute(
-        """UPDATE lancamentos_cartao lc SET fornecedor = %s, categoria_id = COALESCE(%s, lc.categoria_id)
-           FROM faturas f JOIN cartoes c ON c.id = f.cartao_id
-           WHERE lc.fatura_id = f.id AND c.organizacao_id = %s AND POSITION(%s IN UPPER(lc.descricao)) > 0""",
-        (nome, categoria_id, organizacao_id, padrao),
-    )
-    return int(n)
 
 
 def fornecedores_sem_categoria(organizacao_id, limite=10):
@@ -1051,25 +1000,6 @@ def listar_gastos_fixos(organizacao_id):
         """SELECT g.*, c.nome AS categoria_nome FROM gastos_fixos g LEFT JOIN categorias c ON c.id = g.categoria_id
            WHERE g.organizacao_id = %s ORDER BY g.ativo DESC, g.dia_mes, g.nome""",
         (organizacao_id,),
-    )
-
-
-def criar_gasto_fixo(organizacao_id, d):
-    execute(
-        """INSERT INTO gastos_fixos (organizacao_id, nome, valor, estimado, dia_mes, frequencia, mes_inicio, mes_fim, no_cartao, categoria_id)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-        (organizacao_id, d["nome"], d["valor"], d["estimado"], d["dia_mes"], d["frequencia"], d["mes_inicio"],
-         d["mes_fim"], d["no_cartao"], d["categoria_id"]),
-    )
-
-
-def atualizar_gasto_fixo(gasto_id, organizacao_id, d):
-    execute(
-        """UPDATE gastos_fixos SET nome=%s, valor=%s, estimado=%s, dia_mes=%s, frequencia=%s, mes_inicio=%s,
-                  mes_fim=%s, no_cartao=%s, categoria_id=%s, ativo=%s
-           WHERE id=%s AND organizacao_id=%s""",
-        (d["nome"], d["valor"], d["estimado"], d["dia_mes"], d["frequencia"], d["mes_inicio"], d["mes_fim"],
-         d["no_cartao"], d["categoria_id"], d["ativo"], gasto_id, organizacao_id),
     )
 
 
@@ -1237,23 +1167,11 @@ def titulares_por_fatura(organizacao_id):
         " GROUP BY lc.fatura_id, p.nome ORDER BY lc.fatura_id, total DESC", (organizacao_id,))
 
 
-def gastos_por_categoria_cartao(organizacao_id, mes, lente="fatura"):
-    return query_all(
-        "SELECT cat.id AS categoria_id, COALESCE(cat.nome, 'Sem categoria') AS categoria, SUM(lc.valor) AS total, COUNT(*) AS n " + _BASE_LC +
-        " AND " + _mes_expr(lente) + " = %s AND lc.sinal = 'D' GROUP BY cat.id, cat.nome ORDER BY total DESC", (organizacao_id, mes))
-
-
 def gastos_por_fornecedor_cartao(organizacao_id, mes, limite=8, lente="fatura"):
     return query_all(
         "SELECT " + _FORN_SQL + " AS fornecedor, SUM(lc.valor) AS total, COUNT(*) AS n " + _BASE_LC +
         " AND " + _mes_expr(lente) + " = %s AND lc.sinal = 'D' GROUP BY " + _FORN_SQL + " ORDER BY total DESC LIMIT %s",
         (organizacao_id, mes, limite))
-
-
-def creditos_cartao_mes(organizacao_id, mes, lente="fatura"):
-    row = query_one("SELECT COALESCE(SUM(lc.valor), 0) AS total " + _BASE_LC + " AND " + _mes_expr(lente) + " = %s AND lc.sinal = 'C'",
-                    (organizacao_id, mes))
-    return float(row["total"]) if row else 0.0
 
 
 def totais_mes(organizacao_id, mes_referencia):
@@ -1270,15 +1188,229 @@ def totais_mes(organizacao_id, mes_referencia):
     return {"receitas": receitas, "despesas": despesas, "saldo": receitas - despesas, "cartao": cartao["total"], "cartao_previa": cartao["previa"]}
 
 
+
+
+
+# ---------- Módulo Pessoa + Empresa ----------
+
+# Orçamento da FAMÍLIA = tudo que não é de uma empresa
+_FAMILIA_L = "l.destino_empresa_id IS NULL"
+_FAMILIA_LC = "lc.destino_empresa_id IS NULL"
+
+
+def listar_empresas(organizacao_id, apenas_ativas=True):
+    sql = "SELECT * FROM empresas WHERE organizacao_id = %s"
+    if apenas_ativas:
+        sql += " AND ativa = true"
+    return query_all(sql + " ORDER BY nome", (organizacao_id,))
+
+
+def buscar_empresa(organizacao_id, empresa_id):
+    return query_one("SELECT * FROM empresas WHERE id = %s AND organizacao_id = %s", (empresa_id, organizacao_id))
+
+
+def criar_empresa(organizacao_id, nome):
+    return execute("INSERT INTO empresas (organizacao_id, nome) VALUES (%s, %s) RETURNING *", (organizacao_id, nome))
+
+
+def atualizar_empresa(empresa_id, organizacao_id, nome, ativa):
+    execute("UPDATE empresas SET nome = %s, ativa = %s WHERE id = %s AND organizacao_id = %s", (nome, ativa, empresa_id, organizacao_id))
+
+
+def empresa_em_uso(empresa_id, organizacao_id):
+    """Quantos registros apontam para a empresa (se > 0, não pode excluir: só desativar)."""
+    row = query_one(
+        """SELECT (SELECT COUNT(*) FROM lancamentos WHERE destino_empresa_id = %(e)s) + (SELECT COUNT(*) FROM lancamentos_cartao WHERE destino_empresa_id = %(e)s)
+                + (SELECT COUNT(*) FROM gastos_fixos WHERE destino_empresa_id = %(e)s) + (SELECT COUNT(*) FROM regras_fornecedor WHERE destino_empresa_id = %(e)s)
+                + (SELECT COUNT(*) FROM cartoes WHERE dono_empresa_id = %(e)s) + (SELECT COUNT(*) FROM contas_bancarias WHERE dono_empresa_id = %(e)s)
+                + (SELECT COUNT(*) FROM acertos WHERE empresa_id = %(e)s) AS n""", {"e": empresa_id})
+    return int(row["n"])
+
+
+def excluir_empresa(empresa_id, organizacao_id):
+    execute("DELETE FROM empresas WHERE id = %s AND organizacao_id = %s", (empresa_id, organizacao_id))
+
+
+def salvar_modulo_empresa(organizacao_id, ativo):
+    execute("UPDATE organizacoes_preferencias SET modulo_empresa = %s WHERE organizacao_id = %s", (bool(ativo), organizacao_id))
+
+
+# ---- acertos ----
+
+def listar_acertos(organizacao_id, empresa_id=None):
+    sql, params = "SELECT * FROM acertos WHERE organizacao_id = %s", [organizacao_id]
+    if empresa_id:
+        sql += " AND empresa_id = %s"; params.append(empresa_id)
+    return query_all(sql + " ORDER BY data DESC, id DESC", params)
+
+
+def criar_acerto(organizacao_id, empresa_id, data, valor, sentido, descricao):
+    execute("INSERT INTO acertos (organizacao_id, empresa_id, data, valor, sentido, descricao) VALUES (%s, %s, %s, %s, %s, %s)",
+            (organizacao_id, empresa_id, data, valor, sentido, descricao))
+
+
+def excluir_acerto(acerto_id, organizacao_id):
+    execute("DELETE FROM acertos WHERE id = %s AND organizacao_id = %s", (acerto_id, organizacao_id))
+
+
+def acerto_itens(organizacao_id):
+    """Pendências brutas: onde QUEM PAGOU (dono do cartão/conta) é diferente de PARA QUEM foi o gasto."""
+    return query_all(
+        """SELECT 'cartao' AS origem, lc.id, f.mes_referencia AS mes, lc.data_iso AS data,
+                  COALESCE(NULLIF(TRIM(lc.fornecedor), ''), lc.descricao) AS descricao,
+                  CASE WHEN lc.sinal = 'D' THEN lc.valor ELSE -lc.valor END AS valor,
+                  c.dono_empresa_id AS pagador, lc.destino_empresa_id AS destino
+           FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id JOIN cartoes c ON c.id = f.cartao_id
+           WHERE c.organizacao_id = %(org)s AND COALESCE(lc.tipo, '') NOT IN ('SALDO_ANTERIOR', 'PAGAMENTO')
+             AND c.dono_empresa_id IS DISTINCT FROM lc.destino_empresa_id
+           UNION ALL
+           SELECT 'manual', l.id, to_char(l.data, 'YYYY-MM'), l.data, COALESCE(l.descricao, ''), l.valor,
+                  CASE WHEN l.cartao_id IS NOT NULL THEN ca.dono_empresa_id WHEN l.conta_bancaria_id IS NOT NULL THEN cb.dono_empresa_id ELSE NULL END,
+                  l.destino_empresa_id
+           FROM lancamentos l LEFT JOIN formas_pagamento fp ON fp.id = l.forma_pagamento_id
+                LEFT JOIN cartoes ca ON ca.id = l.cartao_id LEFT JOIN contas_bancarias cb ON cb.id = l.conta_bancaria_id
+           WHERE l.organizacao_id = %(org)s AND NOT (""" + _CARTAO_MANUAL + """)
+             AND l.tipo = 'despesa'
+             AND (CASE WHEN l.cartao_id IS NOT NULL THEN ca.dono_empresa_id WHEN l.conta_bancaria_id IS NOT NULL THEN cb.dono_empresa_id ELSE NULL END)
+                 IS DISTINCT FROM l.destino_empresa_id""",
+        {"org": organizacao_id})
+
+
+# ---- análise com o destino ----
+
 def realizado_por_categoria_mes(organizacao_id, mes_referencia):
+    """Controle = orçamento da FAMÍLIA: o que é de uma empresa fica de fora."""
     rows = query_all(
         """SELECT categoria_id, SUM(valor) AS total FROM (
              SELECT l.categoria_id, l.valor FROM lancamentos l LEFT JOIN formas_pagamento fp ON fp.id = l.forma_pagamento_id
                WHERE l.organizacao_id = %(org)s AND l.tipo = 'despesa' AND to_char(l.data, 'YYYY-MM') = %(mes)s AND NOT (""" + _CARTAO_MANUAL + """)
+                 AND """ + _FAMILIA_L + """
              UNION ALL
              SELECT lc.categoria_id, lc.valor FROM lancamentos_cartao lc
                JOIN faturas f ON f.id = lc.fatura_id JOIN cartoes c ON c.id = f.cartao_id
                WHERE c.organizacao_id = %(org)s AND lc.sinal = 'D' AND f.mes_referencia = %(mes)s AND """ + _SEM_PASSAGEM + """
+                 AND """ + _FAMILIA_LC + """
            ) t GROUP BY categoria_id""",
         {"org": organizacao_id, "mes": mes_referencia})
     return {r["categoria_id"]: float(r["total"]) for r in rows if r["categoria_id"] is not None}
+
+
+def gastos_por_categoria_cartao(organizacao_id, mes, lente="fatura", so_familia=False):
+    return query_all(
+        "SELECT cat.id AS categoria_id, COALESCE(cat.nome, 'Sem categoria') AS categoria, SUM(lc.valor) AS total, COUNT(*) AS n " + _BASE_LC +
+        " AND " + _mes_expr(lente) + " = %s AND lc.sinal = 'D'" + (" AND " + _FAMILIA_LC if so_familia else "") +
+        " GROUP BY cat.id, cat.nome ORDER BY total DESC", (organizacao_id, mes))
+
+
+def creditos_cartao_mes(organizacao_id, mes, lente="fatura", so_familia=False):
+    row = query_one("SELECT COALESCE(SUM(lc.valor), 0) AS total " + _BASE_LC + " AND " + _mes_expr(lente) + " = %s AND lc.sinal = 'C'" +
+                    (" AND " + _FAMILIA_LC if so_familia else ""), (organizacao_id, mes))
+    return float(row["total"]) if row else 0.0
+
+
+def destinos_do_mes(organizacao_id, mes, lente="fatura"):
+    """Para quem foi o cartão no mês: empresa_id vazio = Família."""
+    return query_all(
+        "SELECT e.id AS empresa_id, e.nome AS empresa_nome, SUM(CASE WHEN lc.sinal = 'D' THEN lc.valor ELSE -lc.valor END) AS total, COUNT(*) AS n "
+        "FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id JOIN cartoes c ON c.id = f.cartao_id "
+        "LEFT JOIN empresas e ON e.id = lc.destino_empresa_id WHERE c.organizacao_id = %s AND " + _mes_expr(lente) + " = %s AND " + _SEM_PASSAGEM +
+        " GROUP BY e.id, e.nome ORDER BY total DESC", (organizacao_id, mes))
+
+
+def total_empresa_cartao_mes(organizacao_id, mes):
+    row = query_one(
+        "SELECT COALESCE(SUM(CASE WHEN lc.sinal = 'D' THEN lc.valor ELSE -lc.valor END), 0) AS total " + _BASE_LC +
+        " AND f.mes_referencia = %s AND lc.destino_empresa_id IS NOT NULL", (organizacao_id, mes))
+    return float(row["total"])
+
+
+def empresa_cartao_por_mes(organizacao_id):
+    rows = query_all(
+        "SELECT f.mes_referencia AS mes, SUM(CASE WHEN lc.sinal = 'D' THEN lc.valor ELSE -lc.valor END) AS total " + _BASE_LC +
+        " AND lc.destino_empresa_id IS NOT NULL GROUP BY f.mes_referencia", (organizacao_id,))
+    return {r["mes"]: float(r["total"]) for r in rows}
+
+
+def compras_parceladas_cartao(organizacao_id):
+    return query_all(
+        """SELECT lc.id, COALESCE(NULLIF(TRIM(lc.fornecedor), ''), lc.descricao) AS descricao, lc.nao_projetar,
+                  lc.valor, lc.parcela_atual, lc.parcela_total, lc.pessoa_id, lc.destino_empresa_id,
+                  f.mes_referencia, p.nome AS pessoa_nome
+           FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id
+                JOIN cartoes c ON c.id = f.cartao_id LEFT JOIN pessoas p ON p.id = lc.pessoa_id
+           WHERE c.organizacao_id = %s AND lc.sinal = 'D' AND lc.parcela_total > 1 AND lc.parcela_atual IS NOT NULL""",
+        (organizacao_id,))
+
+
+# ---- regras de fornecedor (agora com destino) ----
+
+def listar_regras_fornecedor(organizacao_id):
+    return query_all(
+        """SELECT r.*, c.nome AS categoria_nome, e.nome AS destino_nome FROM regras_fornecedor r
+           LEFT JOIN categorias c ON c.id = r.categoria_id LEFT JOIN empresas e ON e.id = r.destino_empresa_id
+           WHERE r.organizacao_id = %s ORDER BY LENGTH(r.padrao) DESC, r.nome""",
+        (organizacao_id,))
+
+
+def criar_regra_fornecedor(organizacao_id, padrao, nome, categoria_id, define_destino=False, destino_empresa_id=None):
+    return execute(
+        """INSERT INTO regras_fornecedor (organizacao_id, padrao, nome, categoria_id, define_destino, destino_empresa_id)
+           VALUES (%s, %s, %s, %s, %s, %s)
+           ON CONFLICT (organizacao_id, padrao) DO UPDATE SET nome = EXCLUDED.nome, categoria_id = EXCLUDED.categoria_id,
+                define_destino = EXCLUDED.define_destino, destino_empresa_id = EXCLUDED.destino_empresa_id
+           RETURNING *""",
+        (organizacao_id, padrao, nome, categoria_id, define_destino, destino_empresa_id))
+
+
+def atualizar_regra_fornecedor(regra_id, organizacao_id, padrao, nome, categoria_id, define_destino=False, destino_empresa_id=None):
+    execute("UPDATE regras_fornecedor SET padrao = %s, nome = %s, categoria_id = %s, define_destino = %s, destino_empresa_id = %s "
+            "WHERE id = %s AND organizacao_id = %s",
+            (padrao, nome, categoria_id, define_destino, destino_empresa_id, regra_id, organizacao_id))
+
+
+def aplicar_regra_fornecedor(organizacao_id, padrao, nome, categoria_id, define_destino=False, destino_empresa_id=None):
+    """Aplica a regra nas compras JÁ importadas (busca por trecho do texto, sem diferenciar maiúsculas).
+    Devolve quantas compras foram ajustadas."""
+    n = query_one(
+        """SELECT COUNT(*) AS n FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id
+           JOIN cartoes c ON c.id = f.cartao_id
+           WHERE c.organizacao_id = %s AND POSITION(%s IN UPPER(lc.descricao)) > 0""",
+        (organizacao_id, padrao))["n"]
+    execute(
+        """UPDATE lancamentos_cartao lc SET fornecedor = %s, categoria_id = COALESCE(%s, lc.categoria_id),
+                  destino_empresa_id = CASE WHEN %s THEN %s ELSE lc.destino_empresa_id END
+           FROM faturas f JOIN cartoes c ON c.id = f.cartao_id
+           WHERE lc.fatura_id = f.id AND c.organizacao_id = %s AND POSITION(%s IN UPPER(lc.descricao)) > 0""",
+        (nome, categoria_id, bool(define_destino), destino_empresa_id, organizacao_id, padrao))
+    return int(n)
+
+
+# ---- gastos fixos (agora com destino) ----
+
+def criar_gasto_fixo(organizacao_id, d):
+    execute(
+        """INSERT INTO gastos_fixos (organizacao_id, nome, valor, estimado, dia_mes, frequencia, mes_inicio, mes_fim, no_cartao, categoria_id, destino_empresa_id)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+        (organizacao_id, d["nome"], d["valor"], d["estimado"], d["dia_mes"], d["frequencia"], d["mes_inicio"],
+         d["mes_fim"], d["no_cartao"], d["categoria_id"], d.get("destino_empresa_id")))
+
+
+def atualizar_gasto_fixo(gasto_id, organizacao_id, d):
+    execute(
+        """UPDATE gastos_fixos SET nome=%s, valor=%s, estimado=%s, dia_mes=%s, frequencia=%s, mes_inicio=%s,
+                  mes_fim=%s, no_cartao=%s, categoria_id=%s, ativo=%s, destino_empresa_id=%s
+           WHERE id=%s AND organizacao_id=%s""",
+        (d["nome"], d["valor"], d["estimado"], d["dia_mes"], d["frequencia"], d["mes_inicio"], d["mes_fim"],
+         d["no_cartao"], d["categoria_id"], d["ativo"], d.get("destino_empresa_id"), gasto_id, organizacao_id))
+
+
+def modulo_empresa_ativo(organizacao_id):
+    prefs = buscar_preferencias(organizacao_id)
+    return bool(prefs and prefs.get("modulo_empresa"))
+
+
+def empresas_ids(organizacao_id):
+    """Ids das empresas da organização com o módulo ligado; sem o módulo, vazio (tudo é Família)."""
+    if not modulo_empresa_ativo(organizacao_id):
+        return set()
+    return {e["id"] for e in listar_empresas(organizacao_id, apenas_ativas=False)}

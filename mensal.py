@@ -8,6 +8,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 
 import cartao_analise
 import db
+import empresa as empresa_mod
 import ia
 import planejamento_mensal as pm
 from auth import login_required, requer_organizacao, requer_papel
@@ -50,7 +51,7 @@ def _carregar(org_id, n):
     prefs = db.buscar_preferencias(org_id) or {}
     desloc = pm.calcular_deslocamento(resumo)
     meses = pm.visao_mensal(hoje, n, fixos, resumo, parcelas, db.renda_planejada_por_mes(org_id, mes0, cartao_analise.somar_meses(mes0, n - 1)),
-                            prefs.get("renda_mensal"), desloc)
+                            prefs.get("renda_mensal"), desloc, db.empresa_cartao_por_mes(org_id))
     ultimo_caixa = cartao_analise.somar_meses(ultimo, desloc) if ultimo else ""
     return {"hoje": hoje, "mes_atual": mes0, "fixos": fixos, "resumo": resumo, "ultimo": ultimo, "meses": meses, "prefs": prefs,
             "renda_padrao": prefs.get("renda_mensal"), "media_fixos": pm.media_mensal(fixos),
@@ -171,7 +172,8 @@ def _ler_gasto_fixo(criando):
         return None, erro
     return {"nome": nome, "valor": valor, "estimado": f.get("estimado") == "on", "dia_mes": dia, "frequencia": frequencia,
             "mes_inicio": inicio, "mes_fim": fim, "no_cartao": f.get("no_cartao") == "on",
-            "categoria_id": f.get("categoria_id") or None, "ativo": True if criando else f.get("ativo") == "on"}, None
+            "categoria_id": f.get("categoria_id") or None, "ativo": True if criando else f.get("ativo") == "on",
+            "destino_empresa_id": empresa_mod.destino_valido(f.get("destino_empresa_id"), db.empresas_ids(g.usuario_atual["organizacao_id"]))}, None
 
 
 @mensal_bp.route("/fixos", methods=["GET", "POST"])

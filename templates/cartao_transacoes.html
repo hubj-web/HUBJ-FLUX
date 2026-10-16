@@ -45,7 +45,7 @@
         <div class="card-item-icone">{{ '💳' if l.sinal == 'D' else '↩️' }}</div>
         <div class="card-item-corpo">
           <div class="card-item-titulo">{{ l.fornecedor_exibicao }}{% if l.parcela_atual %} <span style="font-weight:400;color:var(--graphite);font-size:11px">({{ l.parcela_atual }}/{{ l.parcela_total }})</span>{% endif %}</div>
-          <div class="card-item-sub">{{ l.data_iso }}{% if l.pessoa_nome %} · {{ l.pessoa_nome }}{% endif %} · {% if l.categoria_nome %}{{ l.categoria_nome }}{% else %}<span style="color:var(--laranja-evolucao)">sem categoria</span>{% endif %}</div>
+          <div class="card-item-sub">{{ l.data_iso }}{% if l.pessoa_nome %} · {{ l.pessoa_nome }}{% endif %}{% if l.destino_nome %} · 🏢 {{ l.destino_nome }}{% endif %} · {% if l.categoria_nome %}{{ l.categoria_nome }}{% else %}<span style="color:var(--laranja-evolucao)">sem categoria</span>{% endif %}</div>
         </div>
         <div class="card-item-valor {{ 'val-despesa' if l.sinal == 'D' else 'val-receita' }}">{{ '' if l.sinal == 'D' else '-' }} R$ {{ l.valor|brl }}</div>
       </summary>

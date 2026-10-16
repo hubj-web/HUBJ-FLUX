@@ -70,6 +70,8 @@
     </p>
     {% endif %}
 
+    {% if modulo_empresa %}<div class="form-row"><label>Para quem?</label><select name="destino_empresa_id"><option value="">Família</option>{% for e in empresas_org %}<option value="{{ e.id }}" >{{ e.nome }}</option>{% endfor %}</select></div>{% endif %}
+
     {% if contas %}
     <div class="form-row">
       <label>Conta bancária (opcional)</label>

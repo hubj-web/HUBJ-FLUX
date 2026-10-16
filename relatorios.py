@@ -26,6 +26,7 @@ def _montar_relatorio(org_id, mes_referencia):
     if db.org_tem_faturas(org_id):  # com faturas importadas, a fatura vale: compra lançada à mão no cartão não conta duas vezes
         lancamentos = [l for l in lancamentos
                        if not (l["tipo"] == "despesa" and (l.get("forma_pagamento_nome") or "").startswith("Cartão de Crédito"))]
+    lancamentos = [l for l in lancamentos if l.get("destino_empresa_id") is None]  # o que é de uma empresa fica no Acerto
     receitas = [l for l in lancamentos if l["tipo"] == "receita"]
     despesas = [l for l in lancamentos if l["tipo"] == "despesa"]
     total_receitas = sum(float(l["valor"]) for l in receitas)
@@ -36,9 +37,11 @@ def _montar_relatorio(org_id, mes_referencia):
         nome = l["categoria_nome"] or "Sem categoria"
         por_categoria[nome] = por_categoria.get(nome, 0) + float(l["valor"])
     cartao = db.total_faturas_mes(org_id, mes_referencia)          # o cartão entra pelo mês do vencimento
-    for c in db.gastos_por_categoria_cartao(org_id, mes_referencia):
+    for c in db.gastos_por_categoria_cartao(org_id, mes_referencia, "fatura", so_familia=True):
         por_categoria[c["categoria"]] = por_categoria.get(c["categoria"], 0) + float(c["total"])
-    total_despesas += cartao["total"]
+    cartao_empresa = db.total_empresa_cartao_mes(org_id, mes_referencia)
+    cartao_familia = round(cartao["total"] - cartao_empresa, 2)
+    total_despesas += cartao_familia
     total_categorias = sum(por_categoria.values())
     por_categoria_lista = sorted(
         [{"categoria": k, "valor": v} for k, v in por_categoria.items()], key=lambda x: -x["valor"])
@@ -52,9 +55,9 @@ def _montar_relatorio(org_id, mes_referencia):
         "saldo": total_receitas - total_despesas,
         "total_planejado": total_planejado,
         "por_categoria": por_categoria_lista, "total_categorias": total_categorias,
-        "cartao_total": cartao["total"], "cartao_previa": cartao["previa"],
-        "creditos_cartao": db.creditos_cartao_mes(org_id, mes_referencia),
-        "linhas_cartao": db.listar_lancamentos_cartao(org_id, {"mes_referencia": mes_referencia}),
+        "cartao_total": cartao_familia, "cartao_previa": cartao["previa"], "cartao_empresa": cartao_empresa,
+        "creditos_cartao": db.creditos_cartao_mes(org_id, mes_referencia, "fatura", so_familia=True),
+        "linhas_cartao": [l for l in db.listar_lancamentos_cartao(org_id, {"mes_referencia": mes_referencia}) if l.get("destino_empresa_id") is None],
     }
 
 
