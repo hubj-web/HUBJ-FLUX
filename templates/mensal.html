@@ -92,6 +92,8 @@
         <div style="display:flex;justify-content:space-between;padding:12px 0 4px"><strong>💳 Cartão</strong><strong>R$ {{ m.cartao.total|brl }}</strong></div>
         {% if m.cartao.origem == 'fatura' %}
         <div style="padding:3px 0 3px 12px;color:var(--graphite)">Fatura já importada.</div>
+        {% elif m.cartao.origem == 'previa' %}
+        <div style="padding:3px 0 3px 12px;color:var(--graphite)">Prévia da fatura (parcial): ainda pode crescer até o fechamento.</div>
         {% elif m.cartao.origem == 'parcelas' %}
         <div style="padding:3px 0 3px 12px;color:var(--graphite)">Só parcelas já compradas ({{ m.cartao.itens|length }}). Compras novas ainda vão se somar.</div>
         {% for i in m.cartao.itens %}

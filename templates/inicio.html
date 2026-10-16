@@ -38,6 +38,14 @@
     <div class="summary-cell"><span class="label">Despesas</span><span class="value val-despesa" style="font-size:17px">R$ {{ totais.despesas|brl }}</span></div>
   </div>
 
+  {% if totais.cartao %}
+  <a href="{{ url_for('cartao.painel', mes=mes_referencia) }}" class="card-item" style="text-decoration:none;color:inherit;margin-top:10px">
+    <div class="card-item-icone">💳</div>
+    <div class="card-item-corpo"><div class="card-item-titulo" style="white-space:normal">Cartão · fatura de {{ mes_referencia|mes_label }}{% if totais.cartao_previa %} (prévia){% endif %}</div><div class="card-item-sub">já incluída nas despesas acima</div></div>
+    <div class="card-item-valor val-despesa">R$ {{ totais.cartao|brl }}</div>
+  </a>
+  {% endif %}
+
   <p style="color:var(--ink-soft);font-size:13.5px;margin:14px 0 24px;text-align:center">{{ frase_saldo }}</p>
 
   <h3>Últimos lançamentos</h3>

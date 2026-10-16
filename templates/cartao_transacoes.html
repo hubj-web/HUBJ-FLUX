@@ -12,6 +12,7 @@
   <details style="margin-bottom:18px" {{ 'open' if filtros.mes_referencia or filtros.categoria_id or filtros.fornecedor or filtros.busca or filtros.pessoa_id or filtros.cartao_id }}>
     <summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:var(--roxo-estrategico);padding:4px 0">🔍 Filtros</summary>
     <form method="get" class="filters" style="flex-wrap:wrap;margin-top:12px">
+      {% if filtros.lente %}<input type="hidden" name="lente" value="{{ filtros.lente }}">{% endif %}
       <select name="mes">
         <option value="">Mês — todos</option>
         {% for m in meses %}<option value="{{ m }}" {{ 'selected' if filtros.mes_referencia == m }}>{{ m|mes_label }}</option>{% endfor %}

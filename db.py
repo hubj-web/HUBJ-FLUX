@@ -94,7 +94,7 @@ def listar_usuarios_por_organizacao(organizacao_id):
 
 CATEGORIAS_PADRAO_DESPESA = [
     "Moradia", "Alimentação", "Mercado", "Transporte", "Saúde",
-    "Educação", "Lazer", "Assinaturas", "Vestuário", "Outros",
+    "Educação", "Lazer", "Assinaturas", "Vestuário", "Encargos financeiros", "Outros",
 ]
 CATEGORIAS_PADRAO_RECEITA = ["Salário", "Freelance / Extra", "Investimentos", "Outras receitas"]
 FORMAS_PAGAMENTO_PADRAO = [
@@ -259,19 +259,6 @@ def listar_lancamentos(organizacao_id, filtros=None):
     return query_all(sql, params)
 
 
-def totais_mes(organizacao_id, mes_referencia):
-    row = query_one(
-        """SELECT
-             COALESCE(SUM(CASE WHEN tipo='receita' THEN valor ELSE 0 END), 0) AS receitas,
-             COALESCE(SUM(CASE WHEN tipo='despesa' THEN valor ELSE 0 END), 0) AS despesas
-           FROM lancamentos
-           WHERE organizacao_id = %s AND to_char(data, 'YYYY-MM') = %s""",
-        (organizacao_id, mes_referencia),
-    )
-    receitas = float(row["receitas"]); despesas = float(row["despesas"])
-    return {"receitas": receitas, "despesas": despesas, "saldo": receitas - despesas}
-
-
 def ultimos_lancamentos(organizacao_id, limite=5):
     return query_all(
         """SELECT l.*, c.nome AS categoria_nome FROM lancamentos l LEFT JOIN categorias c ON c.id = l.categoria_id
@@ -387,21 +374,6 @@ def copiar_planejamento(organizacao_id, mes_origem, mes_destino):
     return len(origem)
 
 
-def realizado_por_categoria_mes(organizacao_id, mes_referencia):
-    rows = query_all(
-        """SELECT categoria_id, SUM(valor) AS total FROM (
-             SELECT categoria_id, valor FROM lancamentos
-               WHERE organizacao_id = %(org)s AND tipo = 'despesa' AND to_char(data, 'YYYY-MM') = %(mes)s
-             UNION ALL
-             SELECT lc.categoria_id, lc.valor FROM lancamentos_cartao lc
-               JOIN faturas f ON f.id = lc.fatura_id JOIN cartoes c ON c.id = f.cartao_id
-               WHERE c.organizacao_id = %(org)s AND lc.sinal = 'D' AND f.mes_referencia = %(mes)s
-           ) t GROUP BY categoria_id""",
-        {"org": organizacao_id, "mes": mes_referencia},
-    )
-    return {r["categoria_id"]: float(r["total"]) for r in rows if r["categoria_id"] is not None}
-
-
 def gasto_medio_categoria_ultimos_meses(organizacao_id, mes_referencia, n_meses=3):
     ref = _date.fromisoformat(mes_referencia + "-01")
     totais = {}
@@ -467,20 +439,20 @@ def salvar_fatura(cartao_id, dados, importado_por):
                  valor_minimo=%(valor_minimo)s, limite_total=%(limite_total)s,
                  limite_utilizado=%(limite_utilizado)s, limite_disponivel=%(limite_disponivel)s,
                  arquivo_origem=%(arquivo_origem)s, numero_cartao_origem=%(numero_cartao_origem)s,
-                 importado_por=%(importado_por)s, importado_em=now()
+                 importado_por=%(importado_por)s, importado_em=now(), previa=%(previa)s
                WHERE id=%(id)s""",
-            {**dados, "importado_por": importado_por, "id": existente["id"]},
+            {**dados, "importado_por": importado_por, "id": existente["id"], "previa": bool(dados.get("previa"))},
         )
         return existente["id"]
     row = execute(
         """INSERT INTO faturas (cartao_id, mes_referencia, vencimento, valor_total, valor_minimo,
              limite_total, limite_utilizado, limite_disponivel, arquivo_origem, numero_cartao_origem,
-             importado_por, importado_em)
+             importado_por, importado_em, previa)
            VALUES (%(cartao_id)s, %(mes_referencia)s, %(vencimento)s, %(valor_total)s, %(valor_minimo)s,
                    %(limite_total)s, %(limite_utilizado)s, %(limite_disponivel)s, %(arquivo_origem)s,
-                   %(numero_cartao_origem)s, %(importado_por)s, now())
+                   %(numero_cartao_origem)s, %(importado_por)s, now(), %(previa)s)
            RETURNING id""",
-        {**dados, "cartao_id": cartao_id, "importado_por": importado_por},
+        {**dados, "cartao_id": cartao_id, "importado_por": importado_por, "previa": bool(dados.get("previa"))},
     )
     return row["id"]
 
@@ -531,10 +503,10 @@ def listar_lancamentos_cartao(organizacao_id, filtros=None):
              FROM lancamentos_cartao lc
              JOIN faturas f ON f.id = lc.fatura_id JOIN cartoes c ON c.id = f.cartao_id
              LEFT JOIN categorias cat ON cat.id = lc.categoria_id LEFT JOIN pessoas p ON p.id = lc.pessoa_id
-             WHERE c.organizacao_id = %(organizacao_id)s"""
+             WHERE c.organizacao_id = %(organizacao_id)s AND COALESCE(lc.tipo, '') NOT IN ('SALDO_ANTERIOR', 'PAGAMENTO')"""
     params = {"organizacao_id": organizacao_id}
     if filtros.get("mes_referencia"):
-        sql += " AND f.mes_referencia = %(mes_referencia)s"; params["mes_referencia"] = filtros["mes_referencia"]
+        sql += " AND " + _mes_expr(filtros.get("lente")) + " = %(mes_referencia)s"; params["mes_referencia"] = filtros["mes_referencia"]
     if filtros.get("cartao_id"):
         sql += " AND c.id = %(cartao_id)s"; params["cartao_id"] = filtros["cartao_id"]
     if filtros.get("pessoa_id"):
@@ -922,54 +894,7 @@ def listar_ids_organizacoes_ativas():
 _BASE_LC = """FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id
               JOIN cartoes c ON c.id = f.cartao_id
               LEFT JOIN categorias cat ON cat.id = lc.categoria_id
-              WHERE c.organizacao_id = %s"""
-
-
-def resumo_meses_cartao(organizacao_id):
-    """Uma linha por mês de fatura, com todos os cartões/pessoas somados."""
-    return query_all(
-        """SELECT f.mes_referencia, SUM(f.valor_total) AS total, MIN(f.vencimento) AS vencimento,
-                  MAX(f.limite_disponivel) AS limite_disponivel, MAX(f.limite_total) AS limite_total,
-                  COUNT(*) AS n_cartoes
-           FROM faturas f JOIN cartoes c ON c.id = f.cartao_id
-           WHERE c.organizacao_id = %s GROUP BY f.mes_referencia ORDER BY f.mes_referencia DESC""",
-        (organizacao_id,),
-    )
-
-
-def faturas_do_mes(organizacao_id, mes):
-    return query_all(
-        """SELECT f.id, f.valor_total, f.vencimento, c.nome AS cartao_nome,
-                  (SELECT COUNT(*) FROM lancamentos_cartao lc WHERE lc.fatura_id = f.id) AS n_transacoes
-           FROM faturas f JOIN cartoes c ON c.id = f.cartao_id
-           WHERE c.organizacao_id = %s AND f.mes_referencia = %s ORDER BY f.valor_total DESC""",
-        (organizacao_id, mes),
-    )
-
-
-def gastos_por_categoria_cartao(organizacao_id, mes):
-    return query_all(
-        "SELECT cat.id AS categoria_id, COALESCE(cat.nome, 'Sem categoria') AS categoria, "
-        "SUM(lc.valor) AS total, COUNT(*) AS n " + _BASE_LC +
-        " AND f.mes_referencia = %s AND lc.sinal = 'D' GROUP BY cat.id, cat.nome ORDER BY total DESC",
-        (organizacao_id, mes),
-    )
-
-
-def gastos_por_fornecedor_cartao(organizacao_id, mes, limite=8):
-    return query_all(
-        "SELECT " + _FORN_SQL + " AS fornecedor, SUM(lc.valor) AS total, COUNT(*) AS n " + _BASE_LC +
-        " AND f.mes_referencia = %s AND lc.sinal = 'D' GROUP BY " + _FORN_SQL + " ORDER BY total DESC LIMIT %s",
-        (organizacao_id, mes, limite),
-    )
-
-
-def creditos_cartao_mes(organizacao_id, mes):
-    row = query_one(
-        "SELECT COALESCE(SUM(lc.valor), 0) AS total " + _BASE_LC + " AND f.mes_referencia = %s AND lc.sinal = 'C'",
-        (organizacao_id, mes),
-    )
-    return float(row["total"]) if row else 0.0
+              WHERE c.organizacao_id = %s AND COALESCE(lc.tipo, '') NOT IN ('SALDO_ANTERIOR', 'PAGAMENTO')"""
 
 
 def compras_parceladas_cartao(organizacao_id):
@@ -1205,3 +1130,155 @@ def contar_chamadas_ia(organizacao_id, horas=24):
 def limpar_mensagens_ia(organizacao_id, usuario_id):
     execute("DELETE FROM ia_mensagens WHERE organizacao_id = %s AND usuario_id = %s AND tipo IN ('pergunta', 'resposta')",
             (organizacao_id, usuario_id))
+
+
+
+# ---------- Base do cartão: conta, fatura pelo VENCIMENTO, lentes e integração com Início/Controle ----------
+# O "mês" de uma fatura (faturas.mes_referencia) é o mês do VENCIMENTO: é quando o dinheiro sai.
+
+_MES_FATURA = "f.mes_referencia"
+# lente "data da compra": à vista conta no mês da compra; PARCELA fica sempre no mês da fatura
+_MES_COMPRA = ("CASE WHEN COALESCE(lc.parcela_total, 0) > 1 THEN f.mes_referencia "
+               "ELSE COALESCE(to_char(lc.data_iso, 'YYYY-MM'), f.mes_referencia) END")
+_SEM_PASSAGEM = "COALESCE(lc.tipo, '') NOT IN ('SALDO_ANTERIOR', 'PAGAMENTO')"
+# compra lançada à mão no cartão: quando a organização importa faturas, a fatura vale (evita contar duas vezes)
+_CARTAO_MANUAL = ("l.tipo = 'despesa' AND starts_with(COALESCE(fp.nome, ''), 'Cartão de Crédito') AND EXISTS "
+                  "(SELECT 1 FROM faturas f2 JOIN cartoes c2 ON c2.id = f2.cartao_id WHERE c2.organizacao_id = l.organizacao_id)")
+
+
+def _mes_expr(lente):
+    return _MES_COMPRA if lente == "compra" else _MES_FATURA
+
+
+def listar_cartoes_do_banco(organizacao_id, banco):
+    return query_all("SELECT * FROM cartoes WHERE organizacao_id = %s AND banco = %s ORDER BY id", (organizacao_id, banco))
+
+
+def buscar_cartao(organizacao_id, cartao_id):
+    return query_one("SELECT * FROM cartoes WHERE id = %s AND organizacao_id = %s", (cartao_id, organizacao_id))
+
+
+def criar_cartao_conta(organizacao_id, banco, final, nome):
+    return execute("INSERT INTO cartoes (organizacao_id, nome, banco, final_cartao, ativo) VALUES (%s, %s, %s, %s, true) RETURNING *",
+                   (organizacao_id, nome, banco, final))
+
+
+def ultima_fatura_do_cartao(organizacao_id, cartao_id):
+    return query_one(
+        """SELECT f.* FROM faturas f JOIN cartoes c ON c.id = f.cartao_id
+           WHERE c.organizacao_id = %s AND c.id = %s ORDER BY f.mes_referencia DESC, f.id DESC LIMIT 1""",
+        (organizacao_id, cartao_id))
+
+
+def garantir_categoria(organizacao_id, nome, tipo="despesa"):
+    """Devolve o id da categoria, criando-a se a organização ainda não tiver (ex.: 'Encargos financeiros')."""
+    achada = buscar_categoria_por_nome(organizacao_id, nome)
+    if achada:
+        return achada["id"]
+    return execute("INSERT INTO categorias (organizacao_id, nome, ordem, tipo) VALUES (%s, %s, 99, %s) RETURNING id",
+                   (organizacao_id, nome, tipo))["id"]
+
+
+def org_tem_faturas(organizacao_id):
+    return bool(query_one("SELECT EXISTS (SELECT 1 FROM faturas f JOIN cartoes c ON c.id = f.cartao_id WHERE c.organizacao_id = %s) AS tem",
+                          (organizacao_id,))["tem"])
+
+
+def total_faturas_mes(organizacao_id, mes):
+    """Quanto vence no cartão neste mês (soma das faturas do mês do vencimento)."""
+    row = query_one(
+        """SELECT COALESCE(SUM(f.valor_total), 0) AS total, COALESCE(bool_or(f.previa), false) AS previa, COUNT(*) AS n
+           FROM faturas f JOIN cartoes c ON c.id = f.cartao_id WHERE c.organizacao_id = %s AND f.mes_referencia = %s""",
+        (organizacao_id, mes))
+    return {"total": float(row["total"]), "previa": bool(row["previa"]), "n": int(row["n"])}
+
+
+def resumo_meses_cartao(organizacao_id, lente="fatura"):
+    """Uma linha por mês (todos os cartões somados). lente 'fatura' = mês do vencimento; 'compra' = mês do consumo."""
+    if lente == "compra":
+        return query_all(
+            "SELECT m.mes AS mes_referencia, SUM(m.v) AS total, NULL::date AS vencimento, NULL::numeric AS limite_disponivel, "
+            "NULL::numeric AS limite_total, NULL::bigint AS n_cartoes, false AS previa FROM ("
+            "SELECT " + _MES_COMPRA + " AS mes, CASE WHEN lc.sinal = 'D' THEN lc.valor ELSE -lc.valor END AS v " + _BASE_LC +
+            ") m GROUP BY m.mes ORDER BY m.mes DESC", (organizacao_id,))
+    return query_all(
+        """SELECT f.mes_referencia, SUM(f.valor_total) AS total, MIN(f.vencimento) AS vencimento,
+                  MAX(f.limite_disponivel) AS limite_disponivel, MAX(f.limite_total) AS limite_total,
+                  COUNT(*) AS n_cartoes, COALESCE(bool_or(f.previa), false) AS previa
+           FROM faturas f JOIN cartoes c ON c.id = f.cartao_id
+           WHERE c.organizacao_id = %s GROUP BY f.mes_referencia ORDER BY f.mes_referencia DESC""",
+        (organizacao_id,))
+
+
+def faturas_do_mes(organizacao_id, mes):
+    return query_all(
+        """SELECT f.id, f.valor_total, f.vencimento, f.previa, c.nome AS cartao_nome,
+                  (SELECT COUNT(*) FROM lancamentos_cartao lc WHERE lc.fatura_id = f.id) AS n_transacoes
+           FROM faturas f JOIN cartoes c ON c.id = f.cartao_id
+           WHERE c.organizacao_id = %s AND f.mes_referencia = %s ORDER BY f.valor_total DESC""",
+        (organizacao_id, mes))
+
+
+def titulares_do_mes(organizacao_id, mes, lente="fatura"):
+    """Quem gastou no mês: uma linha por titular; as linhas sem titular (encargos, ajustes) vêm com pessoa_nome NULL."""
+    return query_all(
+        "SELECT p.id AS pessoa_id, p.nome AS pessoa_nome, "
+        "SUM(CASE WHEN lc.sinal = 'D' THEN lc.valor ELSE -lc.valor END) AS total, COUNT(*) AS n "
+        "FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id JOIN cartoes c ON c.id = f.cartao_id "
+        "LEFT JOIN pessoas p ON p.id = lc.pessoa_id WHERE c.organizacao_id = %s AND " + _mes_expr(lente) + " = %s AND " + _SEM_PASSAGEM +
+        " GROUP BY p.id, p.nome ORDER BY total DESC", (organizacao_id, mes))
+
+
+def titulares_por_fatura(organizacao_id):
+    return query_all(
+        "SELECT lc.fatura_id, p.nome AS pessoa_nome, SUM(CASE WHEN lc.sinal = 'D' THEN lc.valor ELSE -lc.valor END) AS total, COUNT(*) AS n "
+        "FROM lancamentos_cartao lc JOIN faturas f ON f.id = lc.fatura_id JOIN cartoes c ON c.id = f.cartao_id "
+        "LEFT JOIN pessoas p ON p.id = lc.pessoa_id WHERE c.organizacao_id = %s AND " + _SEM_PASSAGEM +
+        " GROUP BY lc.fatura_id, p.nome ORDER BY lc.fatura_id, total DESC", (organizacao_id,))
+
+
+def gastos_por_categoria_cartao(organizacao_id, mes, lente="fatura"):
+    return query_all(
+        "SELECT cat.id AS categoria_id, COALESCE(cat.nome, 'Sem categoria') AS categoria, SUM(lc.valor) AS total, COUNT(*) AS n " + _BASE_LC +
+        " AND " + _mes_expr(lente) + " = %s AND lc.sinal = 'D' GROUP BY cat.id, cat.nome ORDER BY total DESC", (organizacao_id, mes))
+
+
+def gastos_por_fornecedor_cartao(organizacao_id, mes, limite=8, lente="fatura"):
+    return query_all(
+        "SELECT " + _FORN_SQL + " AS fornecedor, SUM(lc.valor) AS total, COUNT(*) AS n " + _BASE_LC +
+        " AND " + _mes_expr(lente) + " = %s AND lc.sinal = 'D' GROUP BY " + _FORN_SQL + " ORDER BY total DESC LIMIT %s",
+        (organizacao_id, mes, limite))
+
+
+def creditos_cartao_mes(organizacao_id, mes, lente="fatura"):
+    row = query_one("SELECT COALESCE(SUM(lc.valor), 0) AS total " + _BASE_LC + " AND " + _mes_expr(lente) + " = %s AND lc.sinal = 'C'",
+                    (organizacao_id, mes))
+    return float(row["total"]) if row else 0.0
+
+
+def totais_mes(organizacao_id, mes_referencia):
+    """Receitas, despesas e saldo do mês. O CARTÃO entra pelo mês do vencimento da fatura."""
+    row = query_one(
+        """SELECT COALESCE(SUM(CASE WHEN l.tipo = 'receita' THEN l.valor ELSE 0 END), 0) AS receitas,
+                  COALESCE(SUM(CASE WHEN l.tipo = 'despesa' THEN l.valor ELSE 0 END), 0) AS despesas
+           FROM lancamentos l LEFT JOIN formas_pagamento fp ON fp.id = l.forma_pagamento_id
+           WHERE l.organizacao_id = %s AND to_char(l.data, 'YYYY-MM') = %s AND NOT (""" + _CARTAO_MANUAL + ")",
+        (organizacao_id, mes_referencia))
+    cartao = total_faturas_mes(organizacao_id, mes_referencia)
+    receitas = float(row["receitas"])
+    despesas = float(row["despesas"]) + cartao["total"]
+    return {"receitas": receitas, "despesas": despesas, "saldo": receitas - despesas, "cartao": cartao["total"], "cartao_previa": cartao["previa"]}
+
+
+def realizado_por_categoria_mes(organizacao_id, mes_referencia):
+    rows = query_all(
+        """SELECT categoria_id, SUM(valor) AS total FROM (
+             SELECT l.categoria_id, l.valor FROM lancamentos l LEFT JOIN formas_pagamento fp ON fp.id = l.forma_pagamento_id
+               WHERE l.organizacao_id = %(org)s AND l.tipo = 'despesa' AND to_char(l.data, 'YYYY-MM') = %(mes)s AND NOT (""" + _CARTAO_MANUAL + """)
+             UNION ALL
+             SELECT lc.categoria_id, lc.valor FROM lancamentos_cartao lc
+               JOIN faturas f ON f.id = lc.fatura_id JOIN cartoes c ON c.id = f.cartao_id
+               WHERE c.organizacao_id = %(org)s AND lc.sinal = 'D' AND f.mes_referencia = %(mes)s AND """ + _SEM_PASSAGEM + """
+           ) t GROUP BY categoria_id""",
+        {"org": organizacao_id, "mes": mes_referencia})
+    return {r["categoria_id"]: float(r["total"]) for r in rows if r["categoria_id"] is not None}

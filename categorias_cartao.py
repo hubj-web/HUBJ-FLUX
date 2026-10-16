@@ -3,6 +3,7 @@
 compras de cartão."""
 
 REGRAS = [
+    ("Encargos financeiros", [" JUROS ", " MULTA ", " MORA ", " IOF ", "ANUIDADE"]),
     ("Transporte", ["UBER", "99APP", "TAXI", "METRO", "BILHETE", "LOCALIZA", "MOVIDA", "POSTO"]),
     ("Alimentação", ["IFOOD", "IFD ", "RESTAURANTE", "LANCHONETE", "CHEF", "CAFE", "PADARIA", "PIZZARIA", "BURGER", "AÇAI", "ACAI"]),
     ("Mercado", ["SUPERMERCADO", " SUP ", "MERCADO", "HORTIFRUTI", "ATACAD"]),

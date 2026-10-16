@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#3E007B">
 <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='icons/icon-192.png') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -50,6 +51,16 @@
 </div>
 <div class="navbar-overlay" id="navbar-overlay"></div>
 {% endif %}
+
+<div class="modal-overlay" id="modal-confirmar">
+  <div class="modal-caixa">
+    <p id="modal-confirmar-texto" style="margin:0 0 20px;font-size:14.5px"></p>
+    <div class="filters" style="justify-content:flex-end">
+      <button type="button" class="btn btn-ghost" id="modal-confirmar-cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="modal-confirmar-ok" style="background:linear-gradient(135deg, var(--danger-dark), #C0304A)">Confirmar</button>
+    </div>
+  </div>
+</div>
 
 <script>
   if ('serviceWorker' in navigator) {
@@ -127,14 +138,5 @@
   // SUBMIT-GUARD>>
 </script>
 
-<div class="modal-overlay" id="modal-confirmar">
-  <div class="modal-caixa">
-    <p id="modal-confirmar-texto" style="margin:0 0 20px;font-size:14.5px"></p>
-    <div class="filters" style="justify-content:flex-end">
-      <button type="button" class="btn btn-ghost" id="modal-confirmar-cancelar">Cancelar</button>
-      <button type="button" class="btn btn-primary" id="modal-confirmar-ok" style="background:linear-gradient(135deg, var(--danger-dark), #C0304A)">Confirmar</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>

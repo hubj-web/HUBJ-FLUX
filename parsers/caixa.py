@@ -5,7 +5,9 @@ import pdfplumber
 
 DATE_RE = re.compile(r"^\d{2}/\d{2}$")
 VALUE_RE = re.compile(r"^([\d.]+,\d{2})([DC])$")
-INSTALL_RE = re.compile(r"^(.*?)\s+(\d{2})\s+DE\s+(\d{2})\s*$")
+# "05 DE 06", "05 de 06" e também "1 de 10"; e a forma colada "AUTO09D12" (seguro do carro)
+INSTALL_RE = re.compile(r"^(.*?)\s+(\d{1,2})\s+DE\s+(\d{1,2})\s*$", re.I)
+EMBUTIDA_RE = re.compile(r"^(.*?[A-Za-z])(\d{2})D(\d{2})\s*$")
 
 
 def _money_to_float(s):
@@ -150,10 +152,12 @@ def _row_from_words(row_words, bounds):
     desc_full = " ".join(desc_words).strip()
     city = " ".join(city_words).strip()
     parcela_atual, parcela_total = None, None
-    m = INSTALL_RE.match(desc_full)
+    m = INSTALL_RE.match(desc_full) or EMBUTIDA_RE.match(desc_full)
     if m:
-        desc_full = m.group(1).strip()
-        parcela_atual, parcela_total = int(m.group(2)), int(m.group(3))
+        atual, total = int(m.group(2)), int(m.group(3))
+        if total >= 2 and 1 <= atual <= total <= 60:  # "1 de 1" é compra única, não parcelamento
+            desc_full = m.group(1).strip()
+            parcela_atual, parcela_total = atual, total
 
     value, sign = None, None
     for tok in value_words:
@@ -237,7 +241,14 @@ def parse_transactions(pdf_path, tol=2.5):
                     row["titular"] = current_holder or "GERAL"
                     row["cartao"] = current_card
                     row["tipo"] = current_kind
-                    row["parcelada"] = current_kind == "COMPRAS PARCELADAS"
+                    row["parcelada"] = current_kind == "COMPRAS PARCELADAS" or row["parcela_total"] is not None
+                    # linhas de passagem: o saldo da fatura anterior e o pagamento dela. Entram no total da fatura
+                    # (se anulam quando o pagamento foi integral), mas NÃO são compras nem créditos de verdade
+                    descr_up = row["descricao"].upper()
+                    if descr_up.startswith("TOTAL DA FATURA ANTERIOR"):
+                        row["tipo"] = "SALDO_ANTERIOR"
+                    elif descr_up.startswith("OBRIGADO PELO PAGAMENTO"):
+                        row["tipo"] = "PAGAMENTO"
                     row["pagina"] = page_index + 1
                     transactions.append(row)
     return transactions, n_pages
@@ -273,3 +284,74 @@ def detect_bank(pdf_path):
     if "CAIXA" in text.upper() and "cartões" in text.lower():
         return "caixa"
     return "desconhecido"
+
+
+# ---------------------------------------------------------------------------
+# "Próxima Fatura": print/exportação do app da CAIXA com a fatura ainda aberta (prévia)
+# ---------------------------------------------------------------------------
+PREVIA_VALOR_RE = re.compile(r"^\d{1,3}(?:\.\d{3})*,\d{2}$")
+PREVIA_SECAO_RE = re.compile(r"^([A-ZÀ-Ü][A-ZÀ-Ü ]+?) - \d{6}[X\d]*?(\d{4})$")
+
+
+def detect_layout(pdf_path):
+    """'caixa' (fatura oficial), 'caixa_previa' (Próxima Fatura do app) ou 'desconhecido'."""
+    import pdfplumber
+    with pdfplumber.open(pdf_path) as pdf:
+        texto = pdf.pages[0].extract_text() or ""
+    if "Próxima Fatura" in texto and "Total parcial" in texto:
+        return "caixa_previa"
+    return "caixa" if detect_bank(pdf_path) == "caixa" else "desconhecido"
+
+
+def parse_previa(pdf_path):
+    """Lê a prévia. Crédito e débito vêm em colunas: quem decide é a posição do valor. Parcelas vêm como '06 08'."""
+    import pdfplumber
+    transacoes, titular, final_secao, cabecalho = [], None, None, ""
+    credito_x1 = debito_x0 = None
+    with pdfplumber.open(pdf_path) as pdf:
+        for pi, page in enumerate(pdf.pages):
+            if pi == 0:
+                cabecalho = page.extract_text() or ""
+            linhas = {}
+            for w in page.extract_words():
+                linhas.setdefault(round(w["top"] / 3), []).append(w)
+            for k in sorted(linhas):
+                ws = sorted(linhas[k], key=lambda w: w["x0"])
+                txt = " ".join(w["text"] for w in ws)
+                if "CRÉDITO" in txt and "DÉBITO" in txt:
+                    for w in ws:
+                        if w["text"] == "CRÉDITO":
+                            credito_x1 = w["x1"]
+                        elif w["text"] == "DÉBITO":
+                            debito_x0 = w["x0"]
+                    continue
+                m = PREVIA_SECAO_RE.match(txt)
+                if m:
+                    titular, final_secao = m.group(1).strip(), m.group(2)
+                    continue
+                if not (titular and DATE_RE.match(ws[0]["text"]) and PREVIA_VALOR_RE.match(ws[-1]["text"])):
+                    continue
+                corte = (credito_x1 + debito_x0) / 2 if credito_x1 and debito_x0 else None
+                sinal = "C" if corte and ws[-1]["x1"] < corte else "D"
+                tokens = [w["text"] for w in ws[1:-1]]
+                atual = total = None
+                if len(tokens) >= 3 and re.fullmatch(r"\d{2}", tokens[-1]) and re.fullmatch(r"\d{2}", tokens[-2]):
+                    a, t = int(tokens[-2]), int(tokens[-1])
+                    if t >= 2 and 1 <= a <= t <= 60:
+                        atual, total, tokens = a, t, tokens[:-2]
+                transacoes.append({
+                    "data": ws[0]["text"], "descricao": " ".join(tokens).strip(), "cidade": "",
+                    "valor": _money_to_float(ws[-1]["text"]), "sinal": sinal,
+                    "parcela_atual": atual, "parcela_total": total, "parcelada": total is not None,
+                    "tipo": "COMPRAS PARCELADAS" if total else "COMPRAS", "titular": titular, "cartao": final_secao, "pagina": pi + 1,
+                })
+    m_total = re.search(r"Total parcial \(R\$\):\s*([\d.]+,\d{2})", cabecalho)
+    m_final = re.search(r"\*{4}\s+(\d{4})", cabecalho)
+    m_data = re.search(r"Cotação Dólar em (\d{2}/\d{2}/\d{4})", cabecalho)
+    return {
+        "banco": "caixa", "previa": True, "cartao_final": m_final.group(1) if m_final else None,
+        "titular": transacoes[0]["titular"] if transacoes else None,
+        "valor_total": _money_to_float(m_total.group(1)) if m_total else None, "valor_minimo": None, "vencimento": None,
+        "limite_total": None, "limite_utilizado": None, "limite_disponivel": None,
+        "data_referencia": m_data.group(1) if m_data else None, "transacoes": transacoes,
+    }

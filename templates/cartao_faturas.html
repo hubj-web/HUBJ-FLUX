@@ -6,16 +6,17 @@
     <h1>🧾 Faturas importadas</h1>
     <p><a href="{{ url_for('cartao.painel') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
        <a href="{{ url_for('cartao.importar') }}" class="btn btn-primary" style="padding:4px 10px;font-size:12px">+ Importar fatura</a></p>
-    {% if meses %}<p style="color:var(--graphite);font-size:12.5px">{{ meses|length }} fatura(s) · total R$ {{ total_geral|brl }}. Toque numa fatura para ver os cartões dela.</p>{% endif %}
+    {% if meses %}<p style="color:var(--graphite);font-size:12.5px">{{ meses|length }} fatura(s) · total R$ {{ total_geral|brl }}. Cada fatura é do mês em que vence. Toque numa para ver quem gastou.</p>{% endif %}
   </header>
 
   <div class="card-lista">
     {% for m in meses %}
+    {% set previa = m.cartoes|selectattr('previa')|list|length > 0 %}
     <details class="card-item-expandivel">
       <summary class="card-item" style="cursor:pointer">
         <div class="card-item-icone">🧾</div>
         <div class="card-item-corpo">
-          <div class="card-item-titulo">Fatura de {{ m.mes_referencia|mes_label }}</div>
+          <div class="card-item-titulo">Fatura de {{ m.mes_referencia|mes_label }}{% if previa %} <span class="chip-status amarelo" style="font-size:10.5px">prévia</span>{% endif %}</div>
           <div class="card-item-sub">{% if m.vencimento %}vence {{ m.vencimento.strftime('%d/%m') }} · {% endif %}{{ m.cartoes|length }} cartão(ões) · {{ m.n_transacoes }} lançamentos</div>
         </div>
         <div class="card-item-valor">R$ {{ m.total|brl }}</div>
@@ -23,20 +24,25 @@
       <div style="padding:0 14px 14px">
         <div class="card-lista">
           {% for f in m.cartoes %}
-          <div class="card-item" style="box-shadow:none;background:var(--bg-app);padding:10px 12px">
-            <div class="card-item-corpo"><div class="card-item-titulo" style="font-size:13px;white-space:normal">{{ f.cartao_nome }}</div><div class="card-item-sub">{{ f.n_transacoes }} lançamentos</div></div>
+          <div class="card-item" style="box-shadow:none;background:var(--bg-app);padding:10px 12px;flex-wrap:wrap">
+            <div class="card-item-corpo"><div class="card-item-titulo" style="font-size:13px;white-space:normal">{{ f.cartao_nome }}{% if f.previa %} · prévia{% endif %}</div><div class="card-item-sub">{{ f.n_transacoes }} lançamentos</div></div>
             <div class="card-item-valor" style="font-size:13px">R$ {{ f.valor_total|brl }}</div>
-            <form method="post" action="{{ url_for('cartao.excluir_fatura', fatura_id=f.id) }}" data-confirmar="Excluir só a parte de '{{ f.cartao_nome }}' desta fatura?">
+            <form method="post" action="{{ url_for('cartao.excluir_fatura', fatura_id=f.id) }}" data-confirmar="Excluir a fatura de {{ m.mes_referencia|mes_label }} do cartão '{{ f.cartao_nome }}'?">
               <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px;color:var(--brick)">Excluir</button>
             </form>
+            <div style="width:100%;margin-top:6px">
+              {% for t in titulares.get(f.id, []) %}
+              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-soft);padding:2px 0"><span>{{ t.nome }} · {{ t.n }}</span><span>R$ {{ t.total|brl }}</span></div>
+              {% endfor %}
+            </div>
           </div>
           {% endfor %}
         </div>
         <div class="filters" style="margin-top:12px">
           <a href="{{ url_for('cartao.painel', mes=m.mes_referencia) }}" class="btn btn-ghost" style="padding:6px 12px;font-size:12px">📊 Resumo</a>
           <a href="{{ url_for('cartao.transacoes', mes=m.mes_referencia) }}" class="btn btn-ghost" style="padding:6px 12px;font-size:12px">🛍️ Compras</a>
-          <form method="post" action="{{ url_for('cartao.excluir_mes', mes=m.mes_referencia) }}" data-confirmar="Excluir a fatura inteira de {{ m.mes_referencia|mes_label }}, com todos os cartões e lançamentos?">
-            <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--brick)">🗑 Excluir fatura inteira</button>
+          <form method="post" action="{{ url_for('cartao.excluir_mes', mes=m.mes_referencia) }}" data-confirmar="Excluir TODAS as faturas de {{ m.mes_referencia|mes_label }}, com todos os lançamentos?">
+            <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;color:var(--brick)">🗑 Excluir o mês inteiro</button>
           </form>
         </div>
       </div>

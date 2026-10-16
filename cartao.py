@@ -36,14 +36,10 @@ def _infer_year_and_iso(data_ddmm, vencimento_ddmmyyyy):
         return None
 
 
-def _default_mes_referencia(vencimento_ddmmyyyy):
+def _mes_da_data_br(data_ddmmyyyy):
     try:
-        _, m, y = vencimento_ddmmyyyy.split("/")
-        m, y = int(m), int(y)
-        m -= 1
-        if m == 0:
-            m, y = 12, y - 1
-        return f"{y:04d}-{m:02d}"
+        _, m, y = data_ddmmyyyy.split("/")
+        return f"{int(y):04d}-{int(m):02d}"
     except Exception:
         return None
 
@@ -59,7 +55,6 @@ def importar():
     if "pdf" not in request.files or not request.files["pdf"].filename:
         flash("Selecione um arquivo PDF.", "erro")
         return redirect(url_for("cartao.importar"))
-
     f = request.files["pdf"]
     if not f.filename.lower().endswith(".pdf"):
         flash("Envie um arquivo PDF.", "erro")
@@ -68,71 +63,68 @@ def importar():
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
         f.save(tmp.name)
         tmp_path = tmp.name
-
     try:
-        banco = caixa.detect_bank(tmp_path)
-        if banco != "caixa":
-            flash("Não reconheci o layout desta fatura (por enquanto só sei ler faturas Cartões CAIXA).", "erro")
+        layout = caixa.detect_layout(tmp_path)
+        if layout == "caixa":
+            resultado = caixa.parse_invoice(tmp_path)
+        elif layout == "caixa_previa":
+            resultado = caixa.parse_previa(tmp_path)
+        else:
+            flash("Não reconheci o layout desta fatura (por enquanto só sei ler faturas Cartões CAIXA e a 'Próxima Fatura' do app).", "erro")
             return redirect(url_for("cartao.importar"))
-        resultado = caixa.parse_invoice(tmp_path)
     except Exception as e:
         flash(f"Falha ao ler o PDF: {e}", "erro")
         return redirect(url_for("cartao.importar"))
     finally:
         os.unlink(tmp_path)
 
-    vencimento = resultado.get("vencimento")
-    cartao_principal = resultado.get("cartao_final")
+    previa = layout == "caixa_previa"
+    final = resultado.get("cartao_final")
+    cartoes = db.listar_cartoes_do_banco(org_id, "caixa")
+    sugerido = next((c for c in cartoes if c.get("final_cartao") == final), None) or (cartoes[0] if len(cartoes) == 1 else None)
 
-    # Nome do titular principal: preferimos a forma como aparece nas
-    # seções de cartão (abreviada) - assim fica consistente com as demais
-    # seções da MESMA fatura, evitando cadastrar a mesma pessoa duas vezes.
-    titular_principal = None
-    for t in resultado["transacoes"]:
-        if t["titular"] != "GERAL" and t["cartao"] == cartao_principal:
-            titular_principal = t["titular"]
-            break
-    if not titular_principal:
-        titular_principal = resultado.get("titular") or "GERAL"
+    # O mês da fatura é o mês do VENCIMENTO (quando o dinheiro sai). A prévia não traz vencimento: estimamos pela fatura anterior.
+    vencimento = resultado.get("vencimento")
+    mes_fatura = _mes_da_data_br(vencimento) if vencimento else None
+    venc_iso = _parse_data_br(vencimento) if vencimento else None
+    if previa and sugerido:
+        ultima = db.ultima_fatura_do_cartao(org_id, sugerido["id"])
+        if ultima:
+            mes_fatura = cartao_analise.somar_meses(ultima["mes_referencia"], 1)
+            dia = ultima["vencimento"].day if ultima.get("vencimento") else 8
+            venc_iso = f"{mes_fatura}-{dia:02d}"
+    ref_ano = vencimento or resultado.get("data_referencia")
 
     regras = db.listar_regras_fornecedor(org_id)
-    grupos = {}
+    grupos, numeros = {}, set()
     for t in resultado["transacoes"]:
-        titular = t["titular"]
-        cartao_num = t["cartao"]
-        if titular == "GERAL":
-            titular, cartao_num = titular_principal, (cartao_num or cartao_principal)
-        chave = titular  # agrupa por PESSOA, não mais por (pessoa, número do cartão)
-        grupo = grupos.setdefault(chave, {"titular": titular, "cartoes_numeros": set(), "transacoes": [], "soma": 0.0})
-        if cartao_num:
-            grupo["cartoes_numeros"].add(cartao_num)
-        t["data_iso"] = _infer_year_and_iso(t["data"], vencimento)
+        titular = t["titular"]  # "GERAL" = o que é da fatura e não de uma pessoa: encargos, ajustes, saldo anterior e pagamento
+        grupo = grupos.setdefault(titular, {"titular": titular, "rotulo": "Encargos e ajustes da fatura" if titular == "GERAL" else titular,
+                                            "transacoes": [], "soma": 0.0})
+        if t.get("cartao"):
+            numeros.add(t["cartao"])
+        t["data_iso"] = _infer_year_and_iso(t["data"], ref_ano)
         regra = cartao_analise.regra_para(regras, t["descricao"])
         t["fornecedor"] = regra["nome"] if regra else None
         t["categoria_sugerida"] = (regra["categoria_nome"] if regra else None) or categorias_cartao.sugerir_categoria(t["descricao"])
         grupo["transacoes"].append(t)
         grupo["soma"] += t["valor"] if t["sinal"] == "D" else -t["valor"]
 
-    soma_total = sum(g["soma"] for g in grupos.values())
+    soma_total = sum(g_["soma"] for g_ in grupos.values())
     conferencia = {
-        "valor_total_fatura": resultado.get("valor_total"),
-        "soma_transacoes": round(soma_total, 2),
+        "valor_total_fatura": resultado.get("valor_total"), "soma_transacoes": round(soma_total, 2),
         "bate": resultado.get("valor_total") is not None and abs(resultado["valor_total"] - soma_total) < 0.02,
     }
-
     token = str(uuid.uuid4())
     _pendentes[token] = {
-        "organizacao_id": org_id, "arquivo": f.filename, "vencimento": vencimento,
-        "mes_referencia": _default_mes_referencia(vencimento),
-        "valor_total": resultado.get("valor_total"), "valor_minimo": resultado.get("valor_minimo"),
+        "organizacao_id": org_id, "arquivo": f.filename, "previa": previa, "banco": "caixa", "final": final,
+        "vencimento_iso": venc_iso, "valor_total": resultado.get("valor_total"), "valor_minimo": resultado.get("valor_minimo"),
         "limite_total": resultado.get("limite_total"), "limite_utilizado": resultado.get("limite_utilizado"),
-        "limite_disponivel": resultado.get("limite_disponivel"), "grupos": grupos,
+        "limite_disponivel": resultado.get("limite_disponivel"), "grupos": grupos, "numeros": numeros,
     }
-
-    return render_template("cartao_revisao.html", token=token, grupos=grupos, conferencia=conferencia,
-                            vencimento=vencimento, arquivo=f.filename,
-                            mes_referencia=_pendentes[token]["mes_referencia"],
-                            categorias=db.listar_categorias(org_id))
+    return render_template("cartao_revisao.html", token=token, grupos=grupos, conferencia=conferencia, arquivo=f.filename,
+                           previa=previa, final=final, cartoes=cartoes, sugerido_id=sugerido["id"] if sugerido else None,
+                           mes_fatura=mes_fatura or "", vencimento_iso=venc_iso or "", data_referencia=resultado.get("data_referencia"))
 
 
 @cartao_bp.route("/importar/confirmar", methods=["POST"])
@@ -140,50 +132,54 @@ def importar():
 @requer_organizacao
 def confirmar():
     org_id = g.usuario_atual["organizacao_id"]
-    token = request.form.get("token")
-    pend = _pendentes.get(token)
+    pend = _pendentes.get(request.form.get("token"))
     if not pend or pend["organizacao_id"] != org_id:
         flash("A prévia expirou - importe o PDF novamente.", "erro")
         return redirect(url_for("cartao.importar"))
+    mes = (request.form.get("mes_fatura") or "").strip()
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", mes):
+        flash("Informe o mês da fatura (o mês do vencimento).", "erro")
+        return redirect(url_for("cartao.importar"))
 
-    mes_referencia = request.form.get("mes_referencia") or pend["mes_referencia"]
-    cartoes_atualizados = []
+    escolhido = request.form.get("cartao_id")
+    cartao_row = db.buscar_cartao(org_id, int(escolhido)) if (escolhido or "").isdigit() else None
+    if not cartao_row:
+        final = pend["final"]
+        cartao_row = db.criar_cartao_conta(org_id, pend["banco"], final, f"Caixa ·{final}" if final else "Cartão Caixa")
 
+    venc_iso = (request.form.get("vencimento") or "").strip() or pend["vencimento_iso"] or None
+    fatura_id = db.salvar_fatura(cartao_row["id"], {
+        "mes_referencia": mes, "vencimento": venc_iso, "valor_total": pend["valor_total"], "valor_minimo": pend["valor_minimo"],
+        "limite_total": pend["limite_total"], "limite_utilizado": pend["limite_utilizado"], "limite_disponivel": pend["limite_disponivel"],
+        "arquivo_origem": pend["arquivo"], "numero_cartao_origem": ", ".join(sorted(pend["numeros"])) or None, "previa": pend["previa"],
+    }, g.usuario_atual["id"])
+
+    categorias_cache, n = {}, 0
     for titular, grupo in pend["grupos"].items():
-        # pessoas vindas de fatura NÃO aparecem no seletor de lançamento
-        # (disponivel_lancamento=False) - só as cadastradas manualmente.
+        # pessoas vindas de fatura NÃO aparecem no seletor de lançamento (disponivel_lancamento=False)
         pessoa = db.encontrar_ou_criar_pessoa(org_id, titular, disponivel_lancamento=False) if titular != "GERAL" else None
-        cartao_row = db.encontrar_ou_criar_cartao_por_pessoa(org_id, pessoa["id"], titular) if pessoa else \
-            db.encontrar_ou_criar_cartao_por_pessoa(org_id, None, "Fatura Geral")
-        cartoes_atualizados.append(cartao_row["nome"])
-
-        numeros = ", ".join(sorted(grupo["cartoes_numeros"])) if grupo["cartoes_numeros"] else None
-        fatura_id = db.salvar_fatura(cartao_row["id"], {
-            "mes_referencia": mes_referencia, "vencimento": _parse_data_br(pend["vencimento"]),
-            "valor_total": pend["valor_total"] if len(pend["grupos"]) == 1 else round(grupo["soma"], 2),
-            "valor_minimo": pend["valor_minimo"], "limite_total": pend["limite_total"],
-            "limite_utilizado": pend["limite_utilizado"], "limite_disponivel": pend["limite_disponivel"],
-            "arquivo_origem": pend["arquivo"], "numero_cartao_origem": numeros,
-        }, g.usuario_atual["id"])
-
         for t in grupo["transacoes"]:
-            categoria_id = None
-            if t.get("categoria_sugerida"):
-                cat = db.buscar_categoria_por_nome(org_id, t["categoria_sugerida"])
-                categoria_id = cat["id"] if cat else None
+            nome_cat, categoria_id = t.get("categoria_sugerida"), None
+            if nome_cat:
+                if nome_cat not in categorias_cache:
+                    achada = db.buscar_categoria_por_nome(org_id, nome_cat)
+                    categorias_cache[nome_cat] = achada["id"] if achada else (db.garantir_categoria(org_id, nome_cat) if nome_cat == "Encargos financeiros" else None)
+                categoria_id = categorias_cache[nome_cat]
             db.inserir_lancamento_cartao(fatura_id, {
-                "data_iso": t["data_iso"], "descricao": t["descricao"], "cidade": t.get("cidade"),
-                "valor": t["valor"], "sinal": t["sinal"], "parcela_atual": t.get("parcela_atual"),
-                "parcela_total": t.get("parcela_total"), "parcelada": bool(t.get("parcelada")),
-                "tipo": t.get("tipo"), "categoria_id": categoria_id, "fornecedor": t.get("fornecedor"),
-                "pessoa_id": pessoa["id"] if pessoa else None,
+                "data_iso": t["data_iso"], "descricao": t["descricao"], "cidade": t.get("cidade"), "valor": t["valor"], "sinal": t["sinal"],
+                "parcela_atual": t.get("parcela_atual"), "parcela_total": t.get("parcela_total"), "parcelada": bool(t.get("parcelada")),
+                "tipo": t.get("tipo"), "categoria_id": categoria_id, "fornecedor": t.get("fornecedor"), "pessoa_id": pessoa["id"] if pessoa else None,
             })
-
-    del _pendentes[token]
-    flash(f"Fatura importada com sucesso: {len(cartoes_atualizados)} cartão(ões) atualizados.", "ok")
+            n += 1
+    del _pendentes[request.form.get("token")]
+    rotulo = cartao_analise.rotulo_mes(mes)
+    if pend["previa"]:
+        flash(f"Prévia de {rotulo} importada ({n} lançamentos). Ela vale até você importar a fatura oficial desse mês, que a substitui.", "ok")
+    else:
+        flash(f"Fatura de {rotulo} importada: {cartao_row['nome']}, {n} lançamentos.", "ok")
     alertas.registrar_acao(org_id, g.usuario_atual, "fatura de cartão importada",
-                           f"Mês {mes_referencia} — {len(cartoes_atualizados)} cartão(ões)", url_for("cartao.painel"))
-    return redirect(url_for("cartao.painel"))
+                           f"{cartao_row['nome']} — {rotulo}" + (" (prévia)" if pend["previa"] else ""), url_for("cartao.painel"))
+    return redirect(url_for("cartao.painel", mes=mes))
 
 
 def _parse_data_br(data_str):
@@ -194,15 +190,6 @@ def _parse_data_br(data_str):
         return f"{y}-{m}-{d}"
     except Exception:
         return None
-
-
-@cartao_bp.route("/faturas")
-@login_required
-@requer_organizacao
-def faturas():
-    org_id = g.usuario_atual["organizacao_id"]
-    meses = cartao_analise.agrupar_faturas_por_mes(db.listar_faturas_organizacao(org_id))
-    return render_template("cartao_faturas.html", meses=meses, total_geral=sum(m["total"] for m in meses))
 
 
 @cartao_bp.route("/faturas/<int:fatura_id>/excluir", methods=["POST"])
@@ -230,41 +217,6 @@ def _com_percentual(itens, base):
             for i in itens]
 
 
-@cartao_bp.route("/painel")
-@login_required
-@requer_organizacao
-def painel():
-    org_id = g.usuario_atual["organizacao_id"]
-    resumo = [{**dict(r), "total": float(r["total"] or 0)} for r in db.resumo_meses_cartao(org_id)]
-    if not resumo:
-        return render_template("cartao_painel.html", resumo=[])
-
-    meses_lista = [r["mes_referencia"] for r in resumo]  # do mais novo para o mais antigo
-    mes = request.args.get("mes")
-    if mes not in meses_lista:
-        mes = meses_lista[0]
-    i = meses_lista.index(mes)
-    atual = resumo[i]
-
-    categorias_brutas = db.gastos_por_categoria_cartao(org_id, mes)
-    compras = sum(float(c["total"]) for c in categorias_brutas)
-    maximo = max(r["total"] for r in resumo) or 1
-    proximos = cartao_analise.projetar_parcelas(db.compras_parceladas_cartao(org_id), meses_lista[0], db.listar_compromissos(org_id))
-
-    return render_template(
-        "cartao_painel.html", resumo=resumo, mes=mes, atual=atual,
-        mes_anterior=meses_lista[i + 1] if i + 1 < len(meses_lista) else None,
-        mes_seguinte=meses_lista[i - 1] if i > 0 else None,
-        cartoes_mes=db.faturas_do_mes(org_id, mes),
-        categorias=_com_percentual(categorias_brutas, compras),
-        fornecedores=_com_percentual(db.gastos_por_fornecedor_cartao(org_id, mes, 8), compras),
-        compras=compras, creditos=db.creditos_cartao_mes(org_id, mes),
-        proximos=proximos, total_comprometido=sum(m["total"] for m in proximos),
-        total_importado=sum(r["total"] for r in resumo), maximo=maximo,
-        barras={r["mes_referencia"]: round(r["total"] / maximo * 100) for r in resumo},
-    )
-
-
 @cartao_bp.route("/transacoes")
 @login_required
 @requer_organizacao
@@ -272,14 +224,14 @@ def transacoes():
     org_id = g.usuario_atual["organizacao_id"]
     filtros = {k: (request.args.get(a) or None) for k, a in (
         ("mes_referencia", "mes"), ("cartao_id", "cartao_id"), ("pessoa_id", "pessoa_id"),
-        ("busca", "busca"), ("categoria_id", "categoria_id"), ("fornecedor", "fornecedor"))}
+        ("busca", "busca"), ("categoria_id", "categoria_id"), ("fornecedor", "fornecedor"), ("lente", "lente"))}
     lancs = db.listar_lancamentos_cartao(org_id, filtros)
     total = sum(float(l["valor"]) for l in lancs if l["sinal"] == "D") - \
         sum(float(l["valor"]) for l in lancs if l["sinal"] == "C")
     return render_template("cartao_transacoes.html", lancamentos=lancs, filtros=filtros, total=total,
                             cartoes=db.listar_cartoes(org_id), pessoas=db.listar_pessoas_todas(org_id),
                             categorias=db.listar_categorias(org_id),
-                            meses=[r["mes_referencia"] for r in db.resumo_meses_cartao(org_id)])
+                            meses=[r["mes_referencia"] for r in db.resumo_meses_cartao(org_id, "compra" if filtros.get("lente") == "compra" else "fatura")])
 
 
 
@@ -404,3 +356,54 @@ def excluir_compromisso(compromisso_id):
     db.excluir_compromisso(compromisso_id, g.usuario_atual["organizacao_id"])
     flash("Compra parcelada removida da projeção.", "ok")
     return redirect(url_for("cartao.compromissos"))
+
+
+
+@cartao_bp.route("/faturas")
+@login_required
+@requer_organizacao
+def faturas():
+    org_id = g.usuario_atual["organizacao_id"]
+    meses = cartao_analise.agrupar_faturas_por_mes(db.listar_faturas_organizacao(org_id))
+    titulares = {}
+    for r in db.titulares_por_fatura(org_id):
+        titulares.setdefault(r["fatura_id"], []).append({"nome": r["pessoa_nome"] or "Encargos e ajustes da fatura", "total": float(r["total"]), "n": r["n"]})
+    return render_template("cartao_faturas.html", meses=meses, total_geral=sum(m["total"] for m in meses), titulares=titulares)
+
+
+@cartao_bp.route("/painel")
+@login_required
+@requer_organizacao
+def painel():
+    org_id = g.usuario_atual["organizacao_id"]
+    lente = "compra" if request.args.get("lente") == "compra" else "fatura"
+    resumo = [{**dict(r), "total": float(r["total"] or 0)} for r in db.resumo_meses_cartao(org_id, lente)]
+    if not resumo:
+        return render_template("cartao_painel.html", resumo=[], lente=lente)
+
+    meses_lista = [r["mes_referencia"] for r in resumo]  # do mais novo para o mais antigo
+    mes = request.args.get("mes")
+    if mes not in meses_lista:
+        mes = meses_lista[0]
+    i = meses_lista.index(mes)
+    atual = resumo[i]
+
+    categorias_brutas = db.gastos_por_categoria_cartao(org_id, mes, lente)
+    compras = sum(float(c["total"]) for c in categorias_brutas)
+    maximo = max(r["total"] for r in resumo) or 1
+    ultimo_fatura = meses_lista[0] if lente == "fatura" else (db.resumo_meses_cartao(org_id, "fatura") or [{"mes_referencia": meses_lista[0]}])[0]["mes_referencia"]
+    proximos = cartao_analise.projetar_parcelas(db.compras_parceladas_cartao(org_id), ultimo_fatura, db.listar_compromissos(org_id))
+
+    return render_template(
+        "cartao_painel.html", resumo=resumo, mes=mes, atual=atual, lente=lente,
+        mes_anterior=meses_lista[i + 1] if i + 1 < len(meses_lista) else None,
+        mes_seguinte=meses_lista[i - 1] if i > 0 else None,
+        faturas_mes=db.faturas_do_mes(org_id, mes) if lente == "fatura" else [],
+        titulares=[{**dict(t), "total": float(t["total"])} for t in db.titulares_do_mes(org_id, mes, lente)],
+        categorias=_com_percentual(categorias_brutas, compras),
+        fornecedores=_com_percentual(db.gastos_por_fornecedor_cartao(org_id, mes, 8, lente), compras),
+        compras=compras, creditos=db.creditos_cartao_mes(org_id, mes, lente),
+        proximos=proximos, total_comprometido=sum(m["total"] for m in proximos),
+        total_importado=sum(r["total"] for r in resumo), maximo=maximo,
+        barras={r["mes_referencia"]: round(r["total"] / maximo * 100) for r in resumo},
+    )

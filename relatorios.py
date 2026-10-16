@@ -23,6 +23,9 @@ def _montar_relatorio(org_id, mes_referencia):
     filtros["data_fim"] = fim_mes.isoformat()
 
     lancamentos = db.listar_lancamentos(org_id, filtros)
+    if db.org_tem_faturas(org_id):  # com faturas importadas, a fatura vale: compra lançada à mão no cartão não conta duas vezes
+        lancamentos = [l for l in lancamentos
+                       if not (l["tipo"] == "despesa" and (l.get("forma_pagamento_nome") or "").startswith("Cartão de Crédito"))]
     receitas = [l for l in lancamentos if l["tipo"] == "receita"]
     despesas = [l for l in lancamentos if l["tipo"] == "despesa"]
     total_receitas = sum(float(l["valor"]) for l in receitas)
@@ -32,6 +35,11 @@ def _montar_relatorio(org_id, mes_referencia):
     for l in despesas:
         nome = l["categoria_nome"] or "Sem categoria"
         por_categoria[nome] = por_categoria.get(nome, 0) + float(l["valor"])
+    cartao = db.total_faturas_mes(org_id, mes_referencia)          # o cartão entra pelo mês do vencimento
+    for c in db.gastos_por_categoria_cartao(org_id, mes_referencia):
+        por_categoria[c["categoria"]] = por_categoria.get(c["categoria"], 0) + float(c["total"])
+    total_despesas += cartao["total"]
+    total_categorias = sum(por_categoria.values())
     por_categoria_lista = sorted(
         [{"categoria": k, "valor": v} for k, v in por_categoria.items()], key=lambda x: -x["valor"])
 
@@ -43,7 +51,10 @@ def _montar_relatorio(org_id, mes_referencia):
         "total_receitas": total_receitas, "total_despesas": total_despesas,
         "saldo": total_receitas - total_despesas,
         "total_planejado": total_planejado,
-        "por_categoria": por_categoria_lista,
+        "por_categoria": por_categoria_lista, "total_categorias": total_categorias,
+        "cartao_total": cartao["total"], "cartao_previa": cartao["previa"],
+        "creditos_cartao": db.creditos_cartao_mes(org_id, mes_referencia),
+        "linhas_cartao": db.listar_lancamentos_cartao(org_id, {"mes_referencia": mes_referencia}),
     }
 
 
@@ -90,6 +101,12 @@ def exportar_csv():
         writer.writerow([
             l["data"], l["tipo"], l["descricao"] or "", l["categoria_nome"] or "",
             l["forma_pagamento_nome"] or "", f"{float(l['valor']):.2f}".replace(".", ","),
+        ])
+
+    for l in dados["linhas_cartao"]:
+        writer.writerow([
+            l["data_iso"], "despesa (cartão)" if l["sinal"] == "D" else "crédito (cartão)", l["fornecedor_exibicao"] or "",
+            l["categoria_nome"] or "", l["cartao_nome"] or "", f"{float(l['valor']):.2f}".replace(".", ","),
         ])
 
     output = buffer.getvalue().encode("utf-8-sig")  # BOM para o Excel abrir acentos corretamente

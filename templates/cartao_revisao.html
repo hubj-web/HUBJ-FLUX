@@ -3,31 +3,37 @@
 {% block content %}
 <div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
-    <h1>Revisar fatura</h1>
-    <p>{{ arquivo }} · vencimento {{ vencimento or '—' }}</p>
+    <h1>{{ 'Revisar prévia da fatura' if previa else 'Revisar fatura' }}</h1>
+    <p>{{ arquivo }}{% if previa and data_referencia %} · parcial até {{ data_referencia }}{% endif %}</p>
+    {% if previa %}<p style="color:var(--graphite);font-size:12.5px">Esta é uma <strong>prévia</strong> (fatura ainda aberta). Ela vale até você importar a fatura oficial do mesmo mês, que a substitui.</p>{% endif %}
   </header>
 
   <div class="resumo-flex">
-    <div class="summary-cell"><span class="label">Total fatura</span><span class="value">R$ {{ (conferencia.valor_total_fatura or 0)|brl }}</span></div>
+    <div class="summary-cell"><span class="label">{{ 'Total parcial' if previa else 'Total fatura' }}</span><span class="value">R$ {{ (conferencia.valor_total_fatura or 0)|brl }}</span></div>
     <div class="summary-cell"><span class="label">Soma lida</span><span class="value">R$ {{ conferencia.soma_transacoes|brl }}</span></div>
   </div>
   <div style="text-align:center;margin-bottom:20px">
     <span class="chip-status {{ 'verde' if conferencia.bate else 'vermelho' }}" style="font-size:13px">{{ '✓ CONFERE' if conferencia.bate else '✗ DIVERGE' }}</span>
   </div>
 
-  <form method="post" action="{{ url_for('cartao.confirmar') }}">
+  <form method="post" action="{{ url_for('cartao.confirmar') }}" class="form-grid" style="max-width:none">
     <input type="hidden" name="token" value="{{ token }}">
-    <div class="form-row" style="max-width:220px;margin:0 auto 24px">
-      <label>Mês de referência</label>
-      <input type="text" name="mes_referencia" value="{{ mes_referencia }}" class="mono">
-    </div>
+    <div class="form-row"><label>Cartão desta fatura</label>
+      <select name="cartao_id">
+        {% for c in cartoes %}<option value="{{ c.id }}" {{ 'selected' if c.id == sugerido_id }}>{{ c.nome }}{% if c.final_cartao %} (final {{ c.final_cartao }}){% endif %}</option>{% endfor %}
+        <option value="novo" {{ 'selected' if not sugerido_id }}>➕ Novo cartão: Caixa ·{{ final or '?' }}</option>
+      </select></div>
+    <div class="form-row"><label>Fatura de (mês do vencimento) *</label>
+      <input type="month" name="mes_fatura" value="{{ mes_fatura }}" required>
+      <span style="font-size:11.5px;color:var(--graphite)">É o mês em que a fatura vence, ou seja, quando o dinheiro sai.</span></div>
+    {% if previa %}<div class="form-row"><label>Vencimento (estimado)</label><input type="date" name="vencimento" value="{{ vencimento_iso }}"></div>{% endif %}
 
     {% for titular, grupo in grupos.items() %}
-    <details class="card-item-expandivel" style="margin-bottom:14px" open>
+    <details class="card-item-expandivel" style="margin-bottom:14px" {{ 'open' if titular != 'GERAL' }}>
       <summary class="card-item" style="cursor:pointer">
-        <div class="card-item-icone">🙂</div>
+        <div class="card-item-icone">{{ '🧾' if titular == 'GERAL' else '🙂' }}</div>
         <div class="card-item-corpo">
-          <div class="card-item-titulo">{{ grupo.titular }}</div>
+          <div class="card-item-titulo">{{ grupo.rotulo }}</div>
           <div class="card-item-sub">{{ grupo.transacoes|length }} lançamentos</div>
         </div>
         <div class="card-item-valor">R$ {{ grupo.soma|brl }}</div>

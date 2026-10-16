@@ -51,7 +51,9 @@ def visao_mensal(hoje, n, fixos, faturas, parcelas, renda_por_mes, renda_padrao,
     for f in faturas:
         venc = f.get("vencimento")
         chave = venc.strftime("%Y-%m") if venc else somar_meses(f["mes_referencia"], deslocamento)
-        caixa_faturas[chave] = caixa_faturas.get(chave, 0.0) + float(f["total"] or 0)
+        d = caixa_faturas.setdefault(chave, {"total": 0.0, "previa": False})
+        d["total"] += float(f["total"] or 0)
+        d["previa"] = d["previa"] or bool(f.get("previa"))
     ultimo_caixa = max(caixa_faturas) if caixa_faturas else ""
     caixa_parcelas = {somar_meses(m["mes"], deslocamento): m for m in parcelas}
 
@@ -70,7 +72,7 @@ def visao_mensal(hoje, n, fixos, faturas, parcelas, renda_por_mes, renda_padrao,
         total_fixos = round(sum(x["valor"] for x in itens), 2)
 
         if mes in caixa_faturas:
-            cartao = {"total": round(caixa_faturas[mes], 2), "origem": "fatura", "itens": []}
+            cartao = {"total": round(caixa_faturas[mes]["total"], 2), "origem": "previa" if caixa_faturas[mes]["previa"] else "fatura", "itens": []}
         elif mes in caixa_parcelas:
             cartao = {"total": round(caixa_parcelas[mes]["total"], 2), "origem": "parcelas", "itens": caixa_parcelas[mes]["itens"]}
         else:
