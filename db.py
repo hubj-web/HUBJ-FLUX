@@ -1296,6 +1296,7 @@ def acerto_itens(organizacao_id):
 
 def realizado_por_categoria_mes(organizacao_id, mes_referencia, incluir_sem_categoria=False):
     """Controle = orçamento da FAMÍLIA: o que é de uma empresa fica de fora.
+    Os créditos da fatura (estornos) abatem a categoria deles, então a soma do cartão fecha com o total da fatura.
     Com incluir_sem_categoria, o gasto sem categoria vem na chave None."""
     rows = query_all(
         """SELECT categoria_id, SUM(valor) AS total FROM (
@@ -1303,9 +1304,9 @@ def realizado_por_categoria_mes(organizacao_id, mes_referencia, incluir_sem_cate
                WHERE l.organizacao_id = %(org)s AND l.tipo = 'despesa' AND to_char(l.data, 'YYYY-MM') = %(mes)s AND NOT (""" + _CARTAO_MANUAL + """)
                  AND """ + _FAMILIA_L + """
              UNION ALL
-             SELECT lc.categoria_id, lc.valor FROM lancamentos_cartao lc
+             SELECT lc.categoria_id, CASE WHEN lc.sinal = 'D' THEN lc.valor ELSE -lc.valor END AS valor FROM lancamentos_cartao lc
                JOIN faturas f ON f.id = lc.fatura_id JOIN cartoes c ON c.id = f.cartao_id
-               WHERE c.organizacao_id = %(org)s AND lc.sinal = 'D' AND f.mes_referencia = %(mes)s AND """ + _SEM_PASSAGEM + """
+               WHERE c.organizacao_id = %(org)s AND f.mes_referencia = %(mes)s AND """ + _SEM_PASSAGEM + """
                  AND """ + _FAMILIA_LC + """
            ) t GROUP BY categoria_id""",
         {"org": organizacao_id, "mes": mes_referencia})
