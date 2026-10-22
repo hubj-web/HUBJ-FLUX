@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 
 import db
 from auth import login_required, requer_organizacao
+import quadro_mes
 import regras_negocio
 
 plan_bp = Blueprint("plan", __name__, url_prefix="/planejamento")
@@ -25,9 +26,13 @@ def index():
 
     categorias = db.listar_planejamento_mes(org_id, mes_referencia, tipo="despesa")
     categorias_receita = db.listar_planejamento_mes(org_id, mes_referencia, tipo="receita")
-    media_historica = db.gasto_medio_categoria_ultimos_meses(org_id, mes_referencia)
+    historico = db.historico_por_categoria(org_id, mes_referencia)
+    sugerindo = request.args.get("sugerir") == "historico" and bool(historico["meses"])
     for c in categorias:
-        c["media_historica"] = media_historica.get(c["categoria_id"], 0)
+        c["media_historica"] = historico["medias"].get(c["categoria_id"], 0)
+        c["valor_limite"] = float(c["valor_limite"])
+        if sugerindo and c["media_historica"] > 0:  # só preenche a tela: nada é gravado até tocar em Salvar
+            c["valor_limite"] = quadro_mes.arredondar_limite(c["media_historica"])
     total_planejado = sum(float(c["valor_limite"]) for c in categorias)
     total_planejado_receita = sum(float(c["valor_limite"]) for c in categorias_receita)
     prefs = db.buscar_preferencias(org_id)
@@ -37,6 +42,7 @@ def index():
         mes_referencia=mes_referencia, mes_anterior=mes_anterior, mes_seguinte=mes_seguinte,
         total_planejado=total_planejado, total_planejado_receita=total_planejado_receita,
         renda_mensal=prefs["renda_mensal"] if prefs else None,
+        historico_meses=historico["meses"], sem_categoria_media=historico["sem_categoria"], sugerindo=sugerindo,
     )
 
 

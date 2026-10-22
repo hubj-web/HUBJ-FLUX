@@ -375,14 +375,30 @@ def copiar_planejamento(organizacao_id, mes_origem, mes_destino):
     return len(origem)
 
 
-def gasto_medio_categoria_ultimos_meses(organizacao_id, mes_referencia, n_meses=3):
+def historico_por_categoria(organizacao_id, mes_referencia, n_meses=3):
+    """Média por categoria dos n meses ANTERIORES ao mês. Conta só os meses em que houve gasto: mês sem nenhum
+    dado é fatura ou lançamento ainda não importado, não 'gastei zero' (senão a média sairia dividida à toa).
+    Devolve {'medias': {categoria_id: média}, 'sem_categoria': média, 'meses': [meses usados]}."""
     ref = _date.fromisoformat(mes_referencia + "-01")
-    totais = {}
+    usados, totais, sem_categoria = [], {}, 0.0
     for i in range(1, n_meses + 1):
         mes = (ref - _rd(months=i)).strftime("%Y-%m")
-        for cat_id, valor in realizado_por_categoria_mes(organizacao_id, mes).items():
-            totais[cat_id] = totais.get(cat_id, 0) + valor
-    return {cat_id: round(v / n_meses, 2) for cat_id, v in totais.items()}
+        por_categoria = realizado_por_categoria_mes(organizacao_id, mes, incluir_sem_categoria=True)
+        if sum(por_categoria.values()) <= 0:
+            continue
+        usados.append(mes)
+        for cat_id, valor in por_categoria.items():
+            if cat_id is None:
+                sem_categoria += valor
+            else:
+                totais[cat_id] = totais.get(cat_id, 0) + valor
+    n = len(usados)
+    return {"medias": {c: round(v / n, 2) for c, v in totais.items()} if n else {},
+            "sem_categoria": round(sem_categoria / n, 2) if n else 0.0, "meses": sorted(usados)}
+
+
+def gasto_medio_categoria_ultimos_meses(organizacao_id, mes_referencia, n_meses=3):
+    return historico_por_categoria(organizacao_id, mes_referencia, n_meses)["medias"]
 
 
 def lancamentos_por_categoria_mes(organizacao_id, categoria_id, mes_referencia):
@@ -1278,8 +1294,9 @@ def acerto_itens(organizacao_id):
 
 # ---- análise com o destino ----
 
-def realizado_por_categoria_mes(organizacao_id, mes_referencia):
-    """Controle = orçamento da FAMÍLIA: o que é de uma empresa fica de fora."""
+def realizado_por_categoria_mes(organizacao_id, mes_referencia, incluir_sem_categoria=False):
+    """Controle = orçamento da FAMÍLIA: o que é de uma empresa fica de fora.
+    Com incluir_sem_categoria, o gasto sem categoria vem na chave None."""
     rows = query_all(
         """SELECT categoria_id, SUM(valor) AS total FROM (
              SELECT l.categoria_id, l.valor FROM lancamentos l LEFT JOIN formas_pagamento fp ON fp.id = l.forma_pagamento_id
@@ -1292,7 +1309,7 @@ def realizado_por_categoria_mes(organizacao_id, mes_referencia):
                  AND """ + _FAMILIA_LC + """
            ) t GROUP BY categoria_id""",
         {"org": organizacao_id, "mes": mes_referencia})
-    return {r["categoria_id"]: float(r["total"]) for r in rows if r["categoria_id"] is not None}
+    return {r["categoria_id"]: float(r["total"]) for r in rows if incluir_sem_categoria or r["categoria_id"] is not None}
 
 
 def gastos_por_categoria_cartao(organizacao_id, mes, lente="fatura", so_familia=False):

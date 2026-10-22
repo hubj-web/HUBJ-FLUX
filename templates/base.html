@@ -30,7 +30,7 @@
 {% if g.get('usuario_atual') and g.usuario_atual.organizacao_id %}
 <nav class="navbar-fixa">
   <a href="{{ url_for('inicio.index') }}" class="navbar-item {{ 'ativo' if request.path == '/' }}">
-    <span class="navbar-icone">🏠</span><span>Início</span>
+    <span class="navbar-icone">🗓️</span><span>Mês</span>
   </a>
   {% set _atalhos = nav_atalhos if nav_atalhos is defined else [] %}
   {% for a in _atalhos[:1] %}

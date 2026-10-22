@@ -6,18 +6,28 @@
     <h1>Mais</h1>
   </header>
   <div class="menu-list">
-    <a href="{{ url_for('mensal.index') }}" class="menu-item"><span class="menu-icon">🧮</span> Planejamento mensal</a>
-    <a href="{{ url_for('mensal.assistente') }}" class="menu-item"><span class="menu-icon">🤖</span> Assistente financeiro</a>
+    <div class="menu-secao">Dia a dia</div>
+    <a href="{{ url_for('lanc.extrato') }}" class="menu-item"><span class="menu-icon">🧾</span> Extrato (todos os lançamentos)</a>
+    <a href="{{ url_for('cartao.painel') }}" class="menu-item"><span class="menu-icon">💳</span> Cartão de crédito (faturas e compras)</a>
+    <a href="{{ url_for('lanc.recorrentes') }}" class="menu-item"><span class="menu-icon">🔁</span> Lançamentos que se repetem</a>
+
+    <div class="menu-secao">Planejar</div>
+    <a href="{{ url_for('plan.index') }}" class="menu-item"><span class="menu-icon">📝</span> Planejamento (limites por categoria)</a>
+    <a href="{{ url_for('mensal.index') }}" class="menu-item"><span class="menu-icon">🧮</span> Planejamento mensal (fixos e parcelas)</a>
+    <a href="{{ url_for('metas.index') }}" class="menu-item"><span class="menu-icon">🎯</span> Metas</a>
+
+    <div class="menu-secao">Acompanhar</div>
+    <a href="{{ url_for('controle.index') }}" class="menu-item"><span class="menu-icon">🎛️</span> Controle (planejado × realizado)</a>
+    <a href="{{ url_for('relatorios.index') }}" class="menu-item"><span class="menu-icon">📊</span> Relatórios</a>
     <a href="{{ url_for('alertas.index') }}" class="menu-item"><span class="menu-icon">🔔</span> Alertas
       {% if alertas_nao_lidas %}<span class="chip-status vermelho" style="margin-left:auto">{{ alertas_nao_lidas }} novo(s)</span>{% endif %}</a>
     <a href="{{ url_for('alertas.lembretes') }}" class="menu-item"><span class="menu-icon">⏰</span> Lembretes de vencimento</a>
-    <a href="{{ url_for('cartao.painel') }}" class="menu-item"><span class="menu-icon">💳</span> Cartão de crédito</a>
+
+    <div class="menu-secao">Ferramentas</div>
+    <a href="{{ url_for('mensal.assistente') }}" class="menu-item"><span class="menu-icon">🤖</span> Assistente financeiro</a>
     {% if modulo_empresa %}<a href="{{ url_for('empresas.acerto') }}" class="menu-item"><span class="menu-icon">🏢</span> Acerto Família × Empresa</a>{% endif %}
-    <a href="{{ url_for('lanc.recorrentes') }}" class="menu-item"><span class="menu-icon">🔁</span> Recorrentes</a>
-    <a href="{{ url_for('plan.index') }}" class="menu-item"><span class="menu-icon">📝</span> Planejamento</a>
-    <a href="{{ url_for('controle.index') }}" class="menu-item"><span class="menu-icon">🎛️</span> Controle</a>
-    <a href="{{ url_for('metas.index') }}" class="menu-item"><span class="menu-icon">🎯</span> Metas</a>
-    <a href="{{ url_for('relatorios.index') }}" class="menu-item"><span class="menu-icon">📊</span> Relatórios</a>
+
+    <div class="menu-secao">Conta</div>
     <a href="{{ url_for('mais.barra') }}" class="menu-item"><span class="menu-icon">🧭</span> Minha barra de atalhos</a>
     {% if g.usuario_atual.papel in ('super_admin', 'admin_cliente') %}
     <a href="{{ url_for('config.index') }}" class="menu-item"><span class="menu-icon">⚙️</span> Configurações</a>

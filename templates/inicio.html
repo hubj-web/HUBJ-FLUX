@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Início · HUB-J FLUX{% endblock %}
+{% block title %}Mês · HUB-J FLUX{% endblock %}
 {% block content %}
 <div class="content" style="max-width:780px;margin:0 auto">
   <header class="panel-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
@@ -23,25 +23,46 @@
     <a href="{{ url_for('inicio.index', mes=mes_seguinte) }}" class="btn btn-ghost" style="padding:6px 12px">→</a>
   </div>
 
-  <div class="summary-cell" style="text-align:center;margin-bottom:14px;padding:24px">
-    <span class="label">Saldo do mês</span>
-    <div class="value" style="font-size:32px;margin-top:6px;color:{{ 'var(--success-dark)' if totais.saldo >= 0 else 'var(--danger-dark)' }}">R$ {{ totais.saldo|brl }}</div>
-    {% if reservado_metas > 0 %}
-    <div style="font-size:12px;color:var(--graphite);margin-top:6px">
-      🎯 R$ {{ reservado_metas|brl }} já reservados em metas — R$ {{ saldo_livre|brl }} realmente livres
+  <div class="summary-cell" style="padding:22px;margin-bottom:12px">
+    <span class="label">Gastos da família no mês</span>
+    <div class="value val-despesa" style="font-size:30px;margin-top:4px">R$ {{ quadro.realizado_total|brl }}</div>
+    {% if quadro.tem_plano %}
+    <div class="barra-prog" style="margin-top:12px"><span class="{{ quadro.cor }}" style="width:{{ quadro.barra }}%"></span></div>
+    <div style="font-size:13px;margin-top:8px">
+      Nas categorias planejadas: <strong>R$ {{ quadro.dentro_do_plano|brl }}</strong> de R$ {{ quadro.planejado_total|brl }} ({{ quadro.pct }}%)
+      · {% if quadro.restante >= 0 %}faltam R$ {{ quadro.restante|brl }}{% else %}passou R$ {{ (-quadro.restante)|brl }}{% endif %}
     </div>
+    {% if quadro.fora_do_plano > 0 %}
+    <div style="font-size:12px;color:var(--graphite);margin-top:4px">R$ {{ quadro.fora_do_plano|brl }} ficaram fora do planejado{% if quadro.sem_categoria > 0 %} (R$ {{ quadro.sem_categoria|brl }} sem categoria){% endif %}.</div>
+    {% endif %}
+    {% if quadro.estourados %}
+    <div style="font-size:12.5px;color:var(--danger-dark);margin-top:8px;font-weight:700">⚠️ Passou do limite: {% for l in quadro.estourados %}{{ l.nome }}{{ ', ' if not loop.last }}{% endfor %}</div>
+    {% endif %}
+    {% else %}
+    <p style="font-size:13px;color:var(--graphite);margin:10px 0 12px">Você ainda não planejou este mês. Dá para começar com a média do que você já gastou.</p>
+    <a href="{{ url_for('plan.index', mes=mes_referencia, sugerir='historico') }}" class="btn btn-primary" style="padding:8px 18px;font-size:13px">📝 Planejar este mês</a>
     {% endif %}
   </div>
 
   <div class="review-summary resumo-flex">
-    <div class="summary-cell"><span class="label">Receitas</span><span class="value val-receita" style="font-size:17px">R$ {{ totais.receitas|brl }}</span></div>
-    <div class="summary-cell"><span class="label">Despesas</span><span class="value val-despesa" style="font-size:17px">R$ {{ totais.despesas|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Entradas</span><span class="value val-receita" style="font-size:17px">R$ {{ totais.receitas|brl }}</span>
+      {% if renda_prevista %}<span style="font-size:11.5px;color:var(--graphite)">previstas R$ {{ renda_prevista|brl }}</span>{% endif %}</div>
+    <div class="summary-cell"><span class="label">Saldo do mês</span><span class="value" style="font-size:17px;color:{{ 'var(--success-dark)' if totais.saldo >= 0 else 'var(--danger-dark)' }}">R$ {{ totais.saldo|brl }}</span>
+      {% if reservado_metas > 0 %}<span style="font-size:11.5px;color:var(--graphite)">🎯 R$ {{ reservado_metas|brl }} em metas · livres R$ {{ saldo_livre|brl }}</span>{% endif %}</div>
   </div>
+
+  {% if comprometido %}
+  <a href="{{ url_for('mensal.index') }}" class="card-item" style="text-decoration:none;color:inherit;margin-top:10px">
+    <div class="card-item-icone">🧮</div>
+    <div class="card-item-corpo"><div class="card-item-titulo" style="white-space:normal">Já comprometido neste mês</div><div class="card-item-sub" style="white-space:normal">gastos fixos, parcelas e fatura{% if comprometido.livre is not none %} · livre R$ {{ comprometido.livre|brl }}{% endif %}</div></div>
+    <div class="card-item-valor val-despesa">R$ {{ comprometido.comprometido|brl }}</div>
+  </a>
+  {% endif %}
 
   {% if totais.cartao %}
   <a href="{{ url_for('cartao.painel', mes=mes_referencia) }}" class="card-item" style="text-decoration:none;color:inherit;margin-top:10px">
     <div class="card-item-icone">💳</div>
-    <div class="card-item-corpo"><div class="card-item-titulo" style="white-space:normal">Cartão · fatura de {{ mes_referencia|mes_label }}{% if totais.cartao_previa %} (prévia){% endif %}</div><div class="card-item-sub">já incluída nas despesas acima</div></div>
+    <div class="card-item-corpo"><div class="card-item-titulo" style="white-space:normal">Cartão · fatura de {{ mes_referencia|mes_label }}{% if totais.cartao_previa %} (prévia){% endif %}</div><div class="card-item-sub">já incluída nos gastos acima</div></div>
     <div class="card-item-valor val-despesa">R$ {{ totais.cartao|brl }}</div>
   </a>
   {% endif %}
@@ -55,6 +76,27 @@
   {% endfor %}
 
   <p style="color:var(--ink-soft);font-size:13.5px;margin:14px 0 24px;text-align:center">{{ frase_saldo }}</p>
+
+  {% if quadro.linhas or quadro.sem_categoria > 0 %}
+  <h3>Por categoria</h3>
+  <div class="card-lista" style="margin-bottom:8px">
+    {% for l in quadro.linhas[:6] %}
+    <a href="{{ url_for('controle.drill_down', categoria_id=l.categoria_id, mes=mes_referencia) }}" class="card-item" style="text-decoration:none;color:inherit">
+      <div class="card-item-corpo">
+        <div class="card-item-titulo">{{ l.nome }}</div>
+        <div class="card-item-sub">R$ {{ l.realizado|brl }}{% if l.planejado %} de R$ {{ l.planejado|brl }} · {{ l.pct }}%{% else %} · sem limite{% endif %}</div>
+        {% if l.planejado %}<div class="barra-prog"><span class="{{ l.cor }}" style="width:{{ l.barra }}%"></span></div>{% endif %}
+      </div>
+    </a>
+    {% endfor %}
+    {% if quadro.sem_categoria > 0 %}
+    <a href="{{ url_for('cartao.transacoes', mes=mes_referencia) }}" class="card-item" style="text-decoration:none;color:inherit">
+      <div class="card-item-corpo"><div class="card-item-titulo">Sem categoria</div><div class="card-item-sub">R$ {{ quadro.sem_categoria|brl }} · toque para categorizar</div></div>
+    </a>
+    {% endif %}
+  </div>
+  <p style="margin:0 0 24px;font-size:12.5px"><a href="{{ url_for('controle.index', mes=mes_referencia) }}">Ver todas as categorias no Controle →</a></p>
+  {% endif %}
 
   <h3>Últimos lançamentos</h3>
   <div class="card-lista" style="margin-bottom:24px">

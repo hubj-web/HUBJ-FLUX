@@ -6,8 +6,10 @@ from flask import Blueprint, render_template, g, request
 import db
 import empresa as empresa_mod
 import alertas
+import quadro_mes
 from auth import login_required
 import regras_negocio
+from mensal import _carregar as carregar_planejamento
 
 inicio_bp = Blueprint("inicio", __name__)
 
@@ -40,8 +42,20 @@ def index():
         consolidado = empresa_mod.consolidar(db.acerto_itens(usuario["organizacao_id"]), db.listar_acertos(usuario["organizacao_id"]), nomes)
         acertos_empresas = [s for s in consolidado.values() if abs(s["saldo"]) >= 0.005]
 
+    # planejado x realizado da FAMÍLIA, a mesma conta do Controle
+    org_id = usuario["organizacao_id"]
+    planejado = {r["categoria_id"]: float(r["valor_limite"]) for r in db.listar_planejamento_mes(org_id, mes_referencia)}
+    realizado = db.realizado_por_categoria_mes(org_id, mes_referencia, incluir_sem_categoria=True)
+    nomes = {c["id"]: c["nome"] for c in db.listar_categorias(org_id)}
+    quadro = quadro_mes.montar_quadro(planejado, realizado, nomes)
+    renda_prevista = db.renda_planejada_por_mes(org_id, mes_referencia, mes_referencia).get(mes_referencia) \
+        or (float(prefs["renda_mensal"]) if prefs and prefs.get("renda_mensal") else None)
+    comprometido = None  # fixos + parcelas + fatura: só faz sentido do mês atual para frente
+    if mes_referencia >= date.today().strftime("%Y-%m"):
+        comprometido = next((m for m in carregar_planejamento(org_id, 12)["meses"] if m["mes"] == mes_referencia and m["comprometido"] > 0), None)
+
     return render_template(
-        "inicio.html", usuario=usuario, organizacao=organizacao,
+        "inicio.html", usuario=usuario, organizacao=organizacao, quadro=quadro, renda_prevista=renda_prevista, comprometido=comprometido,
         mes_referencia=mes_referencia, mes_anterior=mes_anterior, mes_seguinte=mes_seguinte,
         totais=totais, ultimos=ultimos, frase_saldo=frase_saldo, setup_concluido=setup_concluido,
         reservado_metas=reservado_metas, saldo_livre=saldo_livre, acertos_empresas=acertos_empresas,

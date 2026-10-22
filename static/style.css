@@ -308,3 +308,13 @@ body.com-nav-fixa{ padding-bottom:84px; }
 
 .home-logo{ display:block; margin:0 auto 14px; width:104px; height:104px; box-sizing:border-box; padding:14px; object-fit:contain;
   background:#fff; border-radius:26px; box-shadow:0 8px 24px rgba(0,0,0,.28); }
+
+/* tela do Mês: barras de progresso (mesmas cores do semáforo do Controle) */
+.barra-prog{ height:8px; border-radius:99px; background:var(--gray-light); overflow:hidden; margin-top:6px; }
+.barra-prog > span{ display:block; height:100%; border-radius:99px; }
+.barra-prog .verde{ background:var(--success-dark); }
+.barra-prog .amarelo{ background:var(--warning-dark); }
+.barra-prog .vermelho{ background:var(--danger-dark); }
+.barra-prog .cinza{ background:var(--gray-medium); }
+/* menu Mais agrupado */
+.menu-secao{ font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--graphite); padding:16px 16px 4px; }

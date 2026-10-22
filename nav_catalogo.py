@@ -6,15 +6,15 @@ são sempre fixos (Mais garante que ninguém fique sem acesso às telas)."""
 CATALOGO = {
     "extrato": ("🧾", "Extrato", "lanc.extrato", ["/extrato"]),
     "cartao": ("💳", "Cartão", "cartao.painel", ["/cartao"]),
-    "planejamento": ("📝", "Planejamento", "plan.index", ["/planejamento"]),
+    "planejamento": ("📝", "Planejar", "plan.index", ["/planejamento"]),
     "controle": ("🎛️", "Controle", "controle.index", ["/controle"]),
     "metas": ("🎯", "Metas", "metas.index", ["/metas"]),
     "relatorios": ("📊", "Relatórios", "relatorios.index", ["/relatorios"]),
     "recorrentes": ("🔁", "Recorrentes", "lanc.recorrentes", ["/lancamentos/recorrentes"]),
     "alertas": ("🔔", "Alertas", "alertas.index", ["/alertas", "/lembretes"]),
-    "mensal": ("🧮", "Mensal", "mensal.index", ["/mensal"]),
+    "mensal": ("🧮", "Fixos", "mensal.index", ["/mensal"]),
 }
-PADRAO = ["extrato", "cartao"]
+PADRAO = ["extrato", "planejamento"]
 MAXIMO = 2
 
 
