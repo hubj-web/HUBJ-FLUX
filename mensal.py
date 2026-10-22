@@ -2,6 +2,7 @@
 """Planejamento mensal (o que já está comprometido, mês a mês) + assistente de IA."""
 import json
 import re
+import uuid
 from datetime import date
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, abort
@@ -11,6 +12,7 @@ import db
 import empresa as empresa_mod
 import ia
 import planejamento_mensal as pm
+import planilha_despesas as pld
 from auth import login_required, requer_organizacao, requer_papel
 from config import Config
 
@@ -173,7 +175,8 @@ def _ler_gasto_fixo(criando):
     return {"nome": nome, "valor": valor, "estimado": f.get("estimado") == "on", "dia_mes": dia, "frequencia": frequencia,
             "mes_inicio": inicio, "mes_fim": fim, "no_cartao": f.get("no_cartao") == "on",
             "categoria_id": f.get("categoria_id") or None, "ativo": True if criando else f.get("ativo") == "on",
-            "destino_empresa_id": empresa_mod.destino_valido(f.get("destino_empresa_id"), db.empresas_ids(g.usuario_atual["organizacao_id"]))}, None
+            "destino_empresa_id": empresa_mod.destino_valido(f.get("destino_empresa_id"), db.empresas_ids(g.usuario_atual["organizacao_id"])),
+            "fornecedor": (f.get("fornecedor") or "").strip()[:150] or None, "observacao": (f.get("observacao") or "").strip()[:300] or None}, None
 
 
 @mensal_bp.route("/fixos", methods=["GET", "POST"])
@@ -204,6 +207,112 @@ def salvar_fixo(gasto_id):
     else:
         db.atualizar_gasto_fixo(gasto_id, g.usuario_atual["organizacao_id"], dados)
         flash("Gasto atualizado.", "ok")
+    return redirect(url_for("mensal.fixos"))
+
+
+# ---------- importar planilha de gastos ----------
+_planilhas = {}  # token -> planilha lida, guardada só até o usuário confirmar (como na importação de fatura)
+
+
+def _classificar_planilha(org_id, pend, mapa):
+    empresas = db.listar_empresas(org_id) if db.modulo_empresa_ativo(org_id) else []
+    existentes = {(pld.norm(f["nome"]), pld.centavos(f["valor"])) for f in db.listar_gastos_fixos(org_id)}
+    valores = db.valores_cartao_mes(org_id, pend["mes_base"])
+    itens = pld.classificar(pend["linhas"], pend["mes_base"], mapa, empresas, existentes, valores or None)
+    nomes = {e["id"]: e["nome"] for e in empresas}
+    for i in itens:
+        i["destino_nome"] = nomes.get(i["fixo"]["destino_empresa_id"]) if i.get("fixo") else None
+    return itens, bool(valores)
+
+
+def _pendente_planilha(org_id):
+    token = request.form.get("token")
+    pend = _planilhas.get(token)
+    if not pend or pend["org_id"] != org_id:
+        return None, None
+    return token, pend
+
+
+def _mapa_do_form(pend):
+    mapa = {}
+    for idx, t in enumerate(pld.tipos_da_planilha(pend["linhas"])):
+        v = request.form.get(f"acao_{idx}")
+        mapa[t["chave"]] = v if v in pld.ACOES else t["acao"]
+    return mapa
+
+
+def _render_revisao_planilha(org_id, token, pend, mapa):
+    itens, tem_fatura = _classificar_planilha(org_id, pend, mapa)
+    tipos = [{**t, "acao_escolhida": mapa.get(t["chave"], t["acao"])} for t in pld.tipos_da_planilha(pend["linhas"])]
+    grupos = pld.resumo(itens)
+    return render_template("planilha_revisao.html", token=token, arquivo=pend["arquivo"], mes_base=pend["mes_base"], tipos=tipos, acoes=pld.ACOES,
+                           grupos=grupos, tem_fatura=tem_fatura, por_mes=pld.valor_mensal(itens),
+                           soma=lambda lista: round(sum(i["valor"] or 0 for i in lista), 2))
+
+
+@mensal_bp.route("/importar", methods=["GET", "POST"])
+@login_required
+@requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
+def importar_planilha():
+    org_id = g.usuario_atual["organizacao_id"]
+    if request.method == "GET":
+        return render_template("planilha_importar.html", mes_base=date.today().strftime("%Y-%m"))
+    arq, mes_base = request.files.get("arquivo"), request.form.get("mes_base")
+    if not arq or not arq.filename:
+        flash("Escolha a planilha.", "erro")
+    elif not arq.filename.lower().endswith(".xlsx"):
+        flash("Envie uma planilha do Excel (.xlsx).", "erro")
+    elif not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", mes_base or ""):
+        flash("Informe de que mês é a planilha.", "erro")
+    else:
+        try:
+            linhas = pld.ler_planilha(arq.read(pld.LIMITE_BYTES + 1))
+        except pld.ErroPlanilha as e:
+            flash(str(e), "erro")
+        else:
+            token = uuid.uuid4().hex
+            if len(_planilhas) >= 20:
+                _planilhas.pop(next(iter(_planilhas)))
+            _planilhas[token] = {"org_id": org_id, "linhas": linhas, "mes_base": mes_base, "arquivo": arq.filename}
+            return _render_revisao_planilha(org_id, token, _planilhas[token], {t["chave"]: t["acao"] for t in pld.tipos_da_planilha(linhas)})
+    return redirect(url_for("mensal.importar_planilha"))
+
+
+@mensal_bp.route("/importar/revisar", methods=["POST"])
+@login_required
+@requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
+def revisar_planilha():
+    org_id = g.usuario_atual["organizacao_id"]
+    token, pend = _pendente_planilha(org_id)
+    if not pend:
+        flash("A importação expirou. Envie a planilha de novo.", "erro")
+        return redirect(url_for("mensal.importar_planilha"))
+    return _render_revisao_planilha(org_id, token, pend, _mapa_do_form(pend))
+
+
+@mensal_bp.route("/importar/confirmar", methods=["POST"])
+@login_required
+@requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
+def confirmar_planilha():
+    org_id = g.usuario_atual["organizacao_id"]
+    token, pend = _pendente_planilha(org_id)
+    if not pend:
+        flash("A importação expirou ou já foi concluída. Envie a planilha de novo se precisar.", "erro")
+        return redirect(url_for("mensal.importar_planilha"))
+    itens, _ = _classificar_planilha(org_id, pend, _mapa_do_form(pend))
+    novos = [i for i in itens if i["status"] in ("criar", "pausar")]
+    for i in novos:
+        db.criar_gasto_fixo(org_id, i["fixo"])
+    del _planilhas[token]
+    pausados = sum(1 for i in novos if i["status"] == "pausar")
+    partes = [f"{len(novos) - pausados} gasto(s) cadastrado(s)"]
+    if pausados:
+        partes.append(f"{pausados} pausado(s) (pagos com créditos)")
+    pulados = len(itens) - len(novos)
+    flash("Importação concluída: " + ", ".join(partes) + f". {pulados} linha(s) não precisaram ser cadastradas.", "ok")
     return redirect(url_for("mensal.fixos"))
 
 

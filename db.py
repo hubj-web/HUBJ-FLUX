@@ -1389,19 +1389,20 @@ def aplicar_regra_fornecedor(organizacao_id, padrao, nome, categoria_id, define_
 
 def criar_gasto_fixo(organizacao_id, d):
     execute(
-        """INSERT INTO gastos_fixos (organizacao_id, nome, valor, estimado, dia_mes, frequencia, mes_inicio, mes_fim, no_cartao, categoria_id, destino_empresa_id)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+        """INSERT INTO gastos_fixos (organizacao_id, nome, valor, estimado, dia_mes, frequencia, mes_inicio, mes_fim, no_cartao, categoria_id,
+                  destino_empresa_id, fornecedor, observacao, ativo)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
         (organizacao_id, d["nome"], d["valor"], d["estimado"], d["dia_mes"], d["frequencia"], d["mes_inicio"],
-         d["mes_fim"], d["no_cartao"], d["categoria_id"], d.get("destino_empresa_id")))
+         d["mes_fim"], d["no_cartao"], d["categoria_id"], d.get("destino_empresa_id"), d.get("fornecedor"), d.get("observacao"), d.get("ativo", True)))
 
 
 def atualizar_gasto_fixo(gasto_id, organizacao_id, d):
     execute(
         """UPDATE gastos_fixos SET nome=%s, valor=%s, estimado=%s, dia_mes=%s, frequencia=%s, mes_inicio=%s,
-                  mes_fim=%s, no_cartao=%s, categoria_id=%s, ativo=%s, destino_empresa_id=%s
+                  mes_fim=%s, no_cartao=%s, categoria_id=%s, ativo=%s, destino_empresa_id=%s, fornecedor=%s, observacao=%s
            WHERE id=%s AND organizacao_id=%s""",
         (d["nome"], d["valor"], d["estimado"], d["dia_mes"], d["frequencia"], d["mes_inicio"], d["mes_fim"],
-         d["no_cartao"], d["categoria_id"], d["ativo"], d.get("destino_empresa_id"), gasto_id, organizacao_id))
+         d["no_cartao"], d["categoria_id"], d["ativo"], d.get("destino_empresa_id"), d.get("fornecedor"), d.get("observacao"), gasto_id, organizacao_id))
 
 
 def modulo_empresa_ativo(organizacao_id):
@@ -1414,3 +1415,10 @@ def empresas_ids(organizacao_id):
     if not modulo_empresa_ativo(organizacao_id):
         return set()
     return {e["id"] for e in listar_empresas(organizacao_id, apenas_ativas=False)}
+
+
+def valores_cartao_mes(organizacao_id, mes):
+    """Valores das compras do cartão na fatura do mês (para conferir a planilha com a fatura importada)."""
+    rows = query_all(
+        "SELECT lc.valor " + _BASE_LC + " AND f.mes_referencia = %s AND lc.sinal = 'D' AND " + _SEM_PASSAGEM, (organizacao_id, mes))
+    return [float(r["valor"]) for r in rows]

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Revisar planilha · HUB-J FLUX{% endblock %}
+{% macro linha(i) %}
+<div class="card-item">
+  <div class="card-item-corpo">
+    <div class="card-item-titulo" style="white-space:normal">{{ i.nome }}</div>
+    <div class="card-item-sub" style="white-space:normal">{% if i.fornecedor %}{{ i.fornecedor }} · {% endif %}{{ i.quando|default('') }}{% if i.fixo %} · dia {{ i.fixo.dia_mes }}{% endif %}{% if i.destino_nome %} · 🏢 {{ i.destino_nome }}{% endif %}{% if i.na_fatura == true %} · ✔ está na fatura{% endif %}</div>
+    {% for a in i.avisos %}<div style="font-size:11.5px;color:var(--brick)">⚠ {{ a }}</div>{% endfor %}
+  </div>
+  {% if i.valor %}<div class="card-item-valor">R$ {{ i.valor|brl }}</div>{% endif %}
+</div>
+{% endmacro %}
+{% macro bloco(titulo, lista, nota, soma, aberto=False) %}
+{% if lista %}
+<details style="margin-bottom:10px" {{ 'open' if aberto }}>
+  <summary style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;padding:8px 0;font-size:13.5px"><strong>{{ titulo }} ({{ lista|length }})</strong>{% if soma %}<strong>R$ {{ soma|brl }}</strong>{% endif %}</summary>
+  {% if nota %}<p style="font-size:12px;color:var(--graphite);margin:0 0 8px">{{ nota }}</p>{% endif %}
+  <div class="card-lista">{% for i in lista %}{{ linha(i) }}{% endfor %}</div>
+</details>
+{% endif %}
+{% endmacro %}
+{% block content %}
+<div class="content" style="max-width:640px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Revisar planilha</h1>
+    <p style="color:var(--graphite);font-size:12.5px">{{ arquivo }} · parcelas contadas a partir de {{ mes_base|mes_label }}. Nada foi gravado ainda.</p>
+  </header>
+
+  <form method="post">
+    <input type="hidden" name="token" value="{{ token }}">
+
+    <h2 style="font-size:14px;margin:6px 0 8px">Como entendi a forma de pagamento</h2>
+    <p style="font-size:12px;color:var(--graphite);margin:0 0 10px">Se algum não estiver certo, troque e toque em "Atualizar resumo".</p>
+    {% for t in tipos %}
+    <div class="form-row"><label>{{ t.rotulo }} · {{ t.qtd }} linha(s)</label>
+      <select name="acao_{{ loop.index0 }}">{% for k, v in acoes.items() %}<option value="{{ k }}" {{ 'selected' if t.acao_escolhida == k }}>{{ v }}</option>{% endfor %}</select></div>
+    {% endfor %}
+    <button type="submit" formaction="{{ url_for('mensal.revisar_planilha') }}" class="btn btn-ghost" style="margin:6px 0 18px">Atualizar resumo</button>
+
+    <div class="summary-cell" style="text-align:center;padding:14px 10px;margin-bottom:14px">
+      <span class="label">Vão entrar nos números do planejamento</span>
+      <span class="value" style="font-size:24px">R$ {{ por_mes|brl }} por mês</span>
+      <span style="font-size:12px;color:var(--graphite)">{{ grupos.criar|length }} gasto(s) a cadastrar{% if grupos.pausar %} · {{ grupos.pausar|length }} pausado(s){% endif %}</span>
+    </div>
+
+    {{ bloco("A cadastrar", grupos.criar, "Entram nos números do planejamento dos próximos meses.", soma(grupos.criar), True) }}
+    {{ bloco("Pagos com créditos: entram pausados", grupos.pausar, "Ficam na lista de gastos fixos, mas fora dos números (só a taxa sai do seu bolso). Quando o módulo de permuta existir, passam a contar do jeito certo.", soma(grupos.pausar)) }}
+    {{ bloco("Já vêm da fatura do cartão", grupos.na_fatura, ("Não cadastro de novo: a fatura importada e a projeção das parcelas já contam." if tem_fatura else "Não há fatura importada para este mês, então não consegui conferir. Importe a fatura para ver o ✔ em cada um."), soma(grupos.na_fatura)) }}
+    {{ bloco("Já cadastrados antes", grupos.duplicado, "Mesmo nome e mesmo valor de um gasto que já existe.", None) }}
+    {{ bloco("Sem valor", grupos.sem_valor, "Gastos variáveis do dia a dia: acompanhe pelo Controle, por categoria.", None) }}
+    {{ bloco("Não importados por sua escolha", grupos.ignorado, None, None) }}
+
+    <button type="submit" formaction="{{ url_for('mensal.confirmar_planilha') }}" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:14px" {{ 'disabled' if not (grupos.criar or grupos.pausar) }}>Importar {{ grupos.criar|length + grupos.pausar|length }} gasto(s)</button>
+    <p style="text-align:center;margin-top:10px"><a href="{{ url_for('mensal.fixos') }}" style="font-size:12.5px">Cancelar</a></p>
+  </form>
+</div>
+{% endblock %}

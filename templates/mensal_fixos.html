@@ -12,6 +12,8 @@
     <select name="categoria_id"><option value="">— nenhuma —</option>{% for c in categorias %}<option value="{{ c.id }}" {{ 'selected' if g and g.categoria_id == c.id }}>{{ c.nome }}</option>{% endfor %}</select></div>
   <label style="display:flex;align-items:flex-start;gap:8px;font-weight:normal;font-size:13px"><input type="checkbox" name="estimado" {{ 'checked' if g and g.estimado }} style="width:auto;margin-top:3px">
     <span>O valor varia (é uma estimativa)<br><span style="color:var(--graphite);font-size:11.5px">Ex: energia, água, combustível.</span></span></label>
+  <div class="form-row"><label>Fornecedor (opcional)</label><input name="fornecedor" maxlength="150" value="{{ (g.fornecedor or '') if g else '' }}"></div>
+  <div class="form-row"><label>Observação (opcional)</label><input name="observacao" maxlength="300" value="{{ (g.observacao or '') if g else '' }}"></div>
   {% if empresas %}<div class="form-row"><label>Para quem?</label><select name="destino_empresa_id"><option value="">Família</option>{% for e in empresas %}<option value="{{ e.id }}" {{ 'selected' if g and g.destino_empresa_id == e.id }}>{{ e.nome }}</option>{% endfor %}</select></div>{% endif %}
   <label style="display:flex;align-items:flex-start;gap:8px;font-weight:normal;font-size:13px"><input type="checkbox" name="no_cartao" {{ 'checked' if g and g.no_cartao }} style="width:auto;margin-top:3px">
     <span>É cobrado no cartão de crédito<br><span style="color:var(--graphite);font-size:11.5px">Nos meses em que a fatura já foi importada, não conto de novo (ele já está na fatura).</span></span></label>
@@ -20,7 +22,8 @@
 <div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
     <h1>📌 Gastos fixos e recorrentes</h1>
-    <p><a href="{{ url_for('mensal.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p><a href="{{ url_for('mensal.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
+      {% if g.usuario_atual.papel in ('super_admin', 'admin_cliente') %}<a href="{{ url_for('mensal.importar_planilha') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">📥 Importar planilha</a>{% endif %}</p>
     <p style="color:var(--graphite);font-size:12.5px">Cadastre cada gasto <strong>uma vez só</strong>, com valor e dia do mês. O app projeta para os meses seguintes sozinho.</p>
   </header>
 
@@ -43,11 +46,12 @@
         <div class="card-item-icone">📌</div>
         <div class="card-item-corpo">
           <div class="card-item-titulo">{{ g.nome }}</div>
-          <div class="card-item-sub">dia {{ g.dia_mes }} · {{ rotulos[g.frequencia] }}{% if g.estimado %} · estimado{% endif %}{% if g.no_cartao %} · no cartão{% endif %}{% for e in empresas_org %}{% if e.id == g.destino_empresa_id %} · 🏢 {{ e.nome }}{% endif %}{% endfor %}{% if not g.ativo %} · pausado{% endif %}{% if g.categoria_nome %} · {{ g.categoria_nome }}{% endif %}</div>
+          <div class="card-item-sub">{% if g.fornecedor %}{{ g.fornecedor }} · {% endif %}dia {{ g.dia_mes }} · {{ rotulos[g.frequencia] }}{% if g.estimado %} · estimado{% endif %}{% if g.no_cartao %} · no cartão{% endif %}{% for e in empresas_org %}{% if e.id == g.destino_empresa_id %} · 🏢 {{ e.nome }}{% endif %}{% endfor %}{% if not g.ativo %} · pausado{% endif %}{% if g.categoria_nome %} · {{ g.categoria_nome }}{% endif %}</div>
         </div>
         <div class="card-item-valor val-despesa">R$ {{ g.valor|brl }}</div>
       </summary>
       <div style="padding:4px 16px 16px">
+        {% if g.observacao %}<div style="font-size:12px;color:var(--graphite);margin-bottom:8px">{{ g.observacao }}</div>{% endif %}
         <form method="post" action="{{ url_for('mensal.salvar_fixo', gasto_id=g.id) }}" class="form-grid" style="max-width:none">
           {{ campos(g, categorias, rotulos, mes_atual, empresas_org) }}
           <label style="display:flex;align-items:center;gap:8px;font-weight:normal;font-size:13px"><input type="checkbox" name="ativo" {{ 'checked' if g.ativo }} style="width:auto"> Ativo (desmarque para pausar)</label>
