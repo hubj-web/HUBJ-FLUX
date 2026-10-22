@@ -10,6 +10,7 @@ Cada linha vira um destes resultados (status):
   ignorado   -> o usuário escolheu não importar esse tipo de pagamento
 """
 import io
+import logging
 import re
 import unicodedata
 from collections import Counter
@@ -26,6 +27,7 @@ _PALAVRAS_CREDITOS_FRACAS = {"credito", "creditos"}        # só valem se não f
 _FREQ_POR_MESES = {1: "mensal", 2: "bimestral", 3: "trimestral", 6: "semestral", 12: "anual"}
 _PASSO = {"mensal": 1, "bimestral": 2, "trimestral": 3, "semestral": 6, "anual": 12}
 LIMITE_BYTES = 5_000_000
+log = logging.getLogger(__name__)
 
 
 class ErroPlanilha(Exception):
@@ -117,10 +119,15 @@ def ler_planilha(conteudo):
         raise ErroPlanilha("O arquivo é grande demais (limite de 5 MB).")
     try:
         import openpyxl
+    except ImportError:
+        log.exception("openpyxl não está instalado no servidor")
+        raise ErroPlanilha("O servidor não tem o componente que lê planilhas do Excel. Avise o suporte.")
+    try:
         wb = openpyxl.load_workbook(io.BytesIO(conteudo), data_only=True, read_only=True)
         ws = wb.worksheets[0]
         todas = [list(r) for r in ws.iter_rows(values_only=True)]
     except Exception:
+        log.exception("falha ao abrir a planilha")  # a causa real fica no log; o usuário vê a mensagem simples
         raise ErroPlanilha("Não consegui abrir o arquivo. Envie uma planilha do Excel (.xlsx).")
     cab_i = next((i for i, r in enumerate(todas[:15]) if any(_sem_acento(c).startswith("descri") for c in r if c)), None)
     if cab_i is None:
