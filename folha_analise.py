@@ -5,7 +5,29 @@ from collections import defaultdict
 
 from planilha_despesas import somar_meses, norm
 
-TOLERANCIA_FIM = 1  # o cadastro e a folha podem contar a parcela do mês de um jeito diferente: 1 mês de folga
+TOLERANCIA_FIM = 1
+_MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+
+
+def _rotulo(mes):
+    return f"{_MESES[int(mes[5:7]) - 1]}/{mes[:4]}"
+
+
+def _brl(v):
+    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def sugestao_de_cadastro(emprestimo, competencia, fim_cedo, fim_tarde, dia=20):
+    """Dados para pré-preencher o cadastro de um gasto fixo a partir do que a folha desconta.
+    O valor vai no formato brasileiro ('659,44'), que é como a tela de Gastos fixos o lê."""
+    desc = emprestimo["descricao"]
+    banco = desc.split(" - ")[-1].strip() if " - " in desc else None
+    obs = "Descontado em folha."
+    if emprestimo["prazo"] is not None:
+        obs += f" Prazo na folha: {emprestimo['prazo']:03d} em {_rotulo(competencia)}"
+        obs += f"; termina entre {_rotulo(fim_cedo)} e {_rotulo(fim_tarde)}." if fim_cedo != fim_tarde else f"; termina em {_rotulo(fim_cedo)}."
+    return {"nome": f"Empréstimo consignado {_brl(emprestimo['valor'])}", "valor": _brl(emprestimo["valor"]), "fornecedor": banco, "dia_mes": dia,
+            "mes_inicio": competencia, "mes_fim": fim_tarde, "observacao": obs}  # o cadastro e a folha podem contar a parcela do mês de um jeito diferente: 1 mês de folga
 
 
 def meses_entre(a, b):
@@ -94,7 +116,8 @@ def analisar_dividas(atual, anterior, fixos):
         fim_tarde = somar_meses(atual["competencia"], e["prazo"]) if e["prazo"] is not None else None
         fixo = next((f for f in disponiveis if abs(float(f["valor"]) - e["valor"]) < 0.005), None)
         linha = {"descricao": e["descricao"], "valor": e["valor"], "prazo": e["prazo"], "prazo_anterior": anterior_prazo, "tendencia": tendencia,
-                 "fim_cedo": fim_cedo, "fim_tarde": fim_tarde, "fixo": None, "status": "sem_cadastro", "fim_cadastro": None, "diferenca_meses": None}
+                 "fim_cedo": fim_cedo, "fim_tarde": fim_tarde, "fixo": None, "status": "sem_cadastro", "fim_cadastro": None, "diferenca_meses": None,
+                 "sugestao": sugestao_de_cadastro(e, atual["competencia"], fim_cedo, fim_tarde)}
         if fixo:
             disponiveis.remove(fixo)
             linha["fixo"] = fixo

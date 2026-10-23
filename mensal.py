@@ -179,6 +179,28 @@ def _ler_gasto_fixo(criando):
             "em_folha": f.get("em_folha") == "on", "fornecedor": (f.get("fornecedor") or "").strip()[:150] or None, "observacao": (f.get("observacao") or "").strip()[:300] or None}, None
 
 
+def _prefill_da_url():
+    """Valores de partida para o formulário 'Novo gasto', vindos de um link (por exemplo, da comparação folha x dívidas).
+    Só vale com novo=1, e cada campo é validado: o que for inválido simplesmente não preenche."""
+    a = request.args
+    if a.get("novo") != "1":
+        return None
+    dia = _inteiro(a.get("dia_mes"))
+    inicio, fim = a.get("mes_inicio", ""), a.get("mes_fim", "")
+    p = {"nome": a.get("nome", "").strip()[:150], "valor": _numero(a.get("valor")), "fornecedor": a.get("fornecedor", "").strip()[:150] or None,
+         "dia_mes": dia if dia is not None and 1 <= dia <= 31 else None,
+         "frequencia": a.get("frequencia") if a.get("frequencia") in pm.PASSO else "mensal",
+         "mes_inicio": inicio if re.fullmatch(r"\d{4}-\d{2}", inicio) else date.today().strftime("%Y-%m"),
+         "mes_fim": fim if re.fullmatch(r"\d{4}-\d{2}", fim) else None,
+         "em_folha": a.get("em_folha") == "1", "observacao": a.get("observacao", "").strip()[:300] or None,
+         "volta": a.get("volta") == "folha"}
+    if p["mes_fim"] and p["mes_fim"] < p["mes_inicio"]:
+        p["mes_fim"] = None
+    if p["valor"] is not None and p["valor"] <= 0:
+        p["valor"] = None
+    return p
+
+
 @mensal_bp.route("/fixos", methods=["GET", "POST"])
 @login_required
 @requer_organizacao
@@ -191,9 +213,11 @@ def fixos():
         else:
             db.criar_gasto_fixo(org_id, dados)
             flash(f"\"{dados['nome']}\" cadastrado: já entra no planejamento dos próximos meses.", "ok")
+            if request.form.get("volta") == "folha":  # veio da comparação folha x dívidas: volta para ver o resultado
+                return redirect(url_for("folha.dividas"))
         return redirect(url_for("mensal.fixos"))
     lista = db.listar_gastos_fixos(org_id)
-    return render_template("mensal_fixos.html", fixos=lista, media=pm.media_mensal(lista), rotulos=pm.ROTULO_FREQUENCIA,
+    return render_template("mensal_fixos.html", fixos=lista, media=pm.media_mensal(lista), rotulos=pm.ROTULO_FREQUENCIA, prefill=_prefill_da_url(),
                            categorias=db.listar_categorias(org_id, tipo="despesa"), mes_atual=date.today().strftime("%Y-%m"))
 
 

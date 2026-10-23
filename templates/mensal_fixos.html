@@ -3,7 +3,7 @@
 {% macro campos(g, categorias, rotulos, mes_atual, empresas) %}
   <div class="form-row"><label>Nome *</label><input name="nome" value="{{ g.nome if g else '' }}" required placeholder="Ex: Aluguel, Escola, Netflix"></div>
   <div class="form-row"><label>Valor (R$) *</label><input name="valor" value="{{ g.valor|brl if g else '' }}" required placeholder="0,00"></div>
-  <div class="form-row"><label>Dia do mês *</label><input type="number" name="dia_mes" min="1" max="31" value="{{ g.dia_mes if g else '' }}" required placeholder="Ex: 8"></div>
+  <div class="form-row"><label>Dia do mês *</label><input type="number" name="dia_mes" min="1" max="31" value="{{ g.dia_mes if g and g.dia_mes is not none else '' }}" required placeholder="Ex: 8"></div>
   <div class="form-row"><label>Frequência</label>
     <select name="frequencia">{% for k, v in rotulos.items() %}<option value="{{ k }}" {{ 'selected' if g and g.frequencia == k }}>{{ v|capitalize }}</option>{% endfor %}</select></div>
   <div class="form-row"><label>Começa em *</label><input type="month" name="mes_inicio" value="{{ g.mes_inicio if g else mes_atual }}" required></div>
@@ -29,8 +29,10 @@
   </header>
 
   <h3>Novo gasto</h3>
+  {% if prefill %}<div class="summary-cell" style="margin:10px 0 0;padding:12px;border-left:4px solid var(--laranja-evolucao);font-size:13px">📋 Preenchido a partir do holerite. <strong>Confira os campos</strong> (principalmente o dia e o mês final) e toque em Cadastrar.</div>{% endif %}
   <form method="post" action="{{ url_for('mensal.fixos') }}" class="form-grid" style="max-width:none;margin:10px 0 24px">
-    {{ campos(none, categorias, rotulos, mes_atual, empresas_org) }}
+    {% if prefill and prefill.volta %}<input type="hidden" name="volta" value="folha">{% endif %}
+    {{ campos(prefill, categorias, rotulos, mes_atual, empresas_org) }}
     <button type="submit" class="btn btn-primary">Cadastrar</button>
   </form>
 
