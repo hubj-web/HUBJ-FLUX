@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "folha_macros.html" import ui_dividas %}
+{% block title %}Folha × dívidas · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:640px;margin:0 auto">
+  <header class="panel-head">
+    <h1>⚖️ Folha × dívidas</h1>
+    <p><a href="{{ url_for('folha.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">O que é descontado direto na folha, comparado com as dívidas que você cadastrou em Gastos fixos. Quando uma dívida já sai do salário, marque-a como <strong>descontada em folha</strong>: ela deixa de contar como saída do seu bolso, porque o líquido que você recebe já vem sem ela.</p>
+  </header>
+  {% for b in blocos %}
+  <h2 style="font-size:14px;margin:18px 0 6px">Holerite de {{ b.h.competencia|mes_label }}{% if b.h.pessoa_nome %} · {{ b.h.pessoa_nome }}{% endif %}</h2>
+  {{ ui_dividas(b.analise, true) }}
+  {% else %}
+  <div style="text-align:center;color:var(--graphite);padding:30px 20px;background:var(--paper-raised);border-radius:var(--radius)">Importe um holerite para fazer a comparação. <a href="{{ url_for('folha.importar') }}">Importar agora</a></div>
+  {% endfor %}
+</div>
+{% endblock %}

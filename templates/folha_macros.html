@@ -1,0 +1,88 @@
+{% macro ui_checks(lista) %}
+<div class="card-lista">
+  {% for c in lista %}
+  <div class="card-item">
+    <div class="card-item-icone">{{ '✅' if c.ok else ('ℹ️' if c.ok is none else '⚠️') }}</div>
+    <div class="card-item-corpo"><div class="card-item-titulo" style="white-space:normal">{{ c.titulo }}</div><div class="card-item-sub" style="white-space:normal">{{ c.detalhe }}</div></div>
+  </div>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro ui_itens(titulo, lista, cor) %}
+<details style="margin-bottom:10px">
+  <summary style="cursor:pointer;display:flex;justify-content:space-between;padding:8px 0;font-size:13.5px"><strong>{{ titulo }} ({{ lista|length }})</strong></summary>
+  <div class="card-lista">
+    {% for i in lista %}
+    <div class="card-item">
+      <div class="card-item-corpo"><div class="card-item-titulo" style="white-space:normal">{{ i.descricao }}</div>
+        <div class="card-item-sub">{% if i.prazo is not none %}prazo {{ '%03d'|format(i.prazo) }}{% else %}sem prazo{% endif %}{% if i.classe == 'emprestimo' %} · empréstimo{% elif i.classe == 'previdencia' %} · previdência{% elif i.classe == 'imposto' %} · imposto{% endif %}</div></div>
+      <div class="card-item-valor {{ cor }}">R$ {{ i.valor|brl }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</details>
+{% endmacro %}
+
+{% macro ui_mudancas(m) %}
+<p style="font-size:13px;margin:0 0 8px">Em relação a {{ m.competencia_anterior|mes_label }}: líquido <strong class="{{ 'val-receita' if m.liquido_delta >= 0 else 'val-despesa' }}">{{ '+' if m.liquido_delta >= 0 else '−' }} R$ {{ (m.liquido_delta|abs)|brl }}</strong>
+  (bruto {{ '+' if m.bruto_delta >= 0 else '−' }} R$ {{ (m.bruto_delta|abs)|brl }}, descontos {{ '+' if m.descontos_delta >= 0 else '−' }} R$ {{ (m.descontos_delta|abs)|brl }}).</p>
+{% if m.mudancas %}
+<div class="card-lista">
+  {% for x in m.mudancas %}
+  <div class="card-item">
+    <div class="card-item-icone">{{ '🆕' if x.tipo == 'novo' else ('➖' if x.tipo == 'sumiu' else '✏️') }}</div>
+    <div class="card-item-corpo"><div class="card-item-titulo" style="white-space:normal">{{ x.descricao }}</div>
+      <div class="card-item-sub" style="white-space:normal">{{ 'rendimento' if x.natureza == 'rendimento' else 'desconto' }} ·
+        {% if x.tipo == 'novo' %}apareceu neste mês{% if x.prazo is not none %} (prazo {{ '%03d'|format(x.prazo) }}){% endif %}{% elif x.tipo == 'sumiu' %}não aparece mais{% else %}era R$ {{ x.valor_anterior|brl }}{% endif %}</div></div>
+    <div class="card-item-valor">{% if x.tipo == 'mudou' %}R$ {{ x.valor_atual|brl }}{% elif x.tipo == 'novo' %}R$ {{ x.valor_atual|brl }}{% else %}R$ {{ x.valor_anterior|brl }}{% endif %}</div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}<p style="font-size:12.5px;color:var(--graphite)">Nenhuma linha mudou.</p>{% endif %}
+{% endmacro %}
+
+{% macro ui_dividas(d, acoes) %}
+{% if d.linhas %}
+<p style="font-size:12.5px;color:var(--graphite);margin:0 0 8px">Descontado em folha como empréstimo: <strong>R$ {{ d.total_folha|brl }}</strong> por mês.{% if d.total_sem_cadastro %} Desses, <strong>R$ {{ d.total_sem_cadastro|brl }}</strong> não têm dívida cadastrada.{% endif %}
+  O prazo da folha é lido como as parcelas que ainda faltam.</p>
+<div class="card-lista">
+  {% for l in d.linhas %}
+  <div class="card-item" style="align-items:flex-start">
+    <div class="card-item-icone">{{ '✅' if l.status == 'ok' else ('⚠️' if l.status in ('prazo_diferente', 'sem_cadastro') else 'ℹ️') }}</div>
+    <div class="card-item-corpo">
+      <div class="card-item-titulo" style="white-space:normal">{{ l.descricao }}</div>
+      <div class="card-item-sub" style="white-space:normal">
+        prazo na folha: {{ '%03d'|format(l.prazo) if l.prazo is not none else '—' }}{% if l.prazo_anterior is not none %} (mês anterior {{ '%03d'|format(l.prazo_anterior) }}{% if l.tendencia == 'restantes' %}: cai 1 por mês, são parcelas que faltam{% endif %}){% endif %}
+        {% if l.fim_cedo %} · termina em {{ l.fim_cedo|mes_label }}{% if l.fim_tarde != l.fim_cedo %} a {{ l.fim_tarde|mes_label }}{% endif %}{% endif %}
+      </div>
+      {% if l.prazo is not none and l.prazo <= 1 %}<div style="font-size:12px;color:var(--success-dark);margin-top:4px">🎉 Última parcela: depois dela, libera R$ {{ l.valor|brl }} por mês.</div>{% endif %}
+      {% if l.status == 'ok' %}
+      <div style="font-size:12px;margin-top:4px">Bate com a dívida cadastrada <strong>{{ l.fixo.nome }}</strong>{% if l.fim_cadastro %} (termina em {{ l.fim_cadastro|mes_label }}){% endif %}.</div>
+      {% elif l.status == 'prazo_diferente' %}
+      <div style="font-size:12px;margin-top:4px;color:var(--danger-dark)">A dívida cadastrada <strong>{{ l.fixo.nome }}</strong> termina em {{ l.fim_cadastro|mes_label }}, mas a folha indica {{ l.fim_cedo|mes_label }}{% if l.fim_tarde != l.fim_cedo %} a {{ l.fim_tarde|mes_label }}{% endif %}: {{ l.diferenca_meses|abs }} meses {{ 'a mais' if l.diferenca_meses > 0 else 'a menos' }} na folha. Confira o contrato e corrija um dos dois.</div>
+      {% elif l.status == 'cadastro_sem_fim' %}
+      <div style="font-size:12px;margin-top:4px">Cadastrada como <strong>{{ l.fixo.nome }}</strong>, mas sem mês final: não dá para comparar o prazo.</div>
+      {% else %}
+      <div style="font-size:12px;margin-top:4px;color:var(--danger-dark)">Nenhuma dívida cadastrada com esse valor. <a href="{{ url_for('mensal.fixos') }}">Cadastre em Gastos fixos</a> para ela entrar no planejamento.</div>
+      {% endif %}
+      {% if acoes and l.fixo %}
+      <form method="post" action="{{ url_for('folha.marcar') }}" style="margin-top:6px">
+        <input type="hidden" name="fixo_id" value="{{ l.fixo.id }}">
+        {% if l.fixo.em_folha %}<input type="hidden" name="em_folha" value="0"><button class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px">💼 Já marcada como descontada em folha. Desmarcar</button>
+        {% else %}<input type="hidden" name="em_folha" value="1"><button class="btn btn-primary" style="padding:4px 10px;font-size:11.5px">💼 Marcar como descontada em folha</button>{% endif %}
+      </form>
+      {% endif %}
+    </div>
+    <div class="card-item-valor val-despesa">R$ {{ l.valor|brl }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}<p style="font-size:12.5px;color:var(--graphite)">Este holerite não tem empréstimos descontados em folha.</p>{% endif %}
+{% if d.so_cadastro %}
+<p style="font-size:12.5px;margin:12px 0 6px"><strong>Marcadas como descontadas em folha, mas que não aparecem neste holerite:</strong></p>
+<div class="card-lista">
+  {% for f in d.so_cadastro %}<div class="card-item"><div class="card-item-icone">⚠️</div><div class="card-item-corpo"><div class="card-item-titulo">{{ f.nome }}</div><div class="card-item-sub">Se não sai mais da folha, desmarque em Gastos fixos.</div></div><div class="card-item-valor">R$ {{ f.valor|brl }}</div></div>{% endfor %}
+</div>
+{% endif %}
+{% endmacro %}

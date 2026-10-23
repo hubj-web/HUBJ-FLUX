@@ -19,6 +19,7 @@ ACOES = {
     "normal": "Gasto normal",
     "cartao": "Pago no cartão (já vem da fatura)",
     "creditos": "Pago com créditos (importar pausado)",
+    "folha": "Descontado em folha (já sai do salário)",
     "ignorar": "Não importar",
 }
 _PALAVRAS_CARTAO = {"cc", "cartao", "elo", "visa", "master", "mastercard", "amex", "hipercard"}
@@ -236,11 +237,13 @@ def classificar(linhas, mes_base, mapa_tipos, empresas, existentes, valores_fatu
         obs = []
         if total:
             obs.append(f"Parcela {atual} de {total} em {mes_base}.")
+        if acao == "folha":
+            obs.append("Descontado em folha (já sai do salário).")
         if acao == "creditos":
             obs.append("Pago com créditos" + (f" (taxa de R$ {l['taxa']:.2f}".replace(".", ",") + ")" if l["taxa"] else "") + "; fora dos números até o módulo de permuta.")
         fixo = {"nome": l["descricao"][:150], "fornecedor": (l["fornecedor"] or None) and l["fornecedor"][:150], "valor": l["valor"], "estimado": estimado,
                 "dia_mes": dia, "frequencia": freq, "mes_inicio": mes_base, "mes_fim": mes_fim, "no_cartao": acao == "cartao",
-                "categoria_id": None, "destino_empresa_id": destino_da_pessoa(l["quem"], empresas), "ativo": acao != "creditos",
+                "categoria_id": None, "destino_empresa_id": destino_da_pessoa(l["quem"], empresas), "ativo": acao != "creditos", "em_folha": acao == "folha",
                 "observacao": (" ".join(obs) or None) and " ".join(obs)[:300]}
         chave = (norm(fixo["nome"]), centavos(fixo["valor"]))
         if chave in ja_visto:
@@ -262,4 +265,4 @@ def resumo(itens):
 
 def valor_mensal(itens):
     """Quanto os itens que entram nos números pesam por mês (trimestral dividido por 3, etc.)."""
-    return round(sum(i["fixo"]["valor"] / _PASSO[i["fixo"]["frequencia"]] for i in itens if i.get("fixo") and i["fixo"]["ativo"]), 2)
+    return round(sum(i["fixo"]["valor"] / _PASSO[i["fixo"]["frequencia"]] for i in itens if i.get("fixo") and i["fixo"]["ativo"] and not i["fixo"].get("em_folha")), 2)

@@ -1408,19 +1408,19 @@ def aplicar_regra_fornecedor(organizacao_id, padrao, nome, categoria_id, define_
 def criar_gasto_fixo(organizacao_id, d):
     execute(
         """INSERT INTO gastos_fixos (organizacao_id, nome, valor, estimado, dia_mes, frequencia, mes_inicio, mes_fim, no_cartao, categoria_id,
-                  destino_empresa_id, fornecedor, observacao, ativo)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                  destino_empresa_id, fornecedor, observacao, ativo, em_folha)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
         (organizacao_id, d["nome"], d["valor"], d["estimado"], d["dia_mes"], d["frequencia"], d["mes_inicio"],
-         d["mes_fim"], d["no_cartao"], d["categoria_id"], d.get("destino_empresa_id"), d.get("fornecedor"), d.get("observacao"), d.get("ativo", True)))
+         d["mes_fim"], d["no_cartao"], d["categoria_id"], d.get("destino_empresa_id"), d.get("fornecedor"), d.get("observacao"), d.get("ativo", True), bool(d.get("em_folha"))))
 
 
 def atualizar_gasto_fixo(gasto_id, organizacao_id, d):
     execute(
         """UPDATE gastos_fixos SET nome=%s, valor=%s, estimado=%s, dia_mes=%s, frequencia=%s, mes_inicio=%s,
-                  mes_fim=%s, no_cartao=%s, categoria_id=%s, ativo=%s, destino_empresa_id=%s, fornecedor=%s, observacao=%s
+                  mes_fim=%s, no_cartao=%s, categoria_id=%s, ativo=%s, destino_empresa_id=%s, fornecedor=%s, observacao=%s, em_folha=%s
            WHERE id=%s AND organizacao_id=%s""",
         (d["nome"], d["valor"], d["estimado"], d["dia_mes"], d["frequencia"], d["mes_inicio"], d["mes_fim"],
-         d["no_cartao"], d["categoria_id"], d["ativo"], d.get("destino_empresa_id"), d.get("fornecedor"), d.get("observacao"), gasto_id, organizacao_id))
+         d["no_cartao"], d["categoria_id"], d["ativo"], d.get("destino_empresa_id"), d.get("fornecedor"), d.get("observacao"), bool(d.get("em_folha")), gasto_id, organizacao_id))
 
 
 def modulo_empresa_ativo(organizacao_id):
@@ -1440,3 +1440,117 @@ def valores_cartao_mes(organizacao_id, mes):
     rows = query_all(
         "SELECT lc.valor " + _BASE_LC + " AND f.mes_referencia = %s AND lc.sinal = 'D' AND " + _SEM_PASSAGEM, (organizacao_id, mes))
     return [float(r["valor"]) for r in rows]
+
+
+# ---------- Holerite (opcional) ----------
+
+def criar_holerite(organizacao_id, h, pessoa_id, criado_por):
+    """Grava o holerite e todas as linhas de uma vez (tudo ou nada). Devolve o id."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO holerites (organizacao_id, pessoa_id, competencia, fonte, tipo_folha, bruto, descontos, liquido, base_ir,
+                          autenticacao, emitido_em, criado_por)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+                (organizacao_id, pessoa_id, h["competencia"], h.get("fonte"), h.get("tipo_folha"), h["bruto"], h["descontos_total"], h["liquido"],
+                 h.get("base_ir"), h.get("autenticacao"), h.get("emitido_em"), criado_por))
+            hid = cur.fetchone()["id"]
+            ordem = 0
+            for natureza, chave in (("rendimento", "rendimentos"), ("desconto", "descontos")):
+                for it in h[chave]:
+                    cur.execute("INSERT INTO holerite_itens (holerite_id, natureza, descricao, prazo, valor, classe, ordem) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                                (hid, natureza, it["descricao"][:200], it.get("prazo"), it["valor"], it.get("classe"), ordem))
+                    ordem += 1
+        conn.commit()
+        return hid
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def vincular_lancamento_holerite(holerite_id, lancamento_id):
+    execute("UPDATE holerites SET lancamento_id = %s WHERE id = %s", (lancamento_id, holerite_id))
+
+
+def _holerite_completo(row):
+    if not row:
+        return None
+    itens = query_all("SELECT natureza, descricao, prazo, valor, classe FROM holerite_itens WHERE holerite_id = %s ORDER BY ordem, id", (row["id"],))
+    conv = lambda i: {"descricao": i["descricao"], "prazo": i["prazo"], "valor": float(i["valor"]), "classe": i["classe"]}
+    return {"id": row["id"], "pessoa_id": row["pessoa_id"], "pessoa_nome": row.get("pessoa_nome"), "competencia": row["competencia"], "fonte": row["fonte"],
+            "tipo_folha": row["tipo_folha"], "bruto": float(row["bruto"]), "descontos_total": float(row["descontos"]), "liquido": float(row["liquido"]),
+            "base_ir": float(row["base_ir"]) if row["base_ir"] is not None else None, "autenticacao": row["autenticacao"], "emitido_em": row["emitido_em"],
+            "lancamento_id": row["lancamento_id"], "criado_em": row["criado_em"],
+            "rendimentos": [conv(i) for i in itens if i["natureza"] == "rendimento"], "descontos": [conv(i) for i in itens if i["natureza"] == "desconto"]}
+
+
+def buscar_holerite(organizacao_id, holerite_id):
+    return _holerite_completo(query_one(
+        "SELECT h.*, p.nome AS pessoa_nome FROM holerites h LEFT JOIN pessoas p ON p.id = h.pessoa_id WHERE h.id = %s AND h.organizacao_id = %s",
+        (holerite_id, organizacao_id)))
+
+
+def listar_holerites(organizacao_id):
+    return query_all(
+        """SELECT h.*, p.nome AS pessoa_nome FROM holerites h LEFT JOIN pessoas p ON p.id = h.pessoa_id
+           WHERE h.organizacao_id = %s ORDER BY h.competencia DESC, h.id DESC""", (organizacao_id,))
+
+
+_MESMA_FOLHA = ("COALESCE(h.pessoa_id, 0) = COALESCE(%(pessoa)s, 0) AND COALESCE(h.fonte, '') = COALESCE(%(fonte)s, '') "
+                "AND COALESCE(h.tipo_folha, '') = COALESCE(%(tipo)s, '')")
+
+
+def holerite_anterior(organizacao_id, pessoa_id, competencia, fonte, tipo_folha):
+    """O holerite mais recente ANTES dessa competência, da mesma pessoa, fonte e tipo de folha."""
+    return _holerite_completo(query_one(
+        "SELECT h.*, p.nome AS pessoa_nome FROM holerites h LEFT JOIN pessoas p ON p.id = h.pessoa_id WHERE h.organizacao_id = %(org)s AND "
+        + _MESMA_FOLHA + " AND h.competencia < %(comp)s ORDER BY h.competencia DESC LIMIT 1",
+        {"org": organizacao_id, "pessoa": pessoa_id, "fonte": fonte, "tipo": tipo_folha, "comp": competencia}))
+
+
+def holerite_existente(organizacao_id, pessoa_id, competencia, fonte, tipo_folha, autenticacao):
+    """Já importado? Mesma pessoa, mês, fonte e tipo, ou o mesmo código de autenticação do documento."""
+    return query_one(
+        "SELECT h.id, h.competencia, h.criado_em FROM holerites h WHERE h.organizacao_id = %(org)s AND ((" + _MESMA_FOLHA + " AND h.competencia = %(comp)s) "
+        "OR (%(aut)s::text IS NOT NULL AND h.autenticacao = %(aut)s::text)) LIMIT 1",
+        {"org": organizacao_id, "pessoa": pessoa_id, "fonte": fonte, "tipo": tipo_folha, "comp": competencia, "aut": autenticacao})
+
+
+def ultimos_holerites(organizacao_id):
+    """O holerite mais recente de cada pessoa/fonte/tipo de folha."""
+    rows = query_all(
+        """SELECT DISTINCT ON (COALESCE(h.pessoa_id, 0), COALESCE(h.fonte, ''), COALESCE(h.tipo_folha, '')) h.*, p.nome AS pessoa_nome
+           FROM holerites h LEFT JOIN pessoas p ON p.id = h.pessoa_id WHERE h.organizacao_id = %s
+           ORDER BY COALESCE(h.pessoa_id, 0), COALESCE(h.fonte, ''), COALESCE(h.tipo_folha, ''), h.competencia DESC""", (organizacao_id,))
+    return [_holerite_completo(r) for r in rows]
+
+
+def excluir_holerite(organizacao_id, holerite_id, tambem_entrada):
+    row = query_one("SELECT lancamento_id FROM holerites WHERE id = %s AND organizacao_id = %s", (holerite_id, organizacao_id))
+    if not row:
+        return False
+    execute("DELETE FROM holerites WHERE id = %s AND organizacao_id = %s", (holerite_id, organizacao_id))
+    if tambem_entrada and row["lancamento_id"]:
+        execute("DELETE FROM lancamentos WHERE id = %s AND organizacao_id = %s", (row["lancamento_id"], organizacao_id))
+    return True
+
+
+def marcar_fixo_em_folha(organizacao_id, fixo_id, em_folha):
+    execute("UPDATE gastos_fixos SET em_folha = %s WHERE id = %s AND organizacao_id = %s", (bool(em_folha), fixo_id, organizacao_id))
+
+
+def entrada_parecida(organizacao_id, mes, valor):
+    """Entrada (receita) lançada no mês com o mesmo valor: sinal de que o salário já foi lançado à mão."""
+    return query_one(
+        "SELECT id, data, descricao FROM lancamentos WHERE organizacao_id = %s AND tipo = 'receita' AND to_char(data, 'YYYY-MM') = %s AND ABS(valor - %s) < 0.005 LIMIT 1",
+        (organizacao_id, mes, valor))
+
+
+def categoria_e_forma_de_salario(organizacao_id):
+    """Categoria 'Salário' (ou a primeira de receita) e a forma 'Depósito em conta' (ou a primeira de receita)."""
+    cat = query_one("SELECT id FROM categorias WHERE organizacao_id = %s AND ativa = true AND tipo IN ('receita', 'ambos') "
+                    "ORDER BY (nome ILIKE 'sal%%') DESC, ordem, id LIMIT 1", (organizacao_id,))
+    forma = query_one("SELECT id FROM formas_pagamento WHERE organizacao_id = %s AND ativa = true AND aplica_a IN ('receita', 'ambos') "
+                      "ORDER BY (nome ILIKE '%%dep%%sito%%') DESC, id LIMIT 1", (organizacao_id,))
+    return (cat["id"] if cat else None, forma["id"] if forma else None)

@@ -31,7 +31,7 @@ def dia_efetivo(mes, dia):
 
 def media_mensal(fixos):
     """Quanto os gastos ativos pesam por mês, em média (um anual de 1.200 pesa 100 por mês)."""
-    return round(sum(float(g["valor"]) / PASSO[g["frequencia"]] for g in fixos if g.get("ativo", True)), 2)
+    return round(sum(float(g["valor"]) / PASSO[g["frequencia"]] for g in fixos if g.get("ativo", True) and not g.get("em_folha")), 2)
 
 
 def calcular_deslocamento(faturas):
@@ -63,9 +63,12 @@ def visao_mensal(hoje, n, fixos, faturas, parcelas, renda_por_mes, renda_padrao,
     meses = []
     for i in range(n):
         mes = somar_meses(mes0, i)
-        itens = []
+        itens, em_folha = [], 0.0
         for g in fixos:
             if not g.get("ativo", True) or not ocorre_no_mes(g, mes):
+                continue
+            if g.get("em_folha"):  # já foi descontado do salário: não é uma saída do seu bolso, então não entra no comprometido
+                em_folha += float(g["valor"])
                 continue
             if g.get("no_cartao") and ultimo_caixa and mes <= ultimo_caixa:
                 continue  # já está dentro da fatura importada deste mês: contar de novo seria dobrar
@@ -95,5 +98,5 @@ def visao_mensal(hoje, n, fixos, faturas, parcelas, renda_por_mes, renda_padrao,
         if livre is not None and livre < 0:
             nivel = "vermelho"
         meses.append({"mes": mes, "renda": renda, "fixos": itens, "total_fixos": total_fixos, "cartao": cartao,
-                      "comprometido": comprometido, "livre": livre, "pct": pct, "nivel": nivel, "da_empresa": round(da_empresa, 2)})
+                      "comprometido": comprometido, "livre": livre, "pct": pct, "nivel": nivel, "da_empresa": round(da_empresa, 2), "em_folha": round(em_folha, 2)})
     return meses

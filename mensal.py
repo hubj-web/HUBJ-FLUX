@@ -176,7 +176,7 @@ def _ler_gasto_fixo(criando):
             "mes_inicio": inicio, "mes_fim": fim, "no_cartao": f.get("no_cartao") == "on",
             "categoria_id": f.get("categoria_id") or None, "ativo": True if criando else f.get("ativo") == "on",
             "destino_empresa_id": empresa_mod.destino_valido(f.get("destino_empresa_id"), db.empresas_ids(g.usuario_atual["organizacao_id"])),
-            "fornecedor": (f.get("fornecedor") or "").strip()[:150] or None, "observacao": (f.get("observacao") or "").strip()[:300] or None}, None
+            "em_folha": f.get("em_folha") == "on", "fornecedor": (f.get("fornecedor") or "").strip()[:150] or None, "observacao": (f.get("observacao") or "").strip()[:300] or None}, None
 
 
 @mensal_bp.route("/fixos", methods=["GET", "POST"])

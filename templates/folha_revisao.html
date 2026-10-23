@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "folha_macros.html" import ui_checks, ui_itens, ui_mudancas, ui_dividas %}
+{% block title %}Revisar holerite · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:640px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Revisar holerite</h1>
+    <p style="color:var(--graphite);font-size:12.5px">{{ h.fonte or 'Fonte pagadora' }} · {{ (h.tipo_folha or '')|lower }} · competência <strong>{{ h.competencia|mes_label }}</strong>{% if h.emitido_em %} · emitido em {{ h.emitido_em.strftime('%d/%m/%Y') }}{% endif %}. Nada foi gravado ainda.</p>
+  </header>
+
+  <div class="review-summary resumo-flex">
+    <div class="summary-cell"><span class="label">Bruto</span><span class="value" style="font-size:17px">R$ {{ h.bruto|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Descontos</span><span class="value val-despesa" style="font-size:17px">R$ {{ h.descontos_total|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Líquido</span><span class="value val-receita" style="font-size:17px">R$ {{ h.liquido|brl }}</span></div>
+  </div>
+
+  <h2 style="font-size:14px;margin:18px 0 8px">Conferências</h2>
+  {{ ui_checks(checks) }}
+
+  {% if existente %}<div class="summary-cell" style="margin-top:14px;border-left:4px solid var(--danger-dark);padding:12px;font-size:13px">⚠️ Este holerite <strong>já foi importado</strong> em {{ existente.criado_em.strftime('%d/%m/%Y') }}. Para importar de novo, exclua o anterior na lista.</div>{% endif %}
+  {% if parecida %}<div class="summary-cell" style="margin-top:14px;border-left:4px solid var(--warning-dark);padding:12px;font-size:13px">ℹ️ Já existe uma entrada de R$ {{ h.liquido|brl }} em {{ parecida.data.strftime('%d/%m/%Y') }} (“{{ parecida.descricao }}”). Por isso a opção de lançar a entrada vem desmarcada, para não duplicar.</div>{% endif %}
+
+  <form method="post" style="margin-top:18px">
+    <input type="hidden" name="token" value="{{ token }}">
+    <div class="form-row"><label>De quem é este holerite?</label>
+      <select name="pessoa_id"><option value="">— ninguém em especial —</option>{% for p in pessoas %}<option value="{{ p.id }}" {{ 'selected' if p.id == pessoa_id }}>{{ p.nome }}</option>{% endfor %}</select>
+      <span style="font-size:11.5px;color:var(--graphite)">{{ h.servidor_nome }}</span></div>
+    <button type="submit" formaction="{{ url_for('folha.revisar') }}" class="btn btn-ghost" style="padding:5px 12px;font-size:12px;margin-bottom:12px">Atualizar comparações</button>
+    <div class="form-row"><label>Data em que o salário foi recebido</label><input type="date" name="data_recebimento" value="{{ data_recebimento }}"></div>
+    <label style="display:flex;align-items:flex-start;gap:8px;font-weight:normal;font-size:13px;margin-bottom:14px"><input type="checkbox" name="lancar_entrada" {{ 'checked' if not parecida and not existente }} style="width:auto;margin-top:3px"> <span>Lançar o líquido (R$ {{ h.liquido|brl }}) como entrada.</span></label>
+
+    <h2 style="font-size:14px;margin:6px 0 8px">Linhas do contracheque</h2>
+    {{ ui_itens('Rendimentos', h.rendimentos, 'val-receita') }}
+    {{ ui_itens('Descontos', h.descontos, 'val-despesa') }}
+
+    {% if mudancas %}<h2 style="font-size:14px;margin:18px 0 8px">O que mudou</h2>{{ ui_mudancas(mudancas) }}{% endif %}
+
+    <h2 style="font-size:14px;margin:18px 0 8px">Empréstimos em folha × dívidas cadastradas</h2>
+    {{ ui_dividas(dividas, false) }}
+
+    <button type="submit" formaction="{{ url_for('folha.confirmar') }}" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:18px" {{ 'disabled' if existente }}>Importar holerite</button>
+    <p style="text-align:center;margin-top:10px"><a href="{{ url_for('folha.index') }}" style="font-size:12.5px">Cancelar</a></p>
+  </form>
+</div>
+{% endblock %}

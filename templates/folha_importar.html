@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Importar holerite · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>📥 Importar holerite</h1>
+    <p><a href="{{ url_for('folha.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">Envie o contracheque em PDF (hoje lemos o do Sigepe, de servidores federais). Antes de gravar, você revisa e confere os números.</p>
+  </header>
+  <form method="post" enctype="multipart/form-data" class="form-grid">
+    <div class="form-row"><label>Contracheque (PDF)</label><input type="file" name="pdf" accept=".pdf" required></div>
+    <button type="submit" class="btn btn-primary">Ler contracheque</button>
+  </form>
+  <h2 style="font-size:14px;margin:26px 0 8px">O que acontece com os seus dados</h2>
+  <ul style="font-size:12.5px;color:var(--graphite);padding-left:18px;line-height:1.6">
+    <li>O app guarda só os <strong>valores</strong>: rendimentos, descontos, prazos e totais. <strong>CPF, matrícula e dados de conta não são lidos nem guardados</strong>, e o PDF também não é guardado.</li>
+    <li>Você escolhe se quer lançar o líquido como entrada. Se já lançou o salário à mão, o app avisa para não duplicar.</li>
+    <li>Quem preferir pode continuar lançando tudo manualmente, pelo +.</li>
+  </ul>
+</div>
+{% endblock %}

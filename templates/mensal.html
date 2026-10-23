@@ -106,6 +106,7 @@
         <div style="display:flex;justify-content:space-between;padding:12px 0 0;margin-top:8px;border-top:1px solid var(--line)">
           <strong>Comprometido</strong><strong>R$ {{ m.comprometido|brl }}</strong></div>
           {% if m.da_empresa %}<div style="font-size:12px;color:var(--graphite);padding:2px 0 6px">Desse valor, R$ {{ m.da_empresa|brl }} é da empresa: você paga agora e recebe de volta no acerto.</div>{% endif %}
+          {% if m.em_folha %}<div style="font-size:12px;color:var(--graphite);padding:2px 0 6px">💼 R$ {{ m.em_folha|brl }} já são descontados em folha e não entram no comprometido.</div>{% endif %}
       </div>
     </details>
     {% endfor %}

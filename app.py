@@ -20,6 +20,7 @@ from mais import mais_bp
 from alertas import alertas_bp
 from mensal import mensal_bp
 from empresas import empresas_bp
+from folha_rotas import folha_bp
 import ia
 import nav_catalogo
 
@@ -97,6 +98,7 @@ def create_app():
     app.register_blueprint(alertas_bp)
     app.register_blueprint(mensal_bp)
     app.register_blueprint(empresas_bp)
+    app.register_blueprint(folha_bp)
 
     app.teardown_appcontext(db.close_conn)
 

@@ -15,6 +15,7 @@
   <div class="form-row"><label>Fornecedor (opcional)</label><input name="fornecedor" maxlength="150" value="{{ (g.fornecedor or '') if g else '' }}"></div>
   <div class="form-row"><label>Observação (opcional)</label><input name="observacao" maxlength="300" value="{{ (g.observacao or '') if g else '' }}"></div>
   {% if empresas %}<div class="form-row"><label>Para quem?</label><select name="destino_empresa_id"><option value="">Família</option>{% for e in empresas %}<option value="{{ e.id }}" {{ 'selected' if g and g.destino_empresa_id == e.id }}>{{ e.nome }}</option>{% endfor %}</select></div>{% endif %}
+  <label style="display:flex;align-items:flex-start;gap:8px;font-weight:normal;font-size:13px"><input type="checkbox" name="em_folha" {{ 'checked' if g and g.em_folha }} style="width:auto;margin-top:3px"> <span>Descontado em folha: já sai do salário, então não conta como saída do seu bolso.</span></label>
   <label style="display:flex;align-items:flex-start;gap:8px;font-weight:normal;font-size:13px"><input type="checkbox" name="no_cartao" {{ 'checked' if g and g.no_cartao }} style="width:auto;margin-top:3px">
     <span>É cobrado no cartão de crédito<br><span style="color:var(--graphite);font-size:11.5px">Nos meses em que a fatura já foi importada, não conto de novo (ele já está na fatura).</span></span></label>
 {% endmacro %}
@@ -46,7 +47,7 @@
         <div class="card-item-icone">📌</div>
         <div class="card-item-corpo">
           <div class="card-item-titulo">{{ g.nome }}</div>
-          <div class="card-item-sub">{% if g.fornecedor %}{{ g.fornecedor }} · {% endif %}dia {{ g.dia_mes }} · {{ rotulos[g.frequencia] }}{% if g.estimado %} · estimado{% endif %}{% if g.no_cartao %} · no cartão{% endif %}{% for e in empresas_org %}{% if e.id == g.destino_empresa_id %} · 🏢 {{ e.nome }}{% endif %}{% endfor %}{% if not g.ativo %} · pausado{% endif %}{% if g.categoria_nome %} · {{ g.categoria_nome }}{% endif %}</div>
+          <div class="card-item-sub">{% if g.fornecedor %}{{ g.fornecedor }} · {% endif %}dia {{ g.dia_mes }} · {{ rotulos[g.frequencia] }}{% if g.estimado %} · estimado{% endif %}{% if g.no_cartao %} · no cartão{% endif %}{% if g.em_folha %} · 💼 em folha{% endif %}{% for e in empresas_org %}{% if e.id == g.destino_empresa_id %} · 🏢 {{ e.nome }}{% endif %}{% endfor %}{% if not g.ativo %} · pausado{% endif %}{% if g.categoria_nome %} · {{ g.categoria_nome }}{% endif %}</div>
         </div>
         <div class="card-item-valor val-despesa">R$ {{ g.valor|brl }}</div>
       </summary>

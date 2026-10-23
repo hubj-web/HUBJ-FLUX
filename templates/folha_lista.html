@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Holerite · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>💼 Holerite e folha</h1>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">Opcional. Importe o contracheque para lançar o líquido como entrada, conferir os números e comparar o que é descontado em folha com as suas dívidas. Se preferir, continue lançando tudo à mão.</p>
+  </header>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+    <a href="{{ url_for('folha.importar') }}" class="btn btn-primary" style="padding:8px 16px;font-size:13px">📥 Importar holerite</a>
+    <a href="{{ url_for('folha.dividas') }}" class="btn btn-ghost" style="padding:8px 16px;font-size:13px">⚖️ Folha × dívidas</a>
+  </div>
+  {% if renda_sugerida %}
+  <div class="summary-cell" style="padding:14px;margin-bottom:16px">
+    <div style="font-size:13px;margin-bottom:8px">Pelos holerites, o que realmente cai na conta é <strong>R$ {{ renda_sugerida|brl }}</strong> por mês (líquido do último holerite de cada pessoa). <span style="color:var(--graphite)">Só entram as pessoas com holerite importado: se há outras entradas na família, a renda ficará menor que a real, e você pode somá-las depois em Planejamento.</span></div>
+    <form method="post" action="{{ url_for('folha.usar_como_renda') }}"><button class="btn btn-ghost" style="padding:6px 12px;font-size:12px">Usar como renda mensal</button></form>
+  </div>
+  {% endif %}
+  <div class="card-lista">
+    {% for h in holerites %}
+    <a href="{{ url_for('folha.detalhe', holerite_id=h.id) }}" class="card-item" style="text-decoration:none;color:inherit">
+      <div class="card-item-icone">💼</div>
+      <div class="card-item-corpo">
+        <div class="card-item-titulo">{{ h.competencia|mes_label }}{% if h.pessoa_nome %} · {{ h.pessoa_nome }}{% endif %}</div>
+        <div class="card-item-sub">bruto R$ {{ h.bruto|brl }} · descontos R$ {{ h.descontos|brl }} · {{ 'entrada lançada' if h.lancamento_id else 'sem entrada lançada' }}</div>
+      </div>
+      <div class="card-item-valor val-receita">R$ {{ h.liquido|brl }}</div>
+    </a>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:30px 20px;background:var(--paper-raised);border-radius:var(--radius)">Nenhum holerite importado ainda.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
