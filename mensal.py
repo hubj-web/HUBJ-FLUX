@@ -193,7 +193,10 @@ def _prefill_da_url():
          "mes_inicio": inicio if re.fullmatch(r"\d{4}-\d{2}", inicio) else date.today().strftime("%Y-%m"),
          "mes_fim": fim if re.fullmatch(r"\d{4}-\d{2}", fim) else None,
          "em_folha": a.get("em_folha") == "1", "observacao": a.get("observacao", "").strip()[:300] or None,
-         "volta": a.get("volta") == "folha"}
+         "volta": a.get("volta") if a.get("volta") in ("folha", "revisao") else None,
+         "token": a.get("token") if re.fullmatch(r"[0-9a-f]{32}", a.get("token", "")) else None}
+    if p["volta"] == "revisao" and not p["token"]:
+        p["volta"] = None
     if p["mes_fim"] and p["mes_fim"] < p["mes_inicio"]:
         p["mes_fim"] = None
     if p["valor"] is not None and p["valor"] <= 0:
@@ -215,6 +218,8 @@ def fixos():
             flash(f"\"{dados['nome']}\" cadastrado: já entra no planejamento dos próximos meses.", "ok")
             if request.form.get("volta") == "folha":  # veio da comparação folha x dívidas: volta para ver o resultado
                 return redirect(url_for("folha.dividas"))
+            if request.form.get("volta") == "revisao" and re.fullmatch(r"[0-9a-f]{32}", request.form.get("token", "")):
+                return redirect(url_for("folha.retomar", token=request.form["token"]))  # volta ao holerite que estava sendo revisado
         return redirect(url_for("mensal.fixos"))
     lista = db.listar_gastos_fixos(org_id)
     return render_template("mensal_fixos.html", fixos=lista, media=pm.media_mensal(lista), rotulos=pm.ROTULO_FREQUENCIA, prefill=_prefill_da_url(),

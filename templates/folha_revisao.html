@@ -36,7 +36,7 @@
     {% if mudancas %}<h2 style="font-size:14px;margin:18px 0 8px">O que mudou</h2>{{ ui_mudancas(mudancas) }}{% endif %}
 
     <h2 style="font-size:14px;margin:18px 0 8px">Empréstimos em folha × dívidas cadastradas</h2>
-    {{ ui_dividas(dividas, false) }}
+    {{ ui_dividas(dividas, false, token) }}
 
     <button type="submit" formaction="{{ url_for('folha.confirmar') }}" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:18px" {{ 'disabled' if existente }}>Importar holerite</button>
     <p style="text-align:center;margin-top:10px"><a href="{{ url_for('folha.index') }}" style="font-size:12.5px">Cancelar</a></p>

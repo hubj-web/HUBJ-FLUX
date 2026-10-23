@@ -101,9 +101,23 @@ def importar():
                 token = uuid.uuid4().hex
                 if len(_pendentes) >= 20:
                     _pendentes.pop(next(iter(_pendentes)))
-                _pendentes[token] = {"org_id": org_id, "h": h}
-                return render_template("folha_revisao.html", **_contexto_revisao(org_id, token, h, None))
+                _pendentes[token] = {"org_id": org_id, "h": h, "pessoa": None}
+                return redirect(url_for("folha.retomar", token=token))  # a revisão tem endereço próprio: voltar e recarregar não perdem nada
     return redirect(url_for("folha.importar"))
+
+
+@folha_bp.route("/importar/retomar")
+@login_required
+@requer_organizacao
+def retomar():
+    """Mostra de novo a revisão de um holerite ainda não confirmado (por exemplo, depois de cadastrar uma dívida)."""
+    org_id = _org()
+    token = request.args.get("token", "")
+    pend = _pendentes.get(token)
+    if not pend or pend["org_id"] != org_id:
+        flash("A importação expirou. Envie o contracheque de novo.", "erro")
+        return redirect(url_for("folha.importar"))
+    return render_template("folha_revisao.html", **_contexto_revisao(org_id, token, pend["h"], pend.get("pessoa")))
 
 
 def _pendente():
@@ -131,8 +145,8 @@ def revisar():
         flash("A importação expirou. Envie o contracheque de novo.", "erro")
         return redirect(url_for("folha.importar"))
     escolha = request.form.get("pessoa_id")  # None: ainda não escolheu (sugere); "": escolheu 'nenhuma'
-    ctx = _contexto_revisao(_org(), token, h, None if escolha is None else (_pessoa_valida(_org()) or 0))
-    return render_template("folha_revisao.html", **ctx)
+    _pendentes[token]["pessoa"] = None if escolha is None else (_pessoa_valida(_org()) or 0)
+    return redirect(url_for("folha.retomar", token=token))
 
 
 @folha_bp.route("/importar/confirmar", methods=["POST"])

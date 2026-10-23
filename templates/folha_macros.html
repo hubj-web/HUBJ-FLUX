@@ -42,7 +42,7 @@
 {% else %}<p style="font-size:12.5px;color:var(--graphite)">Nenhuma linha mudou.</p>{% endif %}
 {% endmacro %}
 
-{% macro ui_dividas(d, acoes) %}
+{% macro ui_dividas(d, acoes, token=none) %}
 {% if d.linhas %}
 <p style="font-size:12.5px;color:var(--graphite);margin:0 0 8px">Descontado em folha como empréstimo: <strong>R$ {{ d.total_folha|brl }}</strong> por mês.{% if d.total_sem_cadastro %} Desses, <strong>R$ {{ d.total_sem_cadastro|brl }}</strong> não têm dívida cadastrada.{% endif %}
   O prazo da folha é lido como as parcelas que ainda faltam.</p>
@@ -64,7 +64,7 @@
       {% elif l.status == 'cadastro_sem_fim' %}
       <div style="font-size:12px;margin-top:4px">Cadastrada como <strong>{{ l.fixo.nome }}</strong>, mas sem mês final: não dá para comparar o prazo.</div>
       {% else %}
-      <div style="font-size:12px;margin-top:4px;color:var(--danger-dark)">Nenhuma dívida cadastrada com esse valor. <a href="{{ url_for('mensal.fixos', novo=1, nome=l.sugestao.nome, valor=l.sugestao.valor, fornecedor=l.sugestao.fornecedor, dia_mes=l.sugestao.dia_mes, mes_inicio=l.sugestao.mes_inicio, mes_fim=l.sugestao.mes_fim, em_folha=1, observacao=l.sugestao.observacao, volta='folha') }}">Cadastrar em Gastos fixos</a>: já vem preenchido com o valor e o prazo da folha.</div>
+      <div style="font-size:12px;margin-top:4px;color:var(--danger-dark)">Nenhuma dívida cadastrada com esse valor. <a href="{{ url_for('mensal.fixos', novo=1, nome=l.sugestao.nome, valor=l.sugestao.valor, fornecedor=l.sugestao.fornecedor, dia_mes=l.sugestao.dia_mes, mes_inicio=l.sugestao.mes_inicio, mes_fim=l.sugestao.mes_fim, em_folha=1, observacao=l.sugestao.observacao, volta=('revisao' if token else 'folha'), token=token) }}">Cadastrar em Gastos fixos</a>: já vem preenchido com o valor e o prazo da folha.</div>
       {% endif %}
       {% if acoes and l.fixo %}
       <form method="post" action="{{ url_for('folha.marcar') }}" style="margin-top:6px">

@@ -29,9 +29,10 @@
   </header>
 
   <h3>Novo gasto</h3>
-  {% if prefill %}<div class="summary-cell" style="margin:10px 0 0;padding:12px;border-left:4px solid var(--laranja-evolucao);font-size:13px">📋 Preenchido a partir do holerite. <strong>Confira os campos</strong> (principalmente o dia e o mês final) e toque em Cadastrar.</div>{% endif %}
+  {% if prefill %}<div class="summary-cell" style="margin:10px 0 0;padding:12px;border-left:4px solid var(--laranja-evolucao);font-size:13px">📋 Preenchido a partir do holerite. <strong>Confira os campos</strong> (principalmente o dia e o mês final) e toque em Cadastrar.
+    {% if prefill.volta == 'revisao' %}<br><a href="{{ url_for('folha.retomar', token=prefill.token) }}">← Voltar ao holerite sem cadastrar</a>{% elif prefill.volta == 'folha' %}<br><a href="{{ url_for('folha.dividas') }}">← Voltar para Folha × dívidas</a>{% endif %}</div>{% endif %}
   <form method="post" action="{{ url_for('mensal.fixos') }}" class="form-grid" style="max-width:none;margin:10px 0 24px">
-    {% if prefill and prefill.volta %}<input type="hidden" name="volta" value="folha">{% endif %}
+    {% if prefill and prefill.volta %}<input type="hidden" name="volta" value="{{ prefill.volta }}">{% if prefill.token %}<input type="hidden" name="token" value="{{ prefill.token }}">{% endif %}{% endif %}
     {{ campos(prefill, categorias, rotulos, mes_atual, empresas_org) }}
     <button type="submit" class="btn btn-primary">Cadastrar</button>
   </form>
