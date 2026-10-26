@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 from datetime import date, timedelta
 from zoneinfo import ZoneInfo
-from flask import Flask, g, request, url_for
+from urllib.parse import urlparse
+
+import psycopg
+from flask import Flask, flash, g, redirect, render_template, request, url_for
 
 from config import Config
 import db
@@ -101,6 +104,55 @@ def create_app():
     app.register_blueprint(folha_bp)
 
     app.teardown_appcontext(db.close_conn)
+
+    # ---------- erros que a pessoa vê: sempre em português, com saída clara ----------
+    def _pagina_erro(codigo, titulo, texto):
+        return render_template("erro.html", codigo=codigo, titulo=titulo, texto=texto), codigo
+
+    @app.errorhandler(403)
+    def _erro_403(e):
+        texto = "Esta área é só para quem administra a conta. Se você acha que deveria ter acesso, fale com a pessoa que te convidou."
+        if getattr(e, "description", "") and "específica de uma organização" in e.description:
+            texto = e.description
+        return _pagina_erro(403, "Você não tem acesso a esta tela", texto)
+
+    @app.errorhandler(404)
+    def _erro_404(e):
+        return _pagina_erro(404, "Não encontramos esta página", "O endereço pode estar errado ou a página não existe mais.")
+
+    @app.errorhandler(413)
+    def _erro_413(e):
+        return _pagina_erro(413, "O arquivo é grande demais", "O limite é de 10 MB por arquivo. Escolha um arquivo menor e tente de novo.")
+
+    @app.errorhandler(500)
+    def _erro_500(e):
+        return _pagina_erro(500, "Algo deu errado do nosso lado", "Não foi culpa sua. Volte ao início e tente de novo. Se o problema continuar, avise quem organiza o teste e diga o que você estava fazendo.")
+
+    def _volta_com_aviso(e, aviso):
+        """Volta para a tela de onde a pessoa veio (só se for do próprio app), com um aviso simples."""
+        app.logger.warning("%s: %s", aviso, e)
+        try:
+            db.get_conn().rollback()
+        except Exception:
+            pass
+        flash(aviso, "erro")
+        origem = request.referrer or ""
+        return redirect(origem if origem and urlparse(origem).netloc == request.host else url_for("inicio.index"))
+
+    @app.errorhandler(psycopg.errors.DataError)
+    def _erro_dados(e):
+        """Número grande demais, texto comprido demais etc."""
+        return _volta_com_aviso(e, "Algum valor está grande demais ou num formato que o app não aceita. Confira os números e tente de novo.")
+
+    @app.errorhandler(psycopg.errors.UniqueViolation)
+    def _erro_repetido(e):
+        """Já existe um cadastro igual (por exemplo, uma categoria com o mesmo nome)."""
+        return _volta_com_aviso(e, "Já existe um cadastro com esse nome. Use outro nome ou edite o que já existe.")
+
+    @app.errorhandler(psycopg.errors.ForeignKeyViolation)
+    def _erro_em_uso(e):
+        """Tentou apagar algo que ainda está sendo usado em outro lugar."""
+        return _volta_com_aviso(e, "Este item está sendo usado em outros lugares e não pode ser apagado. Se não quer mais usá-lo, desative-o.")
 
     @app.context_processor
     def contexto_global():

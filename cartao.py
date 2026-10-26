@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 import os
 import re
 import tempfile
@@ -73,8 +74,9 @@ def importar():
         else:
             flash("Não reconheci o layout desta fatura (por enquanto só sei ler faturas Cartões CAIXA e a 'Próxima Fatura' do app).", "erro")
             return redirect(url_for("cartao.importar"))
-    except Exception as e:
-        flash(f"Falha ao ler o PDF: {e}", "erro")
+    except Exception:
+        logging.getLogger(__name__).exception("falha ao ler a fatura em PDF")  # a causa técnica fica no log; o usuário vê uma frase simples
+        flash("Não consegui abrir este PDF. Confira se o arquivo é mesmo uma fatura em PDF (e não uma foto ou outro tipo de arquivo) e tente de novo.", "erro")
         return redirect(url_for("cartao.importar"))
     finally:
         os.unlink(tmp_path)

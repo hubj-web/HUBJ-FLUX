@@ -3,6 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 
 import db
 import email_service
+from validacao import email_valido
 from auth import login_required, requer_papel
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -30,11 +31,17 @@ def listar_organizacoes():
 def criar_organizacao():
     nome = request.form.get("nome", "").strip()
     tipo = request.form.get("tipo")
-    limite_usuarios = int(request.form.get("limite_usuarios") or 1)
+    try:
+        limite_usuarios = int(request.form.get("limite_usuarios") or 1)
+    except ValueError:
+        limite_usuarios = 0
     email_admin = request.form.get("email_admin", "").strip().lower()
 
-    if not nome or tipo not in ("familia", "empresa") or not email_admin:
-        flash("Preencha nome, tipo e e-mail do administrador.", "erro")
+    if not nome or tipo not in ("familia", "empresa") or not 1 <= limite_usuarios <= 100:
+        flash("Preencha o nome, o tipo e um limite de usuários entre 1 e 100.", "erro")
+        return redirect(url_for("admin.listar_organizacoes"))
+    if not email_valido(email_admin):
+        flash("Informe um e-mail válido para o administrador (por exemplo, nome@exemplo.com).", "erro")
         return redirect(url_for("admin.listar_organizacoes"))
 
     if db.buscar_usuario_por_email(email_admin):

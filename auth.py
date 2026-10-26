@@ -12,7 +12,7 @@ Autenticação em duas camadas:
   alguém tenha efeito imediato, sem esperar a sessão expirar.
 """
 from functools import wraps
-from flask import Blueprint, redirect, url_for, session, request, g, flash
+from flask import Blueprint, redirect, url_for, session, request, g, flash, abort
 from authlib.integrations.flask_client import OAuth
 
 from config import Config
@@ -123,7 +123,7 @@ def requer_papel(*papeis_permitidos):
         @wraps(f)
         def wrapper(*args, **kwargs):
             if g.usuario_atual["papel"] not in papeis_permitidos:
-                return "Acesso não permitido para o seu papel.", 403
+                abort(403)
             return f(*args, **kwargs)
         return wrapper
     return decorator
@@ -135,6 +135,6 @@ def requer_organizacao(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if g.usuario_atual["organizacao_id"] is None:
-            return "Esta área é específica de uma organização. O Super Admin não tem acesso direto aqui.", 403
+            abort(403, description="Esta área é específica de uma organização. O Super Admin não tem acesso direto aqui.")
         return f(*args, **kwargs)
     return wrapper

@@ -5,7 +5,7 @@
   <header class="panel-head">
     <h1>🧭 Barra de atalhos</h1>
     <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
-    <p style="color:var(--graphite);font-size:12.5px">Início, o botão <strong>+</strong> e Mais ficam sempre fixos (o Mais garante que você nunca perde o acesso às outras telas). Você escolhe os 2 atalhos do meio.</p>
+    <p style="color:var(--graphite);font-size:12.5px">Mês, o botão <strong>+</strong> e Mais ficam sempre fixos (o Mais garante que você nunca perde o acesso às outras telas). Você escolhe os 2 atalhos do meio.</p>
   </header>
 
   {% macro escolha(atuais) %}
@@ -24,7 +24,7 @@
   <div class="summary-cell" style="margin-bottom:20px">
     <span class="label">Sua barra hoje</span>
     <div class="mono" style="font-size:14px;margin-top:6px">
-      🏠 Início ·
+      🗓️ Mês ·
       {% for c in efetivos[:1] %}{{ catalogo[c][0] }} {{ catalogo[c][1] }} · {% endfor %}
       ➕ ·
       {% for c in efetivos[1:2] %}{{ catalogo[c][0] }} {{ catalogo[c][1] }} · {% endfor %}

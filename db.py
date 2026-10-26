@@ -646,6 +646,8 @@ def excluir_pessoa(pessoa_id, organizacao_id):
 
 
 def convidar_usuario_organizacao(organizacao_id, email, papel, convidado_por):
+    if papel not in ("membro", "admin_cliente"):  # segunda camada: o banco nunca grava um papel de convite que não seja esses
+        raise ValueError("papel de convite inválido")
     return execute(
         """INSERT INTO usuarios (organizacao_id, email, papel, status, convidado_por, criado_em)
            VALUES (%s, %s, %s, 'pendente', %s, now()) RETURNING *""",

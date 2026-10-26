@@ -5,6 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 import db
 import empresa as empresa_mod
 import email_service
+from validacao import PAPEIS_CONVIDAVEIS, email_valido
 from auth import login_required, requer_organizacao, requer_papel
 
 config_bp = Blueprint("config", __name__, url_prefix="/configuracoes")
@@ -29,6 +30,7 @@ def _data_nasc():
 @config_bp.route("/")
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def index():
     return render_template("configuracoes.html")
 
@@ -38,6 +40,7 @@ def index():
 @config_bp.route("/categorias")
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def categorias():
     org_id = g.usuario_atual["organizacao_id"]
     return render_template("config_categorias.html", categorias=db.listar_categorias_todas(org_id))
@@ -46,6 +49,7 @@ def categorias():
 @config_bp.route("/categorias/nova", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def nova_categoria():
     org_id = g.usuario_atual["organizacao_id"]
     nome = request.form.get("nome", "").strip()
@@ -63,6 +67,7 @@ def nova_categoria():
 @config_bp.route("/categorias/<int:cat_id>/salvar", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def salvar_categoria(cat_id):
     org_id = g.usuario_atual["organizacao_id"]
     db.atualizar_categoria(
@@ -77,6 +82,7 @@ def salvar_categoria(cat_id):
 @config_bp.route("/categorias/<int:cat_id>/excluir", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def excluir_categoria(cat_id):
     org_id = g.usuario_atual["organizacao_id"]
     try:
@@ -93,6 +99,7 @@ def excluir_categoria(cat_id):
 @config_bp.route("/formas-pagamento")
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def formas_pagamento():
     org_id = g.usuario_atual["organizacao_id"]
     return render_template("config_formas_pagamento.html", formas=db.listar_formas_pagamento_todas(org_id))
@@ -101,6 +108,7 @@ def formas_pagamento():
 @config_bp.route("/formas-pagamento/nova", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def nova_forma_pagamento():
     org_id = g.usuario_atual["organizacao_id"]
     nome = request.form.get("nome", "").strip()
@@ -117,6 +125,7 @@ def nova_forma_pagamento():
 @config_bp.route("/formas-pagamento/<int:fp_id>/salvar", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def salvar_forma_pagamento(fp_id):
     org_id = g.usuario_atual["organizacao_id"]
     db.atualizar_forma_pagamento(
@@ -130,6 +139,7 @@ def salvar_forma_pagamento(fp_id):
 @config_bp.route("/formas-pagamento/<int:fp_id>/excluir", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def excluir_forma_pagamento(fp_id):
     org_id = g.usuario_atual["organizacao_id"]
     try:
@@ -147,6 +157,7 @@ def excluir_forma_pagamento(fp_id):
 @config_bp.route("/contas")
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def contas():
     org_id = g.usuario_atual["organizacao_id"]
     contas = db.listar_contas_bancarias(org_id, apenas_ativas=False)
@@ -158,6 +169,7 @@ def contas():
 @config_bp.route("/contas/nova", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def nova_conta():
     org_id = g.usuario_atual["organizacao_id"]
     nome = request.form.get("nome", "").strip()
@@ -178,6 +190,7 @@ def nova_conta():
 @config_bp.route("/contas/<int:conta_id>/salvar", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def salvar_conta(conta_id):
     org_id = g.usuario_atual["organizacao_id"]
     saldo_inicial_str = (request.form.get("saldo_inicial") or "0").replace(".", "").replace(",", ".")
@@ -195,6 +208,7 @@ def salvar_conta(conta_id):
 @config_bp.route("/contas/<int:conta_id>/excluir", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def excluir_conta(conta_id):
     org_id = g.usuario_atual["organizacao_id"]
     try:
@@ -208,6 +222,7 @@ def excluir_conta(conta_id):
 @config_bp.route("/cartoes")
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def cartoes():
     org_id = g.usuario_atual["organizacao_id"]
     return render_template("config_cartoes.html", cartoes=db.listar_cartoes_todos(org_id),
@@ -217,6 +232,7 @@ def cartoes():
 @config_bp.route("/cartoes/novo", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def novo_cartao():
     org_id = g.usuario_atual["organizacao_id"]
     nome = request.form.get("nome", "").strip()
@@ -234,6 +250,7 @@ def novo_cartao():
 @config_bp.route("/cartoes/<int:cartao_id>/salvar", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def salvar_cartao(cartao_id):
     org_id = g.usuario_atual["organizacao_id"]
     db.atualizar_cartao(
@@ -247,6 +264,7 @@ def salvar_cartao(cartao_id):
 @config_bp.route("/cartoes/<int:cartao_id>/excluir", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def excluir_cartao(cartao_id):
     org_id = g.usuario_atual["organizacao_id"]
     try:
@@ -262,6 +280,7 @@ def excluir_cartao(cartao_id):
 @config_bp.route("/pessoas")
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def pessoas():
     org_id = g.usuario_atual["organizacao_id"]
     return render_template("config_pessoas.html", avatares=AVATARES, pessoas=db.listar_pessoas_todas(org_id),
@@ -271,6 +290,7 @@ def pessoas():
 @config_bp.route("/pessoas/nova", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def nova_pessoa():
     org_id = g.usuario_atual["organizacao_id"]
     nome = request.form.get("nome", "").strip()
@@ -285,6 +305,7 @@ def nova_pessoa():
 @config_bp.route("/pessoas/<int:pessoa_id>/salvar", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def salvar_pessoa(pessoa_id):
     org_id = g.usuario_atual["organizacao_id"]
     db.atualizar_pessoa(
@@ -298,6 +319,7 @@ def salvar_pessoa(pessoa_id):
 @config_bp.route("/pessoas/<int:pessoa_id>/excluir", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def excluir_pessoa(pessoa_id):
     org_id = g.usuario_atual["organizacao_id"]
     try:
@@ -327,17 +349,19 @@ def usuarios():
 @requer_papel("super_admin", "admin_cliente")
 def convidar_usuario():
     org_id = g.usuario_atual["organizacao_id"]
+    email = request.form.get("email", "").strip().lower()
+    papel = request.form.get("papel", "membro")
+    if not email_valido(email):
+        flash("Informe um e-mail válido (por exemplo, nome@exemplo.com).", "erro")
+        return redirect(url_for("config.usuarios"))
+    if papel not in PAPEIS_CONVIDAVEIS:
+        flash("Escolha se a pessoa será Membro ou Admin do Cliente.", "erro")
+        return redirect(url_for("config.usuarios"))
     organizacao = db.buscar_organizacao(org_id)
     atuais = db.contar_usuarios_ativos(org_id)
     if atuais >= organizacao["limite_usuarios"]:
         flash(f"Limite de {organizacao['limite_usuarios']} usuário(s) atingido para esta organização. "
               f"Fale com o Super Admin para aumentar.", "erro")
-        return redirect(url_for("config.usuarios"))
-
-    email = request.form.get("email", "").strip().lower()
-    papel = request.form.get("papel", "membro")
-    if not email:
-        flash("Informe o e-mail.", "erro")
         return redirect(url_for("config.usuarios"))
     if db.buscar_usuario_por_email(email):
         flash(f"O e-mail {email} já está cadastrado no sistema.", "erro")
@@ -404,6 +428,7 @@ def _dados_regra():
 @config_bp.route("/fornecedores")
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def fornecedores():
     org_id = g.usuario_atual["organizacao_id"]
     return render_template("config_fornecedores.html", regras=db.listar_regras_fornecedor(org_id),
@@ -415,6 +440,7 @@ def fornecedores():
 @config_bp.route("/fornecedores/nova", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def nova_regra_fornecedor():
     org_id = g.usuario_atual["organizacao_id"]
     padrao, nome, categoria_id, define_destino, destino = _dados_regra()
@@ -430,6 +456,7 @@ def nova_regra_fornecedor():
 @config_bp.route("/fornecedores/<int:regra_id>/salvar", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def salvar_regra_fornecedor(regra_id):
     org_id = g.usuario_atual["organizacao_id"]
     padrao, nome, categoria_id, define_destino, destino = _dados_regra()
@@ -445,6 +472,7 @@ def salvar_regra_fornecedor(regra_id):
 @config_bp.route("/fornecedores/<int:regra_id>/excluir", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_papel("super_admin", "admin_cliente")
 def excluir_regra_fornecedor(regra_id):
     db.excluir_regra_fornecedor(regra_id, g.usuario_atual["organizacao_id"])
     flash("Regra excluída. As compras já ajustadas continuam como estão; as próximas faturas não usarão mais essa regra.", "ok")
