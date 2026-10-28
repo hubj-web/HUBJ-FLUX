@@ -363,8 +363,18 @@ def convidar_usuario():
         flash(f"Limite de {organizacao['limite_usuarios']} usuário(s) atingido para esta organização. "
               f"Fale com o Super Admin para aumentar.", "erro")
         return redirect(url_for("config.usuarios"))
-    if db.buscar_usuario_por_email(email):
-        flash(f"O e-mail {email} já está cadastrado no sistema.", "erro")
+    existente = db.buscar_usuario_por_email(email)
+    if existente:
+        # Uma pessoa que já tem acesso a outro espaço DO MESMO CLIENTE (por exemplo, a Família) pode ser convidada para este espaço.
+        # De outro cliente, ou o Super Admin, nunca: o e-mail continua sendo de um só dono.
+        if existente["papel"] != "super_admin" and db.usuario_no_mesmo_cliente(existente["id"], org_id):
+            if any(u["id"] == existente["id"] for u in db.listar_usuarios_por_organizacao(org_id)):
+                flash(f"{email} já tem acesso a este espaço.", "erro")
+            else:
+                db.conceder_acesso(existente["id"], org_id, papel)
+                flash(f"{email} agora também tem acesso a este espaço ({organizacao['nome']}).", "ok")
+        else:
+            flash(f"O e-mail {email} já está cadastrado no sistema.", "erro")
         return redirect(url_for("config.usuarios"))
 
     db.convidar_usuario_organizacao(org_id, email, papel, g.usuario_atual["id"])
@@ -398,6 +408,10 @@ def bloquear_usuario(usuario_id):
     if usuario_id == g.usuario_atual["id"]:
         flash("Você não pode desativar a si mesmo.", "erro")
         return redirect(url_for("config.usuarios"))
+    if not db.usuario_tem_espaco_principal(usuario_id, org_id):
+        flash("Esta pessoa tem este espaço como acesso extra (a conta dela pertence a outro espaço). "
+              "Para tirar o acesso dela daqui, use Excluir.", "erro")
+        return redirect(url_for("config.usuarios"))
     db.bloquear_usuario_organizacao(usuario_id, org_id)
     flash("Usuário desativado - o acesso dele fica bloqueado até você reativar.", "ok")
     return redirect(url_for("config.usuarios"))
@@ -409,6 +423,9 @@ def bloquear_usuario(usuario_id):
 @requer_papel("super_admin", "admin_cliente")
 def reativar_usuario(usuario_id):
     org_id = g.usuario_atual["organizacao_id"]
+    if not db.usuario_tem_espaco_principal(usuario_id, org_id):
+        flash("Esta pessoa tem este espaço como acesso extra: o bloqueio da conta é feito no espaço de origem dela.", "erro")
+        return redirect(url_for("config.usuarios"))
     db.reativar_usuario_organizacao(usuario_id, org_id)
     flash("Usuário reativado.", "ok")
     return redirect(url_for("config.usuarios"))

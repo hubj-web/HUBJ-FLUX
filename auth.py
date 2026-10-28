@@ -111,9 +111,26 @@ def login_required(f):
             flash("Sua sessão não é mais válida. Faça login novamente.", "erro")
             return redirect(url_for("auth.login_page"))
 
-        g.usuario_atual = usuario
+        g.usuario_atual = _aplicar_espaco_ativo(usuario)
         return f(*args, **kwargs)
     return wrapper
+
+
+def _aplicar_espaco_ativo(usuario):
+    """Se a pessoa trocou de espaço (Família / Empresa), `organizacao_id` e `papel` passam a ser os do espaço escolhido.
+    Todo o resto do app só lê esses dois valores, então todas as telas funcionam em qualquer espaço sem mudar.
+    O acesso é conferido no banco a CADA requisição: se ele foi retirado, a pessoa volta para o espaço principal."""
+    alvo = session.get("espaco_id")
+    if not alvo or usuario["papel"] == "super_admin" or alvo == usuario["organizacao_id"]:
+        return usuario
+    espaco = next((e for e in db.listar_espacos_do_usuario(usuario["id"]) if e["id"] == alvo), None)
+    if espaco is None:
+        session.pop("espaco_id", None)
+        return usuario
+    usuario = dict(usuario)
+    usuario["organizacao_id"] = espaco["id"]
+    usuario["papel"] = espaco["papel"]
+    return usuario
 
 
 def requer_papel(*papeis_permitidos):

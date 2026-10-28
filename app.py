@@ -24,6 +24,7 @@ from alertas import alertas_bp
 from mensal import mensal_bp
 from empresas import empresas_bp
 from folha_rotas import folha_bp
+from espacos import espacos_bp
 import ia
 import nav_catalogo
 
@@ -102,6 +103,7 @@ def create_app():
     app.register_blueprint(mensal_bp)
     app.register_blueprint(empresas_bp)
     app.register_blueprint(folha_bp)
+    app.register_blueprint(espacos_bp)
 
     app.teardown_appcontext(db.close_conn)
 
@@ -168,12 +170,13 @@ def create_app():
             modulo_empresa = bool(prefs and prefs.get("modulo_empresa"))
             empresas_org = db.listar_empresas(usuario["organizacao_id"]) if modulo_empresa else []
             nao_lidas = db.contar_nao_lidas(usuario["id"])
+            espacos_usuario = db.listar_espacos_do_usuario(usuario["id"])
         except Exception:
             try:
                 db.get_conn().rollback()
             except Exception:
                 pass
-            chaves, nao_lidas, modulo_empresa, empresas_org = list(nav_catalogo.PADRAO), 0, False, []
+            chaves, nao_lidas, modulo_empresa, empresas_org, espacos_usuario = list(nav_catalogo.PADRAO), 0, False, [], []
         itens = []
         for chave in chaves:
             icone, rotulo, endpoint, prefixos = nav_catalogo.CATALOGO[chave]
@@ -181,7 +184,9 @@ def create_app():
                 "chave": chave, "icone": icone, "rotulo": rotulo, "url": url_for(endpoint),
                 "ativo": any(request.path.startswith(p) for p in prefixos),
             })
-        return {"nav_atalhos": itens, "alertas_nao_lidas": nao_lidas, "modulo_empresa": modulo_empresa, "empresas_org": empresas_org}
+        espaco_atual = next((e for e in espacos_usuario if e["id"] == usuario["organizacao_id"]), None)
+        return {"nav_atalhos": itens, "alertas_nao_lidas": nao_lidas, "modulo_empresa": modulo_empresa, "empresas_org": empresas_org,
+                "espacos_usuario": espacos_usuario, "espaco_atual": espaco_atual}
     return app
 
 

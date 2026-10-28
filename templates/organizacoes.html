@@ -4,10 +4,10 @@
 <div class="content" style="max-width:900px;margin:0 auto">
   <header class="panel-head">
     <h1>Gestão de Clientes</h1>
-    <p>Criar e administrar as organizações (famílias/empresas) do HUB-J FLUX.</p>
+    <p>Cada <strong>cliente</strong> tem um espaço <strong>Família</strong> e, se precisar, um ou mais espaços de <strong>Empresa</strong>. O mesmo login alterna entre eles.</p>
   </header>
 
-  <h3>Nova organização</h3>
+  <h3>Novo cliente</h3>
   <form method="post" action="{{ url_for('admin.criar_organizacao') }}" class="filters" style="align-items:flex-end;flex-wrap:wrap">
     <div><label style="display:block;font-size:11px;color:var(--graphite)">Nome</label>
       <input name="nome" required style="padding:9px 12px;border:1px solid var(--line);border-radius:8px"></div>
@@ -19,17 +19,32 @@
       <input type="number" name="limite_usuarios" value="1" min="1" style="width:80px;padding:9px 12px;border:1px solid var(--line);border-radius:8px"></div>
     <div><label style="display:block;font-size:11px;color:var(--graphite)">E-mail do administrador</label>
       <input type="email" name="email_admin" required style="padding:9px 12px;border:1px solid var(--line);border-radius:8px"></div>
-    <button type="submit" class="btn btn-primary">Criar</button>
+    <button type="submit" class="btn btn-primary">Criar cliente</button>
   </form>
 
-  <h3 style="margin-top:34px">Organizações existentes</h3>
+  {% if clientes %}
+  <h3 style="margin-top:30px">Acrescentar um espaço de empresa a um cliente</h3>
+  <form method="post" action="{{ url_for('admin.criar_espaco_empresa') }}" class="filters" style="align-items:flex-end;flex-wrap:wrap">
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Cliente</label>
+      <select name="cliente_id" required style="padding:9px 12px;border:1px solid var(--line);border-radius:8px">
+        {% for c in clientes %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
+      </select></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Nome da empresa</label>
+      <input name="nome" required style="padding:9px 12px;border:1px solid var(--line);border-radius:8px"></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Limite de usuários</label>
+      <input type="number" name="limite_usuarios" value="2" min="1" style="width:80px;padding:9px 12px;border:1px solid var(--line);border-radius:8px"></div>
+    <button type="submit" class="btn btn-primary">Criar empresa</button>
+  </form>
+  {% endif %}
+
+  <h3 style="margin-top:34px">Clientes e espaços existentes</h3>
   <div class="table-wrap">
     <table class="data-table">
-      <thead><tr><th>Nome</th><th>Tipo</th><th>Status</th><th class="num">Usuários</th><th></th></tr></thead>
+      <thead><tr><th>Espaço</th><th>Tipo</th><th>Status</th><th class="num">Usuários</th><th></th></tr></thead>
       <tbody>
       {% for org in organizacoes %}
         <tr>
-          <td>{{ org.nome }}</td>
+          <td>{{ org.nome }}{% if org.cliente_nome and org.cliente_nome != org.nome %}<br><span style="font-size:11px;color:var(--graphite)">cliente: {{ org.cliente_nome }}</span>{% endif %}</td>
           <td class="mono">{{ org.tipo }}</td>
           <td class="mono">{{ org.status }}</td>
           <td class="num mono">{{ org.usuarios_atuais }}/{{ org.limite_usuarios }}</td>

@@ -25,6 +25,16 @@
   {% endif %}
 {% endwith %}
 
+{% if g.get('usuario_atual') and espacos_usuario and espacos_usuario|length > 1 and espaco_atual %}
+<form method="post" action="{{ url_for('espacos.trocar') }}" class="espaco-bar {{ 'espaco-empresa' if espaco_atual.tipo == 'empresa' else 'espaco-familia' }}">
+  <span class="espaco-rotulo">{{ '🏢 Empresa' if espaco_atual.tipo == 'empresa' else '🏠 Família' }}</span>
+  <select name="espaco_id" onchange="this.form.submit()" aria-label="Trocar de espaço">
+    {% for e in espacos_usuario %}<option value="{{ e.id }}" {{ 'selected' if e.id == espaco_atual.id }}>{{ '🏢' if e.tipo == 'empresa' else '🏠' }} {{ e.nome }}</option>{% endfor %}
+  </select>
+  <noscript><button class="btn btn-ghost" style="padding:4px 10px;font-size:12px">Ir</button></noscript>
+</form>
+{% endif %}
+
 {% block content %}{% endblock %}
 
 {% if g.get('usuario_atual') and g.usuario_atual.organizacao_id %}

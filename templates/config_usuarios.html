@@ -24,9 +24,10 @@
       <div class="card-item-icone">👤</div>
       <div class="card-item-corpo">
         <div class="card-item-titulo">{{ u.nome or u.email }}</div>
-        <div class="card-item-sub">{{ u.email }} · {{ u.papel }} · {{ u.status }}</div>
+        <div class="card-item-sub">{{ u.email }} · {{ u.papel }} · {{ u.status }}{% if not u.espaco_principal %} · acesso extra{% endif %}</div>
       </div>
       <div class="card-item-acoes">
+        {% if u.espaco_principal %}
         {% if u.status == 'bloqueado' %}
         <form method="post" action="{{ url_for('config.reativar_usuario', usuario_id=u.id) }}">
           <button class="btn btn-ghost" style="padding:6px 12px;font-size:11px">Reativar</button>
@@ -36,7 +37,8 @@
           <button class="btn btn-ghost" style="padding:6px 12px;font-size:11px">Desativar</button>
         </form>
         {% endif %}
-        <form method="post" action="{{ url_for('config.remover_usuario', usuario_id=u.id) }}" data-confirmar="Remover o acesso de {{ u.email }} permanentemente?">
+        {% endif %}
+        <form method="post" action="{{ url_for('config.remover_usuario', usuario_id=u.id) }}" data-confirmar="{{ 'Remover o acesso de ' ~ u.email ~ ' permanentemente?' if u.espaco_principal else 'Tirar o acesso de ' ~ u.email ~ ' a este espaço? A conta dela continua existindo nos outros espaços.' }}">
           <button class="btn btn-ghost" style="padding:6px 12px;font-size:11px;color:var(--brick)">Excluir</button>
         </form>
       </div>

@@ -76,17 +76,109 @@ def buscar_organizacao(organizacao_id):
 
 
 def contar_usuarios_ativos(organizacao_id):
+    """Pessoas com acesso a este espaço (as que têm o espaço como principal e as que têm acesso extra), menos as bloqueadas."""
     row = query_one(
-        "SELECT COUNT(*) AS n FROM usuarios WHERE organizacao_id = %s AND status != 'bloqueado'",
-        (organizacao_id,),
+        """SELECT COUNT(DISTINCT u.id) AS n FROM usuarios u
+           LEFT JOIN acessos a ON a.usuario_id = u.id AND a.organizacao_id = %(o)s
+           WHERE (u.organizacao_id = %(o)s OR a.id IS NOT NULL) AND u.status != 'bloqueado'""",
+        {"o": organizacao_id},
     )
     return row["n"] if row else 0
 
 
 def listar_usuarios_por_organizacao(organizacao_id):
+    """Quem entra neste espaço. 'espaco_principal' é verdadeiro quando este é o espaço de origem da conta da pessoa."""
     return query_all(
-        "SELECT id, email, nome, papel, status, criado_em FROM usuarios WHERE organizacao_id = %s ORDER BY criado_em",
-        (organizacao_id,),
+        """SELECT u.id, u.email, u.nome, COALESCE(a.papel, u.papel) AS papel, u.status, u.criado_em,
+                  (u.organizacao_id = %(o)s) AS espaco_principal
+           FROM usuarios u LEFT JOIN acessos a ON a.usuario_id = u.id AND a.organizacao_id = %(o)s
+           WHERE u.organizacao_id = %(o)s OR a.id IS NOT NULL ORDER BY u.criado_em, u.id""",
+        {"o": organizacao_id},
+    )
+
+
+# ---------- Espaços (um cliente com várias organizações: Família e Empresas) ----------
+
+def criar_cliente(nome):
+    return execute("INSERT INTO clientes (nome) VALUES (%s) RETURNING *", (nome,))
+
+
+def listar_espacos_do_usuario(usuario_id):
+    """Os espaços em que a pessoa pode entrar: Família primeiro, depois as empresas por nome. Só espaços ativos."""
+    rows = query_all(
+        """SELECT DISTINCT ON (x.id) x.id, x.nome, x.tipo, x.cliente_id, x.papel FROM (
+             SELECT o.id, o.nome, o.tipo, o.cliente_id, a.papel, 0 AS prioridade
+               FROM acessos a JOIN organizacoes o ON o.id = a.organizacao_id
+              WHERE a.usuario_id = %(u)s AND o.status = 'ativo'
+             UNION ALL
+             SELECT o.id, o.nome, o.tipo, o.cliente_id, u.papel, 1
+               FROM usuarios u JOIN organizacoes o ON o.id = u.organizacao_id
+              WHERE u.id = %(u)s AND o.status = 'ativo' AND u.papel <> 'super_admin'
+           ) x ORDER BY x.id, x.prioridade""",
+        {"u": usuario_id},
+    )
+    return sorted(rows, key=lambda e: (e["tipo"] != "familia", e["nome"].lower()))
+
+
+def conceder_acesso(usuario_id, organizacao_id, papel):
+    if papel not in ("membro", "admin_cliente"):
+        raise ValueError("papel de acesso inválido")
+    execute(
+        """INSERT INTO acessos (usuario_id, organizacao_id, papel) VALUES (%s, %s, %s)
+           ON CONFLICT (usuario_id, organizacao_id) DO UPDATE SET papel = EXCLUDED.papel""",
+        (usuario_id, organizacao_id, papel),
+    )
+
+
+def usuario_no_mesmo_cliente(usuario_id, organizacao_id):
+    """A pessoa já tem acesso a algum espaço do MESMO cliente desta organização? (só assim ela pode ser convidada para outro espaço dele)"""
+    row = query_one(
+        """SELECT 1 AS ok FROM organizacoes alvo
+           JOIN organizacoes o ON o.cliente_id = alvo.cliente_id AND alvo.cliente_id IS NOT NULL
+           WHERE alvo.id = %(alvo)s AND (
+                 EXISTS (SELECT 1 FROM acessos a WHERE a.usuario_id = %(u)s AND a.organizacao_id = o.id)
+              OR EXISTS (SELECT 1 FROM usuarios u WHERE u.id = %(u)s AND u.organizacao_id = o.id)) LIMIT 1""",
+        {"alvo": organizacao_id, "u": usuario_id},
+    )
+    return row is not None
+
+
+def usuario_tem_espaco_principal(usuario_id, organizacao_id):
+    row = query_one("SELECT 1 AS ok FROM usuarios WHERE id = %s AND organizacao_id = %s", (usuario_id, organizacao_id))
+    return row is not None
+
+
+def criar_espaco_empresa(cliente_id, nome, limite_usuarios, criado_por):
+    """Novo espaço do tipo empresa para um cliente que já existe. A organização nasce com categorias e formas padrão
+    e as pessoas que administram o cliente já ganham acesso de administrador a ele."""
+    org = execute(
+        """INSERT INTO organizacoes (nome, tipo, limite_usuarios, criado_por, criado_em, cliente_id)
+           VALUES (%s, 'empresa', %s, %s, now(), %s) RETURNING *""",
+        (nome, limite_usuarios, criado_por, cliente_id),
+    )
+    execute("INSERT INTO organizacoes_preferencias (organizacao_id) VALUES (%s)", (org["id"],))
+    seed_organizacao(org["id"])
+    donos = query_all(
+        """SELECT DISTINCT a.usuario_id FROM acessos a JOIN organizacoes o ON o.id = a.organizacao_id
+           WHERE o.cliente_id = %s AND a.papel = 'admin_cliente'""",
+        (cliente_id,),
+    )
+    for d in donos:
+        conceder_acesso(d["usuario_id"], org["id"], "admin_cliente")
+    return org, len(donos)
+
+
+def preparar_exclusao_espaco(organizacao_id):
+    """Antes de apagar um espaço: quem tinha ELE como espaço principal mas tem acesso a outro passa a ter o outro como principal
+    (senão a conta da pessoa seria apagada junto)."""
+    execute(
+        """UPDATE usuarios u SET organizacao_id = x.outra, papel = x.papel
+           FROM (SELECT DISTINCT ON (a.usuario_id) a.usuario_id, a.organizacao_id AS outra, a.papel
+                   FROM acessos a WHERE a.organizacao_id <> %(o)s
+                    AND a.usuario_id IN (SELECT id FROM usuarios WHERE organizacao_id = %(o)s)
+                  ORDER BY a.usuario_id, a.criado_em) x
+           WHERE u.id = x.usuario_id AND u.organizacao_id = %(o)s""",
+        {"o": organizacao_id},
     )
 
 
@@ -649,14 +741,35 @@ def convidar_usuario_organizacao(organizacao_id, email, papel, convidado_por):
     if papel not in ("membro", "admin_cliente"):  # segunda camada: o banco nunca grava um papel de convite que não seja esses
         raise ValueError("papel de convite inválido")
     return execute(
-        """INSERT INTO usuarios (organizacao_id, email, papel, status, convidado_por, criado_em)
-           VALUES (%s, %s, %s, 'pendente', %s, now()) RETURNING *""",
+        """WITH novo AS (
+               INSERT INTO usuarios (organizacao_id, email, papel, status, convidado_por, criado_em)
+               VALUES (%s, %s, %s, 'pendente', %s, now()) RETURNING *),
+             ac AS (INSERT INTO acessos (usuario_id, organizacao_id, papel) SELECT id, organizacao_id, papel FROM novo)
+           SELECT * FROM novo""",
         (organizacao_id, email.strip().lower(), papel, convidado_por),
     )
 
 
 def remover_usuario_organizacao(usuario_id, organizacao_id):
-    execute("DELETE FROM usuarios WHERE id=%s AND organizacao_id=%s", (usuario_id, organizacao_id))
+    """Tira a pessoa DESTE espaço. Se era o espaço principal dela e ela tem acesso a outro, o outro passa a ser o principal;
+    se não tem mais nenhum, a conta é apagada (como sempre foi)."""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM acessos WHERE usuario_id = %s AND organizacao_id = %s", (usuario_id, organizacao_id))
+            cur.execute("SELECT organizacao_id FROM usuarios WHERE id = %s", (usuario_id,))
+            u = cur.fetchone()
+            if u and u["organizacao_id"] == organizacao_id:  # este era o espaço principal da pessoa
+                cur.execute("SELECT organizacao_id, papel FROM acessos WHERE usuario_id = %s ORDER BY criado_em, id LIMIT 1", (usuario_id,))
+                outro = cur.fetchone()
+                if outro:
+                    cur.execute("UPDATE usuarios SET organizacao_id = %s, papel = %s WHERE id = %s", (outro["organizacao_id"], outro["papel"], usuario_id))
+                else:
+                    cur.execute("DELETE FROM usuarios WHERE id = %s AND organizacao_id = %s", (usuario_id, organizacao_id))
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def bloquear_usuario_organizacao(usuario_id, organizacao_id):
