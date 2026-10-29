@@ -57,6 +57,7 @@
           <td class="mono">{{ org.status }}</td>
           <td class="num mono">{{ org.usuarios_atuais }}/{{ org.limite_usuarios }}</td>
           <td style="white-space:nowrap">
+            <a href="{{ url_for('admin.modulos_do_espaco', org_id=org.id) }}" class="btn btn-ghost" style="padding:4px 8px;font-size:11px">⚙️ Módulos</a>
             <form method="post" action="{{ url_for('admin.ajustar_limite', org_id=org.id) }}" style="display:inline-flex;gap:4px">
               <input type="number" name="limite_usuarios" value="{{ org.limite_usuarios }}" min="1" style="width:60px;padding:4px">
               <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px">Salvar limite</button>

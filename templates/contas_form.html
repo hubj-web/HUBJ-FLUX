@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar conta' if titulo else 'Nova conta' }} · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:560px;margin:0 auto">
+  <header class="panel-head">
+    <h1>{{ 'Editar conta' if titulo else ('Nova conta a pagar' if tipo == 'pagar' else 'Nova conta a receber') }}</h1>
+    <p><a href="{{ url_for('contas.index', tipo=tipo) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+  </header>
+  <form method="post" class="form-grid">
+    <input type="hidden" name="tipo" value="{{ tipo }}">
+    <div class="form-row"><label>Descrição</label><input name="descricao" value="{{ v.get('descricao') or '' }}" required maxlength="200" placeholder="{{ 'Ex.: Aluguel da loja' if tipo == 'pagar' else 'Ex.: Serviço de consultoria' }}"></div>
+    <div class="form-row"><label>Valor (R$){% if not titulo %} de cada parcela{% endif %}</label><input name="valor" inputmode="decimal" value="{{ v.get('valor') or '' }}" required placeholder="0,00"></div>
+    <div class="form-row"><label>Vencimento{% if not titulo %} (da 1ª parcela){% endif %}</label><input type="date" name="vencimento" value="{{ v.get('vencimento') or '' }}" required></div>
+    {% if not titulo %}<div class="form-row"><label>Parcelas</label><input type="number" name="parcelas" min="1" max="60" value="{{ v.get('parcelas') or 1 }}">
+      <span style="font-size:11.5px;color:var(--graphite)">Use para repetir todo mês (aluguel, mensalidade) ou parcelar. O valor acima é o de <strong>cada</strong> parcela, com um vencimento por mês.</span></div>{% endif %}
+    <div class="form-row"><label>{{ 'Fornecedor' if tipo == 'pagar' else 'Cliente' }}</label>
+      <select name="parceiro_id"><option value="">— nenhum —</option>
+        {% for p in parceiros %}<option value="{{ p.id }}" {{ 'selected' if v.get('parceiro_id')|string == p.id|string }}>{{ p.nome }}</option>{% endfor %}</select>
+      <input name="parceiro_novo" placeholder="ou digite um nome novo para cadastrar agora" maxlength="150" style="margin-top:6px"></div>
+    <div class="form-row"><label>Categoria</label>
+      <select name="categoria_id"><option value="">— sem categoria —</option>
+        {% for c in categorias %}<option value="{{ c.id }}" {{ 'selected' if v.get('categoria_id')|string == c.id|string }}>{{ c.nome }}</option>{% endfor %}</select></div>
+    <div class="form-row"><label>Número do documento (opcional)</label><input name="numero_documento" value="{{ v.get('numero_documento') or '' }}" maxlength="40" placeholder="nota fiscal, boleto..."></div>
+    <div class="form-row"><label>Observação (opcional)</label><input name="observacao" value="{{ v.get('observacao') or '' }}" maxlength="300"></div>
+    <button type="submit" class="btn btn-primary">{{ 'Salvar alterações' if titulo else 'Cadastrar' }}</button>
+  </form>
+</div>
+{% endblock %}

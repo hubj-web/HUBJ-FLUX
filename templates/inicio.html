@@ -51,6 +51,17 @@
       {% if reservado_metas > 0 %}<span style="font-size:11.5px;color:var(--graphite)">🎯 R$ {{ reservado_metas|brl }} em metas · livres R$ {{ saldo_livre|brl }}</span>{% endif %}</div>
   </div>
 
+  {% if contas_resumo %}
+  <a href="{{ url_for('contas.index') }}" class="card-item" style="text-decoration:none;color:inherit;margin-bottom:12px">
+    <div class="card-item-icone">💸</div>
+    <div class="card-item-corpo"><div class="card-item-titulo">Contas a pagar e a receber</div>
+      <div class="card-item-sub" style="white-space:normal">
+        A pagar: R$ {{ contas_resumo.pagar.aberto|brl }}{% if contas_resumo.pagar.n_vencido %} · <strong style="color:var(--danger-dark)">{{ contas_resumo.pagar.n_vencido }} vencida(s)</strong>{% endif %}
+        · A receber: R$ {{ contas_resumo.receber.aberto|brl }}{% if contas_resumo.receber.n_vencido %} · <strong style="color:var(--danger-dark)">{{ contas_resumo.receber.n_vencido }} vencida(s)</strong>{% endif %}
+        <br>Próximos {{ contas_resumo.dias }} dias: pagar R$ {{ contas_resumo.pagar.proximos|brl }} · receber R$ {{ contas_resumo.receber.proximos|brl }}</div></div>
+  </a>
+  {% endif %}
+
   {% if comprometido %}
   <a href="{{ url_for('mensal.index') }}" class="card-item" style="text-decoration:none;color:inherit;margin-top:10px">
     <div class="card-item-icone">🧮</div>

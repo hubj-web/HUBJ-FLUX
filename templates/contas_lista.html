@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Contas a pagar e a receber · HUB-J FLUX{% endblock %}
+{% macro bloco(rotulo, r, cor, tipo_link) %}
+<a href="{{ url_for('contas.index', tipo=tipo_link) }}" class="summary-cell" style="padding:14px;text-decoration:none;color:inherit;display:block">
+  <span class="label">{{ rotulo }}</span>
+  <span class="value {{ cor }}" style="font-size:19px;display:block">R$ {{ r.aberto|brl }}</span>
+  <span style="font-size:11.5px;color:var(--graphite);display:block">{{ r.n_aberto }} em aberto</span>
+  <span style="font-size:12px;display:block;margin-top:4px;{{ 'color:var(--danger-dark);font-weight:700' if r.n_vencido else 'color:var(--graphite)' }}">{{ r.n_vencido }} vencida(s): R$ {{ r.vencido|brl }}</span>
+  <span style="font-size:12px;color:var(--graphite);display:block">próximos 7 dias: R$ {{ r.proximos|brl }}</span>
+</a>
+{% endmacro %}
+{% block content %}
+<div class="content" style="max-width:720px;margin:0 auto">
+  <header class="panel-head">
+    <h1>💸 Contas a pagar e a receber</h1>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a>
+       <a href="{{ url_for('contas.parceiros') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">👥 Clientes e fornecedores</a></p>
+  </header>
+
+  <div class="review-summary resumo-flex">
+    {{ bloco('A pagar', resumo.pagar, 'val-despesa', 'pagar') }}
+    {{ bloco('A receber', resumo.receber, 'val-receita', 'receber') }}
+  </div>
+
+  <div style="display:flex;gap:8px;margin:16px 0 10px;flex-wrap:wrap;align-items:center">
+    <a href="{{ url_for('contas.index', tipo='pagar') }}" class="btn {{ 'btn-primary' if tipo == 'pagar' else 'btn-ghost' }}" style="padding:7px 16px;font-size:13px">A pagar</a>
+    <a href="{{ url_for('contas.index', tipo='receber') }}" class="btn {{ 'btn-primary' if tipo == 'receber' else 'btn-ghost' }}" style="padding:7px 16px;font-size:13px">A receber</a>
+    <a href="{{ url_for('contas.novo', tipo=tipo) }}" class="btn btn-primary" style="padding:7px 16px;font-size:13px;margin-left:auto">+ Nova conta a {{ 'pagar' if tipo == 'pagar' else 'receber' }}</a>
+  </div>
+
+  <form method="get" class="filters" style="flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+    <input type="hidden" name="tipo" value="{{ tipo }}">
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Situação</label>
+      <select name="situacao" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px">
+        {% for chave, nome in [('abertos', 'Em aberto'), ('vencidos', 'Vencidas'), ('pagos', 'Pagas' if tipo == 'pagar' else 'Recebidas'), ('cancelados', 'Canceladas'), ('todos', 'Todas')] %}
+        <option value="{{ chave }}" {{ 'selected' if situacao == chave }}>{{ nome }}</option>{% endfor %}
+      </select></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Vence de</label><input type="date" name="de" value="{{ de.isoformat() if de }}" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px"></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">até</label><input type="date" name="ate" value="{{ ate.isoformat() if ate }}" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px"></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">{{ 'Fornecedor' if tipo == 'pagar' else 'Cliente' }}</label>
+      <select name="parceiro" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px"><option value="">Todos</option>
+        {% for p in parceiros %}<option value="{{ p.id }}" {{ 'selected' if parceiro_id == p.id }}>{{ p.nome }}</option>{% endfor %}</select></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Buscar</label><input type="text" name="q" value="{{ q }}" placeholder="descrição ou documento" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px"></div>
+    <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px">Filtrar</button>
+  </form>
+
+  <div class="card-lista">
+    {% for t in titulos %}
+    <div class="card-item" style="align-items:flex-start">
+      <div class="card-item-icone">{{ '✅' if t.situacao == 'pago' else ('🚫' if t.situacao == 'cancelado' else ('🔴' if t.situacao == 'vencido' else ('🟠' if t.situacao == 'vence_hoje' else '🟢'))) }}</div>
+      <div class="card-item-corpo">
+        <div class="card-item-titulo" style="white-space:normal">{{ t.descricao }}</div>
+        <div class="card-item-sub" style="white-space:normal">
+          {% if t.parceiro_nome %}{{ t.parceiro_nome }} · {% endif %}vence {{ t.vencimento.strftime('%d/%m/%Y') }}
+          · <strong style="{{ 'color:var(--danger-dark)' if t.situacao == 'vencido' }}">{{ rotulo[t.situacao] }}{% if t.situacao == 'vencido' %} há {{ -t.dias }} dia(s){% elif t.situacao == 'a_vencer' %} em {{ t.dias }} dia(s){% endif %}</strong>
+          {% if t.status == 'pago' %}· {{ 'paga' if t.tipo == 'pagar' else 'recebida' }} em {{ t.data_pagamento.strftime('%d/%m/%Y') }}{% if t.valor_pago != t.valor %} (R$ {{ t.valor_pago|brl }}){% endif %}{% endif %}
+          {% if t.categoria_nome %}· {{ t.categoria_nome }}{% endif %}{% if t.numero_documento %}· doc. {{ t.numero_documento }}{% endif %}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+          {% if t.status == 'aberto' %}
+          <a href="{{ url_for('contas.baixar', titulo_id=t.id) }}" class="btn btn-primary" style="padding:4px 10px;font-size:11.5px">{{ '✔ Baixar (pagar)' if t.tipo == 'pagar' else '✔ Baixar (receber)' }}</a>
+          <a href="{{ url_for('contas.editar', titulo_id=t.id) }}" class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px">✎ Editar</a>
+          <form method="post" action="{{ url_for('contas.cancelar', titulo_id=t.id) }}" data-confirmar="Cancelar esta conta? Ela deixa de contar como pendente."><button class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px">Cancelar</button></form>
+          {% elif t.status == 'pago' %}
+          {% if g.usuario_atual.papel in ('super_admin', 'admin_cliente') %}<form method="post" action="{{ url_for('contas.desfazer', titulo_id=t.id) }}" data-confirmar="Desfazer a baixa? O lançamento sai do extrato e a conta volta para &quot;em aberto&quot;."><button class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px">↩ Desfazer baixa</button></form>{% endif %}
+          {% elif t.status == 'cancelado' %}
+          <form method="post" action="{{ url_for('contas.reabrir', titulo_id=t.id) }}"><button class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px">Reabrir</button></form>
+          {% endif %}
+          {% if t.status != 'pago' and g.usuario_atual.papel in ('super_admin', 'admin_cliente') %}<form method="post" action="{{ url_for('contas.excluir', titulo_id=t.id) }}" data-confirmar="Excluir esta conta? Não dá para desfazer."><button class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px;color:var(--brick)">🗑 Excluir</button></form>{% endif %}
+        </div>
+      </div>
+      <div class="card-item-valor {{ 'val-despesa' if t.tipo == 'pagar' else 'val-receita' }}">R$ {{ t.valor|brl }}</div>
+    </div>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:30px 20px;background:var(--paper-raised);border-radius:var(--radius)">Nenhuma conta {{ 'a pagar' if tipo == 'pagar' else 'a receber' }} neste filtro.</div>
+    {% endfor %}
+  </div>
+  {% if titulos %}<p style="text-align:right;font-size:13px;margin-top:10px">Total da lista: <strong>R$ {{ total_lista|brl }}</strong> ({{ titulos|length }} conta(s))</p>{% endif %}
+</div>
+{% endblock %}

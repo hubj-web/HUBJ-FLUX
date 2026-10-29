@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Clientes e fornecedores · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:620px;margin:0 auto">
+  <header class="panel-head">
+    <h1>👥 Clientes e fornecedores</h1>
+    <p><a href="{{ url_for('contas.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar às contas</a></p>
+  </header>
+  <h3>Novo cadastro</h3>
+  <form method="post" class="form-grid" style="margin-bottom:24px">
+    <div class="form-row"><label>Nome</label><input name="nome" required maxlength="150"></div>
+    <div class="form-row"><label>É</label><select name="tipo"><option value="fornecedor">Fornecedor (eu pago)</option><option value="cliente">Cliente (eu recebo)</option><option value="ambos">Os dois</option></select></div>
+    <div class="form-row"><label>CPF ou CNPJ (opcional)</label><input name="documento" maxlength="20"></div>
+    <div class="form-row"><label>E-mail (opcional)</label><input name="email" maxlength="150"></div>
+    <div class="form-row"><label>Telefone (opcional)</label><input name="telefone" maxlength="30"></div>
+    <div class="form-row"><label>Observação (opcional)</label><input name="observacao" maxlength="300"></div>
+    <button type="submit" class="btn btn-primary">Cadastrar</button>
+  </form>
+  <div class="card-lista">
+    {% for p in parceiros %}
+    <div class="card-item" style="align-items:flex-start;{{ 'opacity:.55' if not p.ativo }}">
+      <div class="card-item-corpo">
+        <div class="card-item-titulo">{{ p.nome }}{% if not p.ativo %} (desativado){% endif %}</div>
+        <div class="card-item-sub">{{ {'cliente': 'Cliente', 'fornecedor': 'Fornecedor', 'ambos': 'Cliente e fornecedor'}[p.tipo] }}{% if p.documento %} · {{ p.documento }}{% endif %}{% if p.telefone %} · {{ p.telefone }}{% endif %}{% if p.email %} · {{ p.email }}{% endif %}</div>
+        <details style="margin-top:6px"><summary style="cursor:pointer;font-size:12px">✎ Editar</summary>
+          <form method="post" action="{{ url_for('contas.salvar_parceiro', parceiro_id=p.id) }}" class="form-grid" style="margin-top:8px">
+            <div class="form-row"><label>Nome</label><input name="nome" value="{{ p.nome }}" required maxlength="150"></div>
+            <div class="form-row"><label>É</label><select name="tipo">{% for k, n in [('fornecedor', 'Fornecedor'), ('cliente', 'Cliente'), ('ambos', 'Os dois')] %}<option value="{{ k }}" {{ 'selected' if p.tipo == k }}>{{ n }}</option>{% endfor %}</select></div>
+            <div class="form-row"><label>CPF ou CNPJ</label><input name="documento" value="{{ p.documento or '' }}" maxlength="20"></div>
+            <div class="form-row"><label>E-mail</label><input name="email" value="{{ p.email or '' }}" maxlength="150"></div>
+            <div class="form-row"><label>Telefone</label><input name="telefone" value="{{ p.telefone or '' }}" maxlength="30"></div>
+            <div class="form-row"><label>Observação</label><input name="observacao" value="{{ p.observacao or '' }}" maxlength="300"></div>
+            <button type="submit" class="btn btn-primary" style="padding:6px 14px;font-size:12px">Salvar</button>
+          </form>
+        </details>
+      </div>
+      <form method="post" action="{{ url_for('contas.ativar_parceiro', parceiro_id=p.id) }}"><button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">{{ 'Desativar' if p.ativo else 'Reativar' }}</button></form>
+    </div>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:30px 20px;background:var(--paper-raised);border-radius:var(--radius)">Nenhum cliente ou fornecedor cadastrado ainda. Você também pode cadastrar na hora, ao criar uma conta.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Módulos · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:620px;margin:0 auto">
+  <header class="panel-head">
+    <h1>⚙️ Módulos de {{ org.nome }}</h1>
+    <p><a href="{{ url_for('admin.listar_organizacoes') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">Espaço do tipo <strong>{{ 'empresa' if org.tipo == 'empresa' else 'família' }}</strong>. Aqui aparecem só os módulos que existem para esse tipo.</p>
+  </header>
+  <form method="post">
+    <div class="card-lista">
+      {% for chave, m in catalogo.items() %}
+      <label class="card-item" style="align-items:flex-start;cursor:pointer">
+        <input type="checkbox" name="{{ chave }}" {{ 'checked' if ativos[chave] }} style="width:auto;margin-top:4px">
+        <div class="card-item-corpo"><div class="card-item-titulo" style="white-space:normal">{{ m.nome }}</div>
+          <div class="card-item-sub" style="white-space:normal">{{ m.descricao }}</div></div>
+      </label>
+      {% else %}<div style="padding:24px;color:var(--graphite)">Não há módulos para este tipo de espaço.</div>{% endfor %}
+    </div>
+    {% if catalogo %}<button type="submit" class="btn btn-primary" style="margin-top:14px">Salvar</button>{% endif %}
+  </form>
+</div>
+{% endblock %}

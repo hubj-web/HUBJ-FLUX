@@ -11,6 +11,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 import db
 import folha_analise as fa
 from auth import login_required, requer_organizacao, requer_papel
+from modulos import requer_modulo
 from parsers import sigepe
 
 folha_bp = Blueprint("folha", __name__, url_prefix="/folha")
@@ -53,6 +54,7 @@ def _contexto_revisao(org_id, token, h, pessoa_id):
 @folha_bp.route("/")
 @login_required
 @requer_organizacao
+@requer_modulo("holerite")
 def index():
     org_id = _org()
     ultimos = [h for h in db.ultimos_holerites(org_id) if "NORMAL" in (h["tipo_folha"] or "").upper()]
@@ -62,6 +64,7 @@ def index():
 @folha_bp.route("/usar-como-renda", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_modulo("holerite")
 def usar_como_renda():
     org_id = _org()
     ultimos = [h for h in db.ultimos_holerites(org_id) if "NORMAL" in (h["tipo_folha"] or "").upper()]
@@ -79,6 +82,7 @@ def usar_como_renda():
 @folha_bp.route("/importar", methods=["GET", "POST"])
 @login_required
 @requer_organizacao
+@requer_modulo("holerite")
 def importar():
     org_id = _org()
     if request.method == "GET":
@@ -109,6 +113,7 @@ def importar():
 @folha_bp.route("/importar/retomar")
 @login_required
 @requer_organizacao
+@requer_modulo("holerite")
 def retomar():
     """Mostra de novo a revisão de um holerite ainda não confirmado (por exemplo, depois de cadastrar uma dívida)."""
     org_id = _org()
@@ -139,6 +144,7 @@ def _pessoa_valida(org_id):
 @folha_bp.route("/importar/revisar", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_modulo("holerite")
 def revisar():
     token, h = _pendente()
     if not h:
@@ -152,6 +158,7 @@ def revisar():
 @folha_bp.route("/importar/confirmar", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_modulo("holerite")
 def confirmar():
     org_id = _org()
     token, h = _pendente()
@@ -194,6 +201,7 @@ def confirmar():
 @folha_bp.route("/<int:holerite_id>")
 @login_required
 @requer_organizacao
+@requer_modulo("holerite")
 def detalhe(holerite_id):
     org_id = _org()
     h = db.buscar_holerite(org_id, holerite_id)
@@ -209,6 +217,7 @@ def detalhe(holerite_id):
 @folha_bp.route("/<int:holerite_id>/excluir", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_modulo("holerite")
 @requer_papel("super_admin", "admin_cliente")
 def excluir(holerite_id):
     if db.excluir_holerite(_org(), holerite_id, request.form.get("tambem_entrada") == "on"):
@@ -223,6 +232,7 @@ def excluir(holerite_id):
 @folha_bp.route("/dividas")
 @login_required
 @requer_organizacao
+@requer_modulo("holerite")
 def dividas():
     org_id = _org()
     fixos = [dict(f) for f in db.listar_gastos_fixos(org_id)]
@@ -236,6 +246,7 @@ def dividas():
 @folha_bp.route("/dividas/marcar", methods=["POST"])
 @login_required
 @requer_organizacao
+@requer_modulo("holerite")
 def marcar():
     try:
         fixo_id = int(request.form.get("fixo_id"))

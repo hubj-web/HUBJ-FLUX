@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 import db
 import email_service
 from validacao import email_valido
+import modulos
 from auth import login_required, requer_papel
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -67,6 +68,24 @@ def criar_organizacao():
         flash(f"Cliente \"{nome}\" criado. {email_admin} já pode fazer login com o Google "
               f"(e-mail automático não configurado — avise a pessoa manualmente).", "ok")
     return redirect(url_for("admin.listar_organizacoes"))
+
+
+@admin_bp.route("/organizacoes/<int:org_id>/modulos", methods=["GET", "POST"])
+@login_required
+@requer_papel("super_admin")
+def modulos_do_espaco(org_id):
+    """O Super Admin liga ou desliga, espaço por espaço, os módulos que existem para o tipo dele."""
+    org = db.query_one("SELECT id, nome, tipo FROM organizacoes WHERE id = %s", (org_id,))
+    if not org:
+        flash("Organização não encontrada.", "erro")
+        return redirect(url_for("admin.listar_organizacoes"))
+    catalogo = modulos.catalogo_para(org["tipo"])
+    if request.method == "POST":
+        for chave in catalogo:
+            modulos.definir_modulo(org_id, chave, request.form.get(chave) == "on")
+        flash(f"Módulos de \"{org['nome']}\" atualizados.", "ok")
+        return redirect(url_for("admin.modulos_do_espaco", org_id=org_id))
+    return render_template("admin_modulos.html", org=org, catalogo=catalogo, ativos=modulos.mapa_modulos(org_id, org["tipo"]))
 
 
 @admin_bp.route("/clientes/espaco-empresa", methods=["POST"])

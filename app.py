@@ -25,6 +25,8 @@ from mensal import mensal_bp
 from empresas import empresas_bp
 from folha_rotas import folha_bp
 from espacos import espacos_bp
+from contas import contas_bp
+import modulos
 import vocab
 import ia
 import nav_catalogo
@@ -105,6 +107,7 @@ def create_app():
     app.register_blueprint(empresas_bp)
     app.register_blueprint(folha_bp)
     app.register_blueprint(espacos_bp)
+    app.register_blueprint(contas_bp)
 
     app.teardown_appcontext(db.close_conn)
 
@@ -115,9 +118,9 @@ def create_app():
     @app.errorhandler(403)
     def _erro_403(e):
         texto = "Esta área é só para quem administra a conta. Se você acha que deveria ter acesso, fale com a pessoa que te convidou."
-        if getattr(e, "description", "") and "específica de uma organização" in e.description:
+        if getattr(e, "description", "") and ("específica de uma organização" in e.description or "não está liberado" in e.description):
             texto = e.description
-        return _pagina_erro(403, "Você não tem acesso a esta tela", texto)
+        return _pagina_erro(403, "Você não tem acesso a esta tela" if "liberado" not in texto else "Este recurso ainda não está liberado", texto)
 
     @app.errorhandler(404)
     def _erro_404(e):
@@ -191,7 +194,15 @@ def create_app():
             })
         espaco_atual = next((e for e in espacos_usuario if e["id"] == usuario["organizacao_id"]), None)
         tipo_espaco = espaco_atual["tipo"] if espaco_atual else "familia"
-        return {"vocab": vocab.para(tipo_espaco), "tipo_espaco": tipo_espaco, "nav_atalhos": itens, "alertas_nao_lidas": nao_lidas, "modulo_empresa": modulo_empresa, "empresas_org": empresas_org,
+        try:
+            modulos_ativos = modulos.mapa_modulos(usuario["organizacao_id"], tipo_espaco)
+        except Exception:  # antes da migração dos módulos: o que sempre existiu continua valendo
+            try:
+                db.get_conn().rollback()
+            except Exception:
+                pass
+            modulos_ativos = modulos.padroes(tipo_espaco)
+        return {"modulos": modulos_ativos, "vocab": vocab.para(tipo_espaco), "tipo_espaco": tipo_espaco, "nav_atalhos": itens, "alertas_nao_lidas": nao_lidas, "modulo_empresa": modulo_empresa, "empresas_org": empresas_org,
                 "espacos_usuario": espacos_usuario, "espaco_atual": espaco_atual}
     return app
 
