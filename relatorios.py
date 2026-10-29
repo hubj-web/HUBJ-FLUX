@@ -22,7 +22,7 @@ def _montar_relatorio(org_id, mes_referencia):
     fim_mes = (ref + relativedelta(months=1)) - relativedelta(days=1)
     filtros["data_fim"] = fim_mes.isoformat()
 
-    lancamentos = db.listar_lancamentos(org_id, filtros)
+    lancamentos = [l for l in db.listar_lancamentos(org_id, filtros) if not l.get("fora_do_resultado")]  # movimento entre família e empresa não é gasto nem receita
     if db.org_tem_faturas(org_id):  # com faturas importadas, a fatura vale: compra lançada à mão no cartão não conta duas vezes
         lancamentos = [l for l in lancamentos
                        if not (l["tipo"] == "despesa" and (l.get("forma_pagamento_nome") or "").startswith("Cartão de Crédito"))]

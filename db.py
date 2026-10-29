@@ -543,7 +543,7 @@ def gasto_medio_categoria_ultimos_meses(organizacao_id, mes_referencia, n_meses=
 def lancamentos_por_categoria_mes(organizacao_id, categoria_id, mes_referencia):
     gerais = query_all(
         """SELECT id, data, descricao, valor, forma_pagamento_id, pessoa_id, 'geral' AS origem
-           FROM lancamentos WHERE organizacao_id = %(org)s AND categoria_id = %(cat)s AND tipo = 'despesa'
+           FROM lancamentos WHERE organizacao_id = %(org)s AND categoria_id = %(cat)s AND tipo = 'despesa' AND NOT fora_do_resultado
              AND to_char(data, 'YYYY-MM') = %(mes)s ORDER BY data DESC""",
         {"org": organizacao_id, "cat": categoria_id, "mes": mes_referencia},
     )
@@ -1355,15 +1355,19 @@ def gastos_por_fornecedor_cartao(organizacao_id, mes, limite=8, lente="fatura"):
 def totais_mes(organizacao_id, mes_referencia):
     """Receitas, despesas e saldo do mês. O CARTÃO entra pelo mês do vencimento da fatura."""
     row = query_one(
-        """SELECT COALESCE(SUM(CASE WHEN l.tipo = 'receita' THEN l.valor ELSE 0 END), 0) AS receitas,
-                  COALESCE(SUM(CASE WHEN l.tipo = 'despesa' THEN l.valor ELSE 0 END), 0) AS despesas
+        """SELECT COALESCE(SUM(CASE WHEN l.tipo = 'receita' AND NOT l.fora_do_resultado THEN l.valor ELSE 0 END), 0) AS receitas,
+                  COALESCE(SUM(CASE WHEN l.tipo = 'despesa' AND NOT l.fora_do_resultado THEN l.valor ELSE 0 END), 0) AS despesas,
+                  COALESCE(SUM(CASE WHEN l.tipo = 'receita' AND l.fora_do_resultado THEN l.valor ELSE 0 END), 0) AS mov_entradas,
+                  COALESCE(SUM(CASE WHEN l.tipo = 'despesa' AND l.fora_do_resultado THEN l.valor ELSE 0 END), 0) AS mov_saidas
            FROM lancamentos l LEFT JOIN formas_pagamento fp ON fp.id = l.forma_pagamento_id
            WHERE l.organizacao_id = %s AND to_char(l.data, 'YYYY-MM') = %s AND NOT (""" + _CARTAO_MANUAL + ")",
         (organizacao_id, mes_referencia))
     cartao = total_faturas_mes(organizacao_id, mes_referencia)
     receitas = float(row["receitas"])
     despesas = float(row["despesas"]) + cartao["total"]
-    return {"receitas": receitas, "despesas": despesas, "saldo": receitas - despesas, "cartao": cartao["total"], "cartao_previa": cartao["previa"]}
+    mov_entradas, mov_saidas = float(row["mov_entradas"]), float(row["mov_saidas"])  # movimento entre família e empresa: mexe no caixa, não no resultado
+    return {"receitas": receitas, "despesas": despesas, "saldo": receitas + mov_entradas - despesas - mov_saidas, "cartao": cartao["total"], "cartao_previa": cartao["previa"],
+            "mov_entradas": mov_entradas, "mov_saidas": mov_saidas}
 
 
 
@@ -1464,7 +1468,7 @@ def realizado_por_categoria_mes(organizacao_id, mes_referencia, incluir_sem_cate
         """SELECT categoria_id, SUM(valor) AS total FROM (
              SELECT l.categoria_id, l.valor FROM lancamentos l LEFT JOIN formas_pagamento fp ON fp.id = l.forma_pagamento_id
                WHERE l.organizacao_id = %(org)s AND l.tipo = 'despesa' AND to_char(l.data, 'YYYY-MM') = %(mes)s AND NOT (""" + _CARTAO_MANUAL + """)
-                 AND """ + _FAMILIA_L + """
+                 AND NOT l.fora_do_resultado AND """ + _FAMILIA_L + """
              UNION ALL
              SELECT lc.categoria_id, CASE WHEN lc.sinal = 'D' THEN lc.valor ELSE -lc.valor END AS valor FROM lancamentos_cartao lc
                JOIN faturas f ON f.id = lc.fatura_id JOIN cartoes c ON c.id = f.cartao_id

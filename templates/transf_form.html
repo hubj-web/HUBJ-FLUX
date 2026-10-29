@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Nova transferência · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:600px;margin:0 auto">
+  <header class="panel-head">
+    <h1>Nova transferência</h1>
+    <p><a href="{{ url_for('transf.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">Entre <strong>{{ familia.nome }}</strong> (família) e <strong>{{ empresa.nome }}</strong> (empresa).</p>
+  </header>
+  <form method="post" class="form-grid">
+    <label style="font-weight:700;font-size:13px">O que aconteceu?</label>
+    <div class="card-lista" style="margin-bottom:8px">
+      {% for chave, op in operacoes.items() %}
+      <label class="card-item" style="cursor:pointer;align-items:flex-start">
+        <input type="radio" name="operacao" value="{{ chave }}" {{ 'checked' if v.get('operacao') == chave }} required style="width:auto;margin-top:4px">
+        <div class="card-item-corpo"><div class="card-item-titulo" style="white-space:normal">{{ op.nome }}</div>
+          <div class="card-item-sub" style="white-space:normal"><strong>{{ 'Empresa → Família' if op.de == 'empresa' else 'Família → Empresa' }}.</strong> {{ op.ajuda }}</div></div>
+      </label>
+      {% endfor %}
+    </div>
+    <div class="form-row"><label>Valor (R$)</label><input name="valor" inputmode="decimal" value="{{ v.get('valor') or '' }}" required placeholder="0,00"></div>
+    <div class="form-row"><label>Data</label><input type="date" name="data" value="{{ v.get('data') or hoje.isoformat() }}" required></div>
+    <div class="form-row"><label>Descrição (opcional)</label><input name="descricao" value="{{ v.get('descricao') or '' }}" maxlength="200" placeholder="se deixar em branco, usamos o nome do tipo"></div>
+    {% if atual_e_familia and empresas|length > 1 %}
+    <div class="form-row"><label>Qual empresa?</label><select name="empresa_id">{% for e in empresas %}<option value="{{ e.id }}" {{ 'selected' if v.get('empresa_id')|string == e.id|string or (not v.get('empresa_id') and e.id == empresa.id) }}>{{ e.nome }}</option>{% endfor %}</select></div>
+    {% endif %}
+    {% if contas_familia or contas_empresa %}
+    <details style="margin:4px 0 12px"><summary style="cursor:pointer;font-size:13px">Contas bancárias (opcional)</summary>
+      {% if contas_familia %}<div class="form-row" style="margin-top:8px"><label>Conta da família</label><select name="conta_familia_id"><option value="">— nenhuma —</option>{% for c in contas_familia %}<option value="{{ c.id }}" {{ 'selected' if v.get('conta_familia_id')|string == c.id|string }}>{{ c.nome }}</option>{% endfor %}</select></div>{% endif %}
+      {% if contas_empresa %}<div class="form-row"><label>Conta da empresa</label><select name="conta_empresa_id"><option value="">— nenhuma —</option>{% for c in contas_empresa %}<option value="{{ c.id }}" {{ 'selected' if v.get('conta_empresa_id')|string == c.id|string }}>{{ c.nome }}</option>{% endfor %}</select></div>{% endif %}
+    </details>{% endif %}
+    <button type="submit" class="btn btn-primary">Registrar nos dois lados</button>
+    <p style="font-size:12px;color:var(--graphite);margin-top:10px">A categoria e a forma de pagamento de cada lado são escolhidas por nós (por exemplo, "Folha e pró-labore" na empresa e "Salário" na família). Se a categoria não existir, ela é criada.</p>
+  </form>
+</div>
+{% endblock %}

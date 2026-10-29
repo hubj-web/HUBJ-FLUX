@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Família × Empresa · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:720px;margin:0 auto">
+  <header class="panel-head">
+    <h1>↔ Família × Empresa</h1>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">Pró-labore, distribuição de lucros, aportes, empréstimos, devoluções e reembolsos entre a família e a empresa. Você lança <strong>uma vez</strong> e o aplicativo registra os dois lados, cada um no seu extrato.</p>
+  </header>
+  {% if tem_par %}<a href="{{ url_for('transf.nova') }}" class="btn btn-primary" style="padding:8px 18px;font-size:13px">+ Nova transferência</a>
+  {% else %}<div class="summary-cell" style="padding:14px;font-size:13px">Para usar, é preciso ser administrador(a) de uma <strong>família</strong> e de uma <strong>empresa</strong> do mesmo cliente.</div>{% endif %}
+
+  {% if emprestimo_em_aberto %}
+  <div class="summary-cell" style="padding:14px;margin-top:16px">
+    <span class="label">{{ 'A empresa deve ao sócio (empréstimos)' if emprestimo_em_aberto > 0 else 'A empresa devolveu a mais do que recebeu' }}</span>
+    <span class="value" style="font-size:19px;display:block">R$ {{ (emprestimo_em_aberto|abs)|brl }}</span>
+    <span style="font-size:11.5px;color:var(--graphite)">empréstimos do sócio menos as devoluções, desde o começo</span>
+  </div>{% endif %}
+
+  <form method="get" style="display:flex;gap:8px;align-items:flex-end;margin:16px 0 10px;flex-wrap:wrap">
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Mês</label><input type="month" name="mes" value="{{ mes or '' }}" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px"></div>
+    <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px">Filtrar</button>
+    {% if mes %}<a href="{{ url_for('transf.index') }}" class="btn btn-ghost" style="padding:8px 14px;font-size:12px">Ver tudo</a>{% endif %}
+  </form>
+
+  {% if transferencias %}
+  <details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:13px"><strong>Totais por tipo</strong> {{ '(' ~ mes ~ ')' if mes else '(desde o começo)' }}</summary>
+    <div class="card-lista" style="margin-top:8px">
+      {% for chave, op in operacoes.items() %}{% if resumo.por_operacao[chave] %}
+      <div class="card-item"><div class="card-item-corpo"><div class="card-item-titulo">{{ op.nome }}</div><div class="card-item-sub">{{ 'Empresa → Família' if op.de == 'empresa' else 'Família → Empresa' }}</div></div><div class="card-item-valor">R$ {{ resumo.por_operacao[chave]|brl }}</div></div>
+      {% endif %}{% endfor %}
+    </div>
+  </details>{% endif %}
+
+  <div class="card-lista">
+    {% for t in transferencias %}
+    <div class="card-item" style="align-items:flex-start">
+      <div class="card-item-icone">↔</div>
+      <div class="card-item-corpo">
+        <div class="card-item-titulo" style="white-space:normal">{{ t.descricao }}</div>
+        <div class="card-item-sub" style="white-space:normal">{{ t.data.strftime('%d/%m/%Y') }} · {{ t.nome_operacao }} · {{ t.origem_nome }} → {{ t.destino_nome }}{% if t.direcao %} · <strong>{{ t.direcao }}</strong>{% endif %}</div>
+        <form method="post" action="{{ url_for('transf.desfazer', transferencia_id=t.id) }}" data-confirmar="Desfazer esta transferência? Os dois lançamentos saem dos extratos."><button class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px;margin-top:6px">↩ Desfazer</button></form>
+      </div>
+      <div class="card-item-valor">R$ {{ t.valor|brl }}</div>
+    </div>
+    {% else %}
+    <div style="text-align:center;color:var(--graphite);padding:30px 20px;background:var(--paper-raised);border-radius:var(--radius)">Nenhuma transferência {{ 'neste mês' if mes else 'registrada ainda' }}.</div>
+    {% endfor %}
+  </div>
+  {% if transferencias %}<p style="text-align:right;font-size:13px;margin-top:10px">Total da lista: <strong>R$ {{ total|brl }}</strong> ({{ transferencias|length }} transferência(s))</p>{% endif %}
+</div>
+{% endblock %}

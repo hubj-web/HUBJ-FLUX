@@ -218,6 +218,9 @@ def extrato():
 def excluir(lid):
     _org = g.usuario_atual["organizacao_id"]
     _l = db.buscar_lancamento(lid, _org)
+    if _l and _l.get("transferencia_id"):
+        flash("Este lançamento faz parte de uma transferência entre a família e a empresa. Para desfazê-la, use ↔ Família × Empresa no menu Mais.", "erro")
+        return redirect(url_for("lanc.extrato"))
     db.excluir_lancamento(lid, _org)
     flash("Lançamento excluído.", "ok")
     if _l:
@@ -235,6 +238,9 @@ def duplicar(lid):
     original = db.buscar_lancamento(lid, org_id)
     if not original:
         flash("Lançamento não encontrado.", "erro")
+        return redirect(url_for("lanc.extrato"))
+    if original.get("transferencia_id"):
+        flash("Este lançamento faz parte de uma transferência entre a família e a empresa. Para desfazê-la, use ↔ Família × Empresa no menu Mais.", "erro")
         return redirect(url_for("lanc.extrato"))
     db.criar_lancamento(org_id, {
         "data": date.today(), "tipo": original["tipo"], "valor": float(original["valor"]),
@@ -259,6 +265,9 @@ def editar(lid):
     lancamento = db.buscar_lancamento(lid, org_id)
     if not lancamento:
         flash("Lançamento não encontrado.", "erro")
+        return redirect(url_for("lanc.extrato"))
+    if lancamento.get("transferencia_id"):
+        flash("Este lançamento faz parte de uma transferência entre a família e a empresa. Para desfazê-la, use ↔ Família × Empresa no menu Mais.", "erro")
         return redirect(url_for("lanc.extrato"))
 
     if request.method == "GET":

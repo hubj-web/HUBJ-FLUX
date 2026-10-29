@@ -15,6 +15,11 @@ CATALOGO = {
         "descricao": "Contas com vencimento e situação (em aberto, vencida, paga), clientes e fornecedores, e a baixa que lança no extrato.",
         "tipos": ("empresa",), "padrao": False,
     },
+    "transferencias": {
+        "nome": "Família × Empresa: pró-labore, aportes e reembolsos",
+        "descricao": "Registra de uma vez os dois lados de uma transferência entre a família e a empresa do mesmo cliente. Ligue nos DOIS espaços do cliente.",
+        "tipos": ("familia", "empresa"), "padrao": False,
+    },
     "holerite": {
         "nome": "Holerite e folha de pagamento",
         "descricao": "Importa o contracheque como entrada, confere os números e compara os descontos em folha com as dívidas.",

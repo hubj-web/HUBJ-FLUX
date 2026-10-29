@@ -42,7 +42,7 @@
       <summary class="card-item" style="cursor:pointer;list-style:none">
         <div class="card-item-icone">{{ '💰' if l.tipo == 'receita' else '💸' }}</div>
         <div class="card-item-corpo">
-          <div class="card-item-titulo">{{ l.descricao or 'Sem descrição' }}{% if l.parcela_atual %} <span style="color:var(--graphite);font-weight:400;font-size:11.5px">({{ l.parcela_atual }}/{{ l.parcela_total }})</span>{% endif %}</div>
+          <div class="card-item-titulo">{{ l.descricao or 'Sem descrição' }}{% if l.transferencia_id %} <span style="font-size:11px;font-weight:600;color:var(--roxo-profundo, #3E007B);background:#F3EDFA;border-radius:999px;padding:1px 8px" title="Transferência entre a família e a empresa">↔ transferência</span>{% endif %}{% if l.parcela_atual %} <span style="color:var(--graphite);font-weight:400;font-size:11.5px">({{ l.parcela_atual }}/{{ l.parcela_total }})</span>{% endif %}</div>
           <div class="card-item-sub">{{ l.data }}{% if l.categoria_nome %} · {{ l.categoria_nome }}{% endif %}{% if l.pessoa_nome %} · {{ l.pessoa_avatar or '' }} {{ l.pessoa_nome }}{% endif %}{% if l.destino_nome %} · 🏢 {{ l.destino_nome }}{% endif %}{% if anexos_por_lancamento.get(l.id) %} · 📎{% endif %}</div>
         </div>
         <div class="card-item-valor {{ 'val-receita' if l.tipo == 'receita' else 'val-despesa' }}">{{ '+' if l.tipo == 'receita' else '-' }} R$ {{ l.valor|brl }}</div>

@@ -51,6 +51,10 @@
       {% if reservado_metas > 0 %}<span style="font-size:11.5px;color:var(--graphite)">🎯 R$ {{ reservado_metas|brl }} em metas · livres R$ {{ saldo_livre|brl }}</span>{% endif %}</div>
   </div>
 
+  {% if totais.mov_entradas or totais.mov_saidas %}
+  <p style="font-size:12px;color:var(--graphite);margin:8px 2px 12px">↔ Entre família e empresa: entrou R$ {{ (totais.mov_entradas or 0)|brl }} · saiu R$ {{ (totais.mov_saidas or 0)|brl }}. Mexe no saldo, mas não conta como gasto nem como receita.</p>
+  {% endif %}
+
   {% if contas_resumo %}
   <a href="{{ url_for('contas.index') }}" class="card-item" style="text-decoration:none;color:inherit;margin-bottom:12px">
     <div class="card-item-icone">💸</div>
