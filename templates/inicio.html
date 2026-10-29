@@ -55,6 +55,14 @@
   <p style="font-size:12px;color:var(--graphite);margin:8px 2px 12px">↔ Entre família e empresa: entrou R$ {{ (totais.mov_entradas or 0)|brl }} · saiu R$ {{ (totais.mov_saidas or 0)|brl }}. Mexe no saldo, mas não conta como gasto nem como receita.</p>
   {% endif %}
 
+  {% if caixa_negativo %}
+  <a href="{{ url_for('fin.fluxo') }}" class="card-item" style="text-decoration:none;color:inherit;margin-bottom:12px;border:1px solid var(--danger-dark)">
+    <div class="card-item-icone">⚠️</div>
+    <div class="card-item-corpo"><div class="card-item-titulo">Caixa previsto negativo</div>
+      <div class="card-item-sub" style="white-space:normal">Pelo que está cadastrado, o caixa fica negativo em <strong>{{ caixa_negativo.rotulo }}</strong> (R$ {{ caixa_negativo.saldo_final|brl }}). Toque para ver o fluxo de caixa.</div></div>
+  </a>
+  {% endif %}
+
   {% if contas_resumo %}
   <a href="{{ url_for('contas.index') }}" class="card-item" style="text-decoration:none;color:inherit;margin-bottom:12px">
     <div class="card-item-icone">💸</div>

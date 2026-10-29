@@ -15,6 +15,11 @@ CATALOGO = {
         "descricao": "Contas com vencimento e situação (em aberto, vencida, paga), clientes e fornecedores, e a baixa que lança no extrato.",
         "tipos": ("empresa",), "padrao": False,
     },
+    "resultado_caixa": {
+        "nome": "Resultado e fluxo de caixa",
+        "descricao": "Resultado do mês (receitas, despesas e margem), fluxo de caixa previsto com aviso de caixa negativo e calendário de obrigações e impostos. Só o administrador vê.",
+        "tipos": ("empresa",), "padrao": False,
+    },
     "transferencias": {
         "nome": "Família × Empresa: pró-labore, aportes e reembolsos",
         "descricao": "Registra de uma vez os dois lados de uma transferência entre a família e a empresa do mesmo cliente. Ligue nos DOIS espaços do cliente.",

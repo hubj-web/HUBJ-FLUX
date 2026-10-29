@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Resultado do mês · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:760px;margin:0 auto">
+  <header class="panel-head"><h1>📊 Resultado e fluxo de caixa</h1>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p></header>
+  {% include 'fin_abas.html' %}
+  <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px">
+    <a href="{{ url_for('fin.resultado', mes=anterior) }}" class="btn btn-ghost" style="padding:4px 12px">‹</a>
+    <strong style="font-size:16px">{{ rotulo(mes) }}</strong>
+    <a href="{{ url_for('fin.resultado', mes=proximo) }}" class="btn btn-ghost" style="padding:4px 12px">›</a>
+  </div>
+  <div class="review-summary resumo-flex">
+    <div class="summary-cell"><span class="label">Receitas</span><span class="value val-receita" style="font-size:18px">R$ {{ t.receitas|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Despesas</span><span class="value val-despesa" style="font-size:18px">R$ {{ t.despesas|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Resultado</span><span class="value" style="font-size:18px;color:{{ 'var(--success-dark)' if res >= 0 else 'var(--danger-dark)' }}">R$ {{ res|brl }}</span>
+      {% if margem is not none %}<span style="font-size:11.5px;color:var(--graphite)">margem de {{ margem|string|replace('.', ',') }}%</span>{% endif %}</div>
+  </div>
+  <p style="font-size:12.5px;color:var(--graphite);margin:8px 2px 0">
+    Mês anterior ({{ rotulo(anterior) }}): resultado de R$ {{ res_ant|brl }}{% if var_resultado is not none %} · {{ '▲' if var_resultado >= 0 else '▼' }} {{ (var_resultado|abs)|string|replace('.', ',') }}% {{ 'a mais' if var_resultado >= 0 else 'a menos' }}{% endif %}.</p>
+
+  {% if t.mov_entradas or t.mov_saidas %}
+  <div class="summary-cell" style="padding:12px 14px;margin:14px 0;font-size:13px">
+    <strong>↔ Fora do resultado</strong> (aportes, empréstimos e devoluções entre sócio e empresa): entrou R$ {{ t.mov_entradas|brl }} · saiu R$ {{ t.mov_saidas|brl }}.
+    Isso mexe no caixa, mas não é receita nem despesa. <strong>Variação do caixa no mês: R$ {{ caixa_mes|brl }}.</strong></div>{% endif %}
+
+  <h3 style="margin-top:20px">Receitas por categoria</h3>
+  <div class="card-lista">
+    {% for l in linhas_rec %}<div class="card-item"><div class="card-item-corpo"><div class="card-item-titulo">{{ l.nome }}</div>{% if l.pct is not none %}<div class="card-item-sub">{{ l.pct|string|replace('.', ',') }}% {{ base_pct }}</div>{% endif %}</div><div class="card-item-valor val-receita">R$ {{ l.valor|brl }}</div></div>
+    {% else %}<div style="color:var(--graphite);padding:14px">Nenhuma receita neste mês.</div>{% endfor %}
+  </div>
+  <h3 style="margin-top:20px">Despesas por categoria</h3>
+  <div class="card-lista">
+    {% for l in linhas_desp %}<div class="card-item"><div class="card-item-corpo"><div class="card-item-titulo">{{ l.nome }}</div>{% if l.pct is not none %}<div class="card-item-sub">{{ l.pct|string|replace('.', ',') }}% {{ base_pct }}</div>{% endif %}</div><div class="card-item-valor val-despesa">R$ {{ l.valor|brl }}</div></div>
+    {% else %}<div style="color:var(--graphite);padding:14px">Nenhuma despesa neste mês.</div>{% endfor %}
+  </div>
+
+  <h3 style="margin-top:24px">Últimos 6 meses</h3>
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="text-align:right;color:var(--graphite)"><th style="text-align:left;padding:6px">Mês</th><th style="padding:6px">Receitas</th><th style="padding:6px">Despesas</th><th style="padding:6px">Resultado</th></tr></thead>
+    <tbody>{% for s in serie %}<tr style="border-top:1px solid var(--line);text-align:right;{{ 'font-weight:700' if s.mes == mes }}">
+      <td style="text-align:left;padding:6px">{{ rotulo(s.mes) }}</td><td style="padding:6px">{{ s.receitas|brl }}</td><td style="padding:6px">{{ s.despesas|brl }}</td>
+      <td style="padding:6px;color:{{ 'var(--success-dark)' if s.resultado >= 0 else 'var(--danger-dark)' }}">{{ s.resultado|brl }}</td></tr>{% endfor %}</tbody></table></div>
+  <p style="font-size:12px;color:var(--graphite);margin-top:12px">O resultado é receitas menos despesas do mês, incluindo as faturas do cartão que vencem nele. Não é contabilidade fiscal: serve para você enxergar se a empresa está dando lucro.</p>
+</div>
+{% endblock %}

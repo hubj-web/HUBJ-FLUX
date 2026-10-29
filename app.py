@@ -27,6 +27,7 @@ from folha_rotas import folha_bp
 from espacos import espacos_bp
 from contas import contas_bp
 from transferencias import transf_bp
+from financeiro import fin_bp
 import modulos
 import vocab
 import ia
@@ -110,6 +111,7 @@ def create_app():
     app.register_blueprint(espacos_bp)
     app.register_blueprint(contas_bp)
     app.register_blueprint(transf_bp)
+    app.register_blueprint(fin_bp)
 
     app.teardown_appcontext(db.close_conn)
 

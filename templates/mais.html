@@ -11,6 +11,7 @@
     <a href="{{ url_for('cartao.painel') }}" class="menu-item"><span class="menu-icon">💳</span> Cartão de crédito (faturas e compras)</a>
     <a href="{{ url_for('lanc.recorrentes') }}" class="menu-item"><span class="menu-icon">🔁</span> Lançamentos que se repetem</a>
     {% if (modulos or {}).get('transferencias') and g.usuario_atual.papel in ('super_admin', 'admin_cliente') %}<a href="{{ url_for('transf.index') }}" class="menu-item"><span class="menu-icon">↔️</span> Família × Empresa (pró-labore, aportes...)</a>{% endif %}
+    {% if (modulos or {}).get('resultado_caixa') and g.usuario_atual.papel in ('super_admin', 'admin_cliente') %}<a href="{{ url_for('fin.resultado') }}" class="menu-item"><span class="menu-icon">📊</span> Resultado e fluxo de caixa</a>{% endif %}
     {% if (modulos or {}).get('contas_pagar_receber') %}<a href="{{ url_for('contas.index') }}" class="menu-item"><span class="menu-icon">💸</span> Contas a pagar e a receber</a>{% endif %}
     {% if (modulos or {}).get('holerite', tipo_espaco != 'empresa') %}<a href="{{ url_for('folha.index') }}" class="menu-item"><span class="menu-icon">💼</span> Holerite e folha de pagamento</a>{% endif %}
 

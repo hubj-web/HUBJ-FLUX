@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Fluxo de caixa · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:860px;margin:0 auto">
+  <header class="panel-head"><h1>📊 Resultado e fluxo de caixa</h1>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p></header>
+  {% include 'fin_abas.html' %}
+  <form method="get" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Quantos meses</label>
+      <select name="meses" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px">{% for h in horizontes %}<option value="{{ h }}" {{ 'selected' if h == n }}>{{ h }} meses</option>{% endfor %}</select></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Saldo de partida (R$)</label>
+      <input name="saldo" inputmode="decimal" value="{{ saldo_digitado }}" placeholder="{{ info.saldo_contas|brl if info.n_contas else '0,00' }}" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;width:150px"></div>
+    <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px">Calcular</button>
+  </form>
+  <p style="font-size:12.5px;color:var(--graphite)">
+    {% if info.informado %}Partindo do saldo que você digitou: <strong>R$ {{ f.saldo_inicial|brl }}</strong>.
+    {% elif info.n_contas %}Partindo do saldo de hoje das suas {{ info.n_contas }} conta(s) bancária(s): <strong>R$ {{ f.saldo_inicial|brl }}</strong>.
+    {% else %}Você ainda não cadastrou conta bancária, então o fluxo parte de <strong>R$ 0,00</strong>. Digite o saldo de partida acima ou cadastre as contas em Configurações.{% endif %}</p>
+
+  {% if f.primeiro_negativo %}
+  <div class="summary-cell" style="padding:14px;margin:12px 0;border:1px solid var(--danger-dark);font-size:13.5px">
+    ⚠️ <strong>O caixa previsto fica negativo em {{ rotulo(f.primeiro_negativo.mes) }}</strong> (R$ {{ f.primeiro_negativo.saldo_final|brl }}). O ponto mais baixo do período é R$ {{ f.menor_saldo|brl }}.
+    Veja o que dá para antecipar a receber ou adiar a pagar.</div>
+  {% else %}
+  <div class="summary-cell" style="padding:14px;margin:12px 0;font-size:13.5px">✅ Pelo que está cadastrado, o caixa <strong>não fica negativo</strong> nos próximos {{ n }} meses. O ponto mais baixo é R$ {{ f.menor_saldo|brl }}.</div>{% endif %}
+
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:640px">
+    <thead><tr style="text-align:right;color:var(--graphite)"><th style="text-align:left;padding:6px">Mês</th><th style="padding:6px">A receber</th><th style="padding:6px">A pagar</th><th style="padding:6px">Gastos fixos</th><th style="padding:6px">Cartão</th><th style="padding:6px">Saldo do mês</th><th style="padding:6px">Caixa no fim</th></tr></thead>
+    <tbody>{% for m in f.meses %}<tr style="border-top:1px solid var(--line);text-align:right">
+      <td style="text-align:left;padding:7px 6px">{{ rotulo(m.mes) }}</td><td style="padding:6px;color:var(--success-dark)">{{ m.receber|brl }}</td><td style="padding:6px">{{ m.pagar|brl }}</td><td style="padding:6px">{{ m.fixos|brl }}</td><td style="padding:6px">{{ m.cartao|brl }}</td>
+      <td style="padding:6px;color:{{ 'var(--success-dark)' if m.saldo_mes >= 0 else 'var(--danger-dark)' }}">{{ m.saldo_mes|brl }}</td>
+      <td style="padding:6px;font-weight:700;color:{{ 'inherit' if m.saldo_final >= 0 else 'var(--danger-dark)' }}">{{ m.saldo_final|brl }}</td></tr>{% endfor %}</tbody></table></div>
+  {% if f.depois.receber or f.depois.pagar %}<p style="font-size:12.5px;color:var(--graphite);margin-top:10px">Depois desse período ainda há R$ {{ f.depois.receber|brl }} a receber e R$ {{ f.depois.pagar|brl }} a pagar.</p>{% endif %}
+  <div class="summary-cell" style="padding:12px 14px;margin-top:16px;font-size:12.5px;color:var(--graphite)"><strong>Como esta previsão é feita.</strong> Entradas: só as <a href="{{ url_for('contas.index', tipo='receber') }}">contas a receber</a> que você cadastrou (vendas que ainda não estão lá não aparecem).
+    Saídas: as contas a pagar, os gastos fixos e a fatura do cartão. No mês atual entra só o que ainda vai vencer de hoje em diante, e conta atrasada é tratada como se caísse neste mês.
+    <strong>Atenção:</strong> se você cadastrou o mesmo gasto em "Gastos fixos" e em "Contas a pagar", ele conta duas vezes.</div>
+</div>
+{% endblock %}

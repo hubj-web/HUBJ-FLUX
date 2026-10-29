@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Obrigações e impostos · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:760px;margin:0 auto">
+  <header class="panel-head"><h1>📊 Resultado e fluxo de caixa</h1>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p></header>
+  {% include 'fin_abas.html' %}
+  <div class="summary-cell" style="padding:12px 14px;margin-bottom:14px;font-size:12.5px;color:var(--graphite)">
+    Datas conferidas em outubro de 2026 em fontes oficiais (Receita Federal, Comitê Gestor do Simples Nacional e Ministério do Trabalho). <strong>Não substituem o seu contador:</strong> os prazos podem mudar, e o seu regime pode ter outras obrigações.
+    As datas abaixo são as <strong>nominais</strong>; quando caem em fim de semana ou feriado, a data real pode mudar, então confira a data da guia emitida.</div>
+  <div class="card-lista">
+    {% for o in itens %}
+    <div class="card-item" style="align-items:flex-start">
+      <div class="card-item-icone">{{ '🔁' if o.frequencia == 'mensal' else '📅' }}</div>
+      <div class="card-item-corpo">
+        <div class="card-item-titulo" style="white-space:normal">{{ o.nome }}</div>
+        <div class="card-item-sub" style="white-space:normal"><strong>{{ 'Todo mês, dia ' ~ o.dia if o.frequencia == 'mensal' else 'Todo ano, ' ~ o.dia ~ ' de ' ~ ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'][o.mes] }}</strong>
+          · próximo: <strong>{{ o.proxima.strftime('%d/%m/%Y') }}</strong> ({{ 'hoje' if o.dias == 0 else 'em ' ~ o.dias ~ ' dia(s)' }})</div>
+        <div class="card-item-sub" style="white-space:normal">Quem: {{ o.quem }}.</div>
+        <div class="card-item-sub" style="white-space:normal">{{ o.ajuda }}</div>
+        {% if o.frequencia == 'mensal' %}
+          {% if o.tem_lembrete %}<span style="font-size:12px;color:var(--success-dark)">✅ Lembrete criado ({{ dias_antes }} dias antes)</span>
+          {% else %}<form method="post" action="{{ url_for('fin.criar_lembrete') }}" style="margin-top:6px"><input type="hidden" name="chave" value="{{ o.chave }}"><button class="btn btn-primary" style="padding:5px 12px;font-size:12px">🔔 Criar lembrete mensal</button></form>{% endif %}
+        {% endif %}
+      </div>
+    </div>{% endfor %}
+  </div>
+  <p style="font-size:12px;color:var(--graphite);margin-top:12px">Os lembretes mensais ficam em <a href="/lembretes">Mais → Lembretes de vencimento</a>, onde você pode mudar o dia, a antecedência e escolher receber também por e-mail. O aviso chega no sininho do aplicativo.</p>
+</div>
+{% endblock %}

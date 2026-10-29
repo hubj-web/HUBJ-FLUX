@@ -1,0 +1,5 @@
+<div style="display:flex;gap:6px;margin:12px 0 16px;flex-wrap:wrap">
+  {% for chave, rot, rota in [('resultado', '📊 Resultado do mês', 'fin.resultado'), ('fluxo', '💧 Fluxo de caixa', 'fin.fluxo'), ('impostos', '🧾 Obrigações e impostos', 'fin.impostos')] %}
+  <a href="{{ url_for(rota) }}" class="btn {{ 'btn-primary' if aba == chave else 'btn-ghost' }}" style="padding:7px 14px;font-size:13px">{{ rot }}</a>
+  {% endfor %}
+</div>
