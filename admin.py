@@ -23,7 +23,8 @@ def listar_organizacoes():
         prefs = db.buscar_preferencias(org["id"])
         org["modulo_empresa"] = bool(prefs and prefs.get("modulo_empresa"))
     clientes = db.query_all("SELECT id, nome FROM clientes ORDER BY nome")
-    return render_template("organizacoes.html", organizacoes=organizacoes, clientes=clientes)
+    modelos = [(chave, m["nome"]) for chave, m in db.MODELOS_EMPRESA.items()]
+    return render_template("organizacoes.html", organizacoes=organizacoes, clientes=clientes, modelos=modelos)
 
 
 @admin_bp.route("/organizacoes/nova", methods=["POST"])
@@ -57,7 +58,7 @@ def criar_organizacao():
         (nome, tipo, limite_usuarios, g.usuario_atual["id"], cliente["id"]),
     )
     db.execute("INSERT INTO organizacoes_preferencias (organizacao_id) VALUES (%s)", (org["id"],))
-    db.seed_organizacao(org["id"])
+    db.seed_organizacao(org["id"], tipo, db.modelo_empresa_valido(request.form.get("modelo")))  # o modelo só vale para empresa
     db.convidar_usuario_organizacao(org["id"], email_admin, "admin_cliente", g.usuario_atual["id"])
 
     if email_service.enviar_convite_admin_cliente(email_admin, nome):
@@ -87,7 +88,7 @@ def criar_espaco_empresa():
                            WHERE o.cliente_id = %s AND a.papel = 'admin_cliente' LIMIT 1""", (cliente["id"],)):
         flash("Este cliente ainda não tem um administrador. Convide um antes de criar a empresa.", "erro")
         return redirect(url_for("admin.listar_organizacoes"))
-    org, n_donos = db.criar_espaco_empresa(cliente["id"], nome, limite_usuarios, g.usuario_atual["id"])
+    org, n_donos = db.criar_espaco_empresa(cliente["id"], nome, limite_usuarios, g.usuario_atual["id"], db.modelo_empresa_valido(request.form.get("modelo")))
     flash(f"Espaço de empresa \"{nome}\" criado para {cliente['nome']}. {n_donos} administrador(es) do cliente já podem alternar para ele.", "ok")
     return redirect(url_for("admin.listar_organizacoes"))
 

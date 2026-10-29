@@ -5,7 +5,7 @@
   <header class="panel-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
     <div style="min-width:0">
       <h1>Olá, {{ usuario.nome or usuario.email }}</h1>
-      <p>{{ organizacao.nome if organizacao else '' }}</p>
+      <p>{{ organizacao.nome if organizacao else '' }}{% if tipo_espaco == 'empresa' %} · 🏢 Empresa{% endif %}</p>
     </div>
     <a href="{{ url_for('alertas.index') }}" class="sino" aria-label="Alertas">🔔{% if alertas_nao_lidas %}<span class="sino-badge">{{ alertas_nao_lidas if alertas_nao_lidas < 10 else '9+' }}</span>{% endif %}</a>
   </header>
@@ -24,7 +24,7 @@
   </div>
 
   <div class="summary-cell" style="padding:22px;margin-bottom:12px">
-    <span class="label">Gastos da família no mês</span>
+    <span class="label">{{ (vocab or {}).get('gastos_mes', 'Gastos da família no mês') }}</span>
     <div class="value val-despesa" style="font-size:30px;margin-top:4px">R$ {{ quadro.realizado_total|brl }}</div>
     {% if quadro.tem_plano %}
     <div class="barra-prog" style="margin-top:12px"><span class="{{ quadro.cor }}" style="width:{{ quadro.barra }}%"></span></div>
@@ -47,7 +47,7 @@
   <div class="review-summary resumo-flex">
     <div class="summary-cell"><span class="label">Entradas</span><span class="value val-receita" style="font-size:17px">R$ {{ totais.receitas|brl }}</span>
       {% if renda_prevista %}<span style="font-size:11.5px;color:var(--graphite)">previstas R$ {{ renda_prevista|brl }}</span>{% endif %}</div>
-    <div class="summary-cell"><span class="label">Saldo do mês</span><span class="value" style="font-size:17px;color:{{ 'var(--success-dark)' if totais.saldo >= 0 else 'var(--danger-dark)' }}">R$ {{ totais.saldo|brl }}</span>
+    <div class="summary-cell"><span class="label">{{ (vocab or {}).get('saldo_mes', 'Saldo do mês') }}</span><span class="value" style="font-size:17px;color:{{ 'var(--success-dark)' if totais.saldo >= 0 else 'var(--danger-dark)' }}">R$ {{ totais.saldo|brl }}</span>
       {% if reservado_metas > 0 %}<span style="font-size:11.5px;color:var(--graphite)">🎯 R$ {{ reservado_metas|brl }} em metas · livres R$ {{ saldo_livre|brl }}</span>{% endif %}</div>
   </div>
 

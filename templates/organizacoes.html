@@ -19,6 +19,10 @@
       <input type="number" name="limite_usuarios" value="1" min="1" style="width:80px;padding:9px 12px;border:1px solid var(--line);border-radius:8px"></div>
     <div><label style="display:block;font-size:11px;color:var(--graphite)">E-mail do administrador</label>
       <input type="email" name="email_admin" required style="padding:9px 12px;border:1px solid var(--line);border-radius:8px"></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Modelo (só se o tipo for Empresa)</label>
+      <select name="modelo" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px">
+        {% for chave, nome in modelos %}<option value="{{ chave }}">{{ nome }}</option>{% endfor %}
+      </select></div>
     <button type="submit" class="btn btn-primary">Criar cliente</button>
   </form>
 
@@ -33,6 +37,10 @@
       <input name="nome" required style="padding:9px 12px;border:1px solid var(--line);border-radius:8px"></div>
     <div><label style="display:block;font-size:11px;color:var(--graphite)">Limite de usuários</label>
       <input type="number" name="limite_usuarios" value="2" min="1" style="width:80px;padding:9px 12px;border:1px solid var(--line);border-radius:8px"></div>
+    <div><label style="display:block;font-size:11px;color:var(--graphite)">Modelo de categorias</label>
+      <select name="modelo" style="padding:9px 12px;border:1px solid var(--line);border-radius:8px">
+        {% for chave, nome in modelos %}<option value="{{ chave }}">{{ nome }}</option>{% endfor %}
+      </select></div>
     <button type="submit" class="btn btn-primary">Criar empresa</button>
   </form>
   {% endif %}

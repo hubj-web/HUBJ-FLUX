@@ -25,6 +25,7 @@ from mensal import mensal_bp
 from empresas import empresas_bp
 from folha_rotas import folha_bp
 from espacos import espacos_bp
+import vocab
 import ia
 import nav_catalogo
 
@@ -122,6 +123,10 @@ def create_app():
     def _erro_404(e):
         return _pagina_erro(404, "Não encontramos esta página", "O endereço pode estar errado ou a página não existe mais.")
 
+    @app.errorhandler(405)
+    def _erro_405(e):
+        return _pagina_erro(405, "Esta página não abre desse jeito", "Para usar esta função, volte ao início e toque nos botões do aplicativo.")
+
     @app.errorhandler(413)
     def _erro_413(e):
         return _pagina_erro(413, "O arquivo é grande demais", "O limite é de 10 MB por arquivo. Escolha um arquivo menor e tente de novo.")
@@ -185,7 +190,8 @@ def create_app():
                 "ativo": any(request.path.startswith(p) for p in prefixos),
             })
         espaco_atual = next((e for e in espacos_usuario if e["id"] == usuario["organizacao_id"]), None)
-        return {"nav_atalhos": itens, "alertas_nao_lidas": nao_lidas, "modulo_empresa": modulo_empresa, "empresas_org": empresas_org,
+        tipo_espaco = espaco_atual["tipo"] if espaco_atual else "familia"
+        return {"vocab": vocab.para(tipo_espaco), "tipo_espaco": tipo_espaco, "nav_atalhos": itens, "alertas_nao_lidas": nao_lidas, "modulo_empresa": modulo_empresa, "empresas_org": empresas_org,
                 "espacos_usuario": espacos_usuario, "espaco_atual": espaco_atual}
     return app
 

@@ -10,7 +10,7 @@
     <a href="{{ url_for('lanc.extrato') }}" class="menu-item"><span class="menu-icon">🧾</span> Extrato (todos os lançamentos)</a>
     <a href="{{ url_for('cartao.painel') }}" class="menu-item"><span class="menu-icon">💳</span> Cartão de crédito (faturas e compras)</a>
     <a href="{{ url_for('lanc.recorrentes') }}" class="menu-item"><span class="menu-icon">🔁</span> Lançamentos que se repetem</a>
-    <a href="{{ url_for('folha.index') }}" class="menu-item"><span class="menu-icon">💼</span> Holerite e folha de pagamento</a>
+    {% if tipo_espaco != 'empresa' %}<a href="{{ url_for('folha.index') }}" class="menu-item"><span class="menu-icon">💼</span> Holerite e folha de pagamento</a>{% endif %}
 
     <div class="menu-secao">Planejar</div>
     <a href="{{ url_for('plan.index') }}" class="menu-item"><span class="menu-icon">📝</span> Planejamento (limites por categoria)</a>

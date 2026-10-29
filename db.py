@@ -148,7 +148,7 @@ def usuario_tem_espaco_principal(usuario_id, organizacao_id):
     return row is not None
 
 
-def criar_espaco_empresa(cliente_id, nome, limite_usuarios, criado_por):
+def criar_espaco_empresa(cliente_id, nome, limite_usuarios, criado_por, modelo="geral"):
     """Novo espaço do tipo empresa para um cliente que já existe. A organização nasce com categorias e formas padrão
     e as pessoas que administram o cliente já ganham acesso de administrador a ele."""
     org = execute(
@@ -157,7 +157,7 @@ def criar_espaco_empresa(cliente_id, nome, limite_usuarios, criado_por):
         (nome, limite_usuarios, criado_por, cliente_id),
     )
     execute("INSERT INTO organizacoes_preferencias (organizacao_id) VALUES (%s)", (org["id"],))
-    seed_organizacao(org["id"])
+    seed_organizacao(org["id"], "empresa", modelo)
     donos = query_all(
         """SELECT DISTINCT a.usuario_id FROM acessos a JOIN organizacoes o ON o.id = a.organizacao_id
            WHERE o.cliente_id = %s AND a.papel = 'admin_cliente'""",
@@ -196,20 +196,67 @@ FORMAS_PAGAMENTO_PADRAO = [
 ]
 
 
-def seed_organizacao(organizacao_id):
-    for i, nome in enumerate(CATEGORIAS_PADRAO_DESPESA):
+# Modelos de categorias para os espaços de EMPRESA. O cliente edita à vontade depois de criada.
+MODELOS_EMPRESA = {
+    "geral": {
+        "nome": "Geral (qualquer empresa)",
+        "despesas": ["Fornecedores", "Folha e pró-labore", "Impostos e taxas", "Aluguel e condomínio", "Contas básicas (água, luz, internet)",
+                     "Marketing e publicidade", "Software e assinaturas", "Contabilidade e serviços", "Transporte e deslocamento",
+                     "Tarifas bancárias", "Equipamentos", "Encargos financeiros", "Outros"],
+        "receitas": ["Vendas", "Serviços prestados", "Rendimentos de aplicações", "Outras receitas"],
+    },
+    "mei": {
+        "nome": "MEI ou autônomo",
+        "despesas": ["Materiais e fornecedores", "Imposto (DAS)", "Aluguel e contas", "Marketing e publicidade", "Software e assinaturas",
+                     "Transporte e deslocamento", "Tarifas bancárias", "Equipamentos", "Encargos financeiros", "Outros"],
+        "receitas": ["Vendas", "Serviços prestados", "Outras receitas"],
+    },
+    "servicos": {
+        "nome": "Prestação de serviços",
+        "despesas": ["Folha e pró-labore", "Impostos e taxas", "Aluguel e contas", "Terceiros e freelancers", "Software e assinaturas",
+                     "Marketing e publicidade", "Contabilidade", "Deslocamento e viagens", "Tarifas bancárias", "Equipamentos",
+                     "Encargos financeiros", "Outros"],
+        "receitas": ["Serviços prestados", "Contratos e mensalidades", "Outras receitas"],
+    },
+    "comercio": {
+        "nome": "Comércio ou loja",
+        "despesas": ["Compra de mercadorias", "Folha e pró-labore", "Impostos e taxas", "Aluguel e condomínio", "Contas básicas (água, luz, internet)",
+                     "Marketing e publicidade", "Embalagens e frete", "Taxas de cartão e maquininha", "Software e assinaturas", "Contabilidade",
+                     "Tarifas bancárias", "Equipamentos", "Encargos financeiros", "Outros"],
+        "receitas": ["Vendas", "Outras receitas"],
+    },
+}
+FORMAS_PAGAMENTO_EMPRESA = [
+    ("Dinheiro", "ambos", False), ("Pix", "ambos", False), ("Transferência", "ambos", False), ("Boleto", "ambos", True),
+    ("Cartão de Crédito", "despesa", True), ("Débito", "despesa", False), ("Cartão na maquininha", "receita", False),
+]
+
+
+def modelo_empresa_valido(chave):
+    """Um modelo que não existe vira o 'geral'."""
+    return chave if chave in MODELOS_EMPRESA else "geral"
+
+
+def seed_organizacao(organizacao_id, tipo="familia", modelo="geral"):
+    """Cria as categorias e formas de pagamento iniciais. Espaço de família: as de sempre. Espaço de empresa: as do modelo escolhido."""
+    if tipo == "empresa":
+        m = MODELOS_EMPRESA[modelo_empresa_valido(modelo)]
+        despesas, receitas, formas = m["despesas"], m["receitas"], FORMAS_PAGAMENTO_EMPRESA
+    else:
+        despesas, receitas, formas = CATEGORIAS_PADRAO_DESPESA, CATEGORIAS_PADRAO_RECEITA, FORMAS_PAGAMENTO_PADRAO
+    for i, nome in enumerate(despesas):
         execute(
             "INSERT INTO categorias (organizacao_id, nome, ordem, tipo) VALUES (%s, %s, %s, 'despesa') "
             "ON CONFLICT (organizacao_id, nome) DO NOTHING",
             (organizacao_id, nome, i),
         )
-    for i, nome in enumerate(CATEGORIAS_PADRAO_RECEITA):
+    for i, nome in enumerate(receitas):
         execute(
             "INSERT INTO categorias (organizacao_id, nome, ordem, tipo) VALUES (%s, %s, %s, 'receita') "
             "ON CONFLICT (organizacao_id, nome) DO NOTHING",
             (organizacao_id, nome, i),
         )
-    for nome, aplica_a, permite_parc in FORMAS_PAGAMENTO_PADRAO:
+    for nome, aplica_a, permite_parc in formas:
         execute(
             "INSERT INTO formas_pagamento (organizacao_id, nome, aplica_a, permite_parcelamento, padrao) "
             "VALUES (%s, %s, %s, %s, true)",
