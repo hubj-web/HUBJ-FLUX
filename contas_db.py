@@ -105,6 +105,7 @@ def listar_titulos(organizacao_id, tipo, situacao, hoje, de=None, ate=None, q=No
 
 
 def atualizar_titulo(organizacao_id, titulo_id, d):
+    execute("DELETE FROM titulos_avisos WHERE titulo_id IN (SELECT id FROM titulos WHERE id = %s AND organizacao_id = %s)", (titulo_id, organizacao_id))
     execute(
         """UPDATE titulos SET descricao = %(descricao)s, parceiro_id = %(parceiro_id)s, categoria_id = %(categoria_id)s, valor = %(valor)s,
                   vencimento = %(vencimento)s, numero_documento = %(numero_documento)s, observacao = %(observacao)s
@@ -124,6 +125,7 @@ def marcar_pago(organizacao_id, titulo_id, data_pagamento, valor_pago, forma_id,
 
 
 def reabrir_titulo(organizacao_id, titulo_id):
+    execute("DELETE FROM titulos_avisos WHERE titulo_id IN (SELECT id FROM titulos WHERE id = %s AND organizacao_id = %s)", (titulo_id, organizacao_id))
     execute(
         """UPDATE titulos SET status = 'aberto', data_pagamento = NULL, valor_pago = NULL, forma_pagamento_id = NULL, lancamento_id = NULL
            WHERE id = %s AND organizacao_id = %s""",

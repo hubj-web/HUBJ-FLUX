@@ -11,6 +11,7 @@ from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, abort
 
+import avisos_contas
 import db
 import email_service
 from auth import login_required, requer_organizacao, requer_papel
@@ -214,5 +215,12 @@ def tarefa_lembretes():
     segredo = Config.CRON_SECRET
     if not segredo or not hmac.compare_digest(request.args.get("token", ""), segredo):
         abort(404)
-    total = sum(disparar_lembretes(oid) for oid in db.listar_ids_organizacoes_ativas())
-    return {"ok": True, "disparados": total}
+    ids = db.listar_ids_organizacoes_ativas()
+    total = sum(disparar_lembretes(oid) for oid in ids)
+    contas = 0
+    for oid in ids:
+        try:
+            contas += avisos_contas.disparar(oid)
+        except Exception:  # uma organização com problema não pode impedir as outras de serem avisadas
+            db.get_conn().rollback()
+    return {"ok": True, "disparados": total, "avisos_contas": contas}

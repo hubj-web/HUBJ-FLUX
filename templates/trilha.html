@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Trilha de primeiros passos · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:720px;margin:0 auto">
+  <header class="panel-head"><h1>🧭 Trilha de primeiros passos</h1>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">{{ 'O passo a passo para controlar o dinheiro da empresa, separado do pessoal.' if tipo == 'empresa' else 'O passo a passo para controlar o dinheiro da família.' }} Cada passo explica o porquê. Os que o aplicativo consegue verificar se marcam sozinhos.</p></header>
+  <div class="summary-cell" style="padding:14px;margin-bottom:16px">
+    <span class="label">Seu progresso</span>
+    <span class="value" style="font-size:20px;display:block">{{ t.feitos }} de {{ t.total }} passos <span style="font-size:13px;color:var(--graphite)">({{ t.pct }}%)</span></span>
+    <div style="height:8px;background:var(--line);border-radius:6px;margin-top:8px;overflow:hidden"><div style="height:100%;width:{{ t.pct }}%;background:var(--success-dark)"></div></div>
+    {% if t.proximo %}<span style="font-size:12.5px;color:var(--graphite);display:block;margin-top:8px">Próximo passo: <strong>{{ t.proximo.titulo }}</strong></span>
+    {% else %}<span style="font-size:13px;display:block;margin-top:8px">🎉 Você concluiu a trilha! Continue olhando o Mês e o resultado todo mês.</span>{% endif %}
+  </div>
+  <div class="card-lista">
+    {% for p in t.passos %}
+    <div class="card-item" style="align-items:flex-start;{{ 'opacity:.75' if p.feito }}">
+      <div class="card-item-icone" style="font-size:20px">{{ '✅' if p.feito else '⬜' }}</div>
+      <div class="card-item-corpo">
+        <div class="card-item-titulo" style="white-space:normal">{{ loop.index }}. {{ p.titulo }}</div>
+        <div class="card-item-sub" style="white-space:normal">{{ p.por_que }}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          {% if p.link and not p.feito %}<a href="{{ p.link }}" class="btn btn-primary" style="padding:5px 12px;font-size:12px">Ir para a tela</a>{% elif p.link %}<a href="{{ p.link }}" class="btn btn-ghost" style="padding:5px 12px;font-size:12px">Abrir de novo</a>{% endif %}
+          {% if not p.auto and not p.feito %}<form method="post" action="{{ url_for('trilha.marcar', chave=p.chave) }}"><button class="btn btn-ghost" style="padding:5px 12px;font-size:12px">✔ Entendi, já faço assim</button></form>{% endif %}
+          {% if not p.auto and p.feito %}<form method="post" action="{{ url_for('trilha.desmarcar', chave=p.chave) }}"><button class="btn btn-ghost" style="padding:5px 12px;font-size:12px">Desmarcar</button></form>{% endif %}
+          {% if p.auto and p.feito %}<span style="font-size:12px;color:var(--success-dark);align-self:center">Marcado sozinho: o aplicativo viu que você fez.</span>{% endif %}
+        </div>
+      </div>
+    </div>{% endfor %}
+  </div>
+</div>
+{% endblock %}

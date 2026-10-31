@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Meu dinheiro total · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:820px;margin:0 auto">
+  <header class="panel-head"><h1>🧮 Meu dinheiro total</h1>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p style="color:var(--graphite);font-size:12.5px">Família e empresas do mesmo cliente, juntas, sem contar em dobro o dinheiro que só passou de um bolso para o outro.</p></header>
+  {% if not c %}
+    <div class="summary-cell" style="padding:16px;font-size:13.5px">Para ver o total, é preciso ser administrador(a) de <strong>pelo menos dois espaços</strong> do mesmo cliente (por exemplo, a família e uma empresa).</div>
+  {% else %}
+  <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px">
+    <a href="{{ url_for('consol.index', mes=anterior) }}" class="btn btn-ghost" style="padding:4px 12px">‹</a>
+    <strong style="font-size:16px">{{ rotulo(mes) }}</strong>
+    <a href="{{ url_for('consol.index', mes=proximo) }}" class="btn btn-ghost" style="padding:4px 12px">›</a>
+  </div>
+  <div class="review-summary resumo-flex">
+    <div class="summary-cell"><span class="label">Receitas do cliente</span><span class="value val-receita" style="font-size:18px">R$ {{ c.total.receitas|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Despesas do cliente</span><span class="value val-despesa" style="font-size:18px">R$ {{ c.total.despesas|brl }}</span></div>
+    <div class="summary-cell"><span class="label">Resultado total</span><span class="value" style="font-size:18px;color:{{ 'var(--success-dark)' if c.total.resultado >= 0 else 'var(--danger-dark)' }}">R$ {{ c.total.resultado|brl }}</span></div>
+  </div>
+  <div style="overflow-x:auto;margin-top:16px"><table style="width:100%;border-collapse:collapse;font-size:13px;min-width:600px">
+    <thead><tr style="text-align:right;color:var(--graphite)"><th style="text-align:left;padding:6px">Espaço</th><th style="padding:6px">Receitas</th><th style="padding:6px">Despesas</th><th style="padding:6px">Resultado</th><th style="padding:6px">Caixa no mês</th><th style="padding:6px">Saldo das contas</th></tr></thead>
+    <tbody>
+      {% for l in c.linhas %}<tr style="border-top:1px solid var(--line);text-align:right"><td style="text-align:left;padding:7px 6px">{{ '🏠' if l.tipo == 'familia' else '🏢' }} {{ l.nome }}</td><td style="padding:6px">{{ l.receitas|brl }}</td><td style="padding:6px">{{ l.despesas|brl }}</td>
+        <td style="padding:6px;color:{{ 'var(--success-dark)' if l.resultado >= 0 else 'var(--danger-dark)' }}">{{ l.resultado|brl }}</td><td style="padding:6px">{{ l.saldo|brl }}</td><td style="padding:6px">{{ l.saldo_contas|brl }}</td></tr>{% endfor %}
+      <tr style="border-top:1px solid var(--line);text-align:right;color:var(--graphite)"><td style="text-align:left;padding:7px 6px">↔ Menos o que só trocou de bolso</td><td style="padding:6px">−{{ c.total.internas_receitas|brl }}</td><td style="padding:6px">−{{ c.total.internas_despesas|brl }}</td><td></td><td></td><td></td></tr>
+      <tr style="border-top:2px solid var(--line);text-align:right;font-weight:700"><td style="text-align:left;padding:7px 6px">Total do cliente</td><td style="padding:6px">{{ c.total.receitas|brl }}</td><td style="padding:6px">{{ c.total.despesas|brl }}</td>
+        <td style="padding:6px">{{ c.total.resultado|brl }}</td><td style="padding:6px">{{ c.total.caixa_mes|brl }}</td><td style="padding:6px">{{ c.total.saldo_contas|brl }}</td></tr>
+    </tbody></table></div>
+  <div class="summary-cell" style="padding:12px 14px;margin-top:16px;font-size:12.5px;color:var(--graphite)"><strong>Como ler.</strong> O pró-labore que a empresa paga é despesa dela e renda da família: no total, as duas pontas se anulam. A distribuição de lucros é renda da família, mas o lucro já está no resultado da empresa, então sai da renda do total. Aporte, empréstimo e devolução só mexem no caixa.</div>
+
+  <h3 style="margin-top:22px">Entre a família e as empresas neste mês</h3>
+  <div class="card-lista">
+    {% for chave, op in operacoes.items() %}{% if c.por_operacao[chave] %}<div class="card-item"><div class="card-item-corpo"><div class="card-item-titulo">{{ op.nome }}</div><div class="card-item-sub">{{ 'Empresa → Família' if op.de == 'empresa' else 'Família → Empresa' }}</div></div><div class="card-item-valor">R$ {{ c.por_operacao[chave]|brl }}</div></div>{% endif %}{% endfor %}
+    {% if not (c.por_operacao.values()|select|list) %}<div style="color:var(--graphite);padding:14px">Nenhuma transferência neste mês.</div>{% endif %}
+  </div>
+  {% if emprestimo %}<div class="summary-cell" style="padding:12px 14px;margin-top:12px;font-size:13px"><strong>{{ 'A empresa deve ao sócio (empréstimos)' if emprestimo > 0 else 'A empresa devolveu a mais do que recebeu' }}:</strong> R$ {{ (emprestimo|abs)|brl }}</div>{% endif %}
+  {% endif %}
+</div>
+{% endblock %}

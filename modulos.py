@@ -15,6 +15,11 @@ CATALOGO = {
         "descricao": "Contas com vencimento e situação (em aberto, vencida, paga), clientes e fornecedores, e a baixa que lança no extrato.",
         "tipos": ("empresa",), "padrao": False,
     },
+    "consolidado": {
+        "nome": "Meu dinheiro total (família + empresas)",
+        "descricao": "Uma tela com o resultado e o caixa da família e das empresas juntos, sem contar em dobro o que só passou de um bolso para o outro. Só o administrador vê.",
+        "tipos": ("familia", "empresa"), "padrao": False,
+    },
     "resultado_caixa": {
         "nome": "Resultado e fluxo de caixa",
         "descricao": "Resultado do mês (receitas, despesas e margem), fluxo de caixa previsto com aviso de caixa negativo e calendário de obrigações e impostos. Só o administrador vê.",
@@ -29,6 +34,11 @@ CATALOGO = {
         "nome": "Holerite e folha de pagamento",
         "descricao": "Importa o contracheque como entrada, confere os números e compara os descontos em folha com as dívidas.",
         "tipos": ("familia",), "padrao": True,
+    },
+    "trilha": {
+        "nome": "Trilha de primeiros passos",
+        "descricao": "Um passo a passo dentro do aplicativo para o cliente aprender a separar e controlar o dinheiro da família e o da empresa. Vem ligado; desligue para quem não quiser.",
+        "tipos": ("familia", "empresa"), "padrao": True,
     },
 }
 MSG_BLOQUEADO = "Este recurso não está liberado para o seu espaço. Fale com quem administra o sistema para ativar o módulo."

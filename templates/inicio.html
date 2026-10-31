@@ -55,6 +55,22 @@
   <p style="font-size:12px;color:var(--graphite);margin:8px 2px 12px">↔ Entre família e empresa: entrou R$ {{ (totais.mov_entradas or 0)|brl }} · saiu R$ {{ (totais.mov_saidas or 0)|brl }}. Mexe no saldo, mas não conta como gasto nem como receita.</p>
   {% endif %}
 
+  {% if trilha %}
+  <a href="{{ url_for('trilha.index') }}" class="card-item" style="text-decoration:none;color:inherit;margin-bottom:12px">
+    <div class="card-item-icone">🧭</div>
+    <div class="card-item-corpo"><div class="card-item-titulo">Trilha: {{ trilha.feitos }} de {{ trilha.total }} passos</div>
+      <div class="card-item-sub" style="white-space:normal">Próximo: <strong>{{ trilha.proximo.titulo }}</strong>. Toque para ver o passo a passo.</div></div>
+  </a>
+  {% endif %}
+
+  {% if sem_categoria %}
+  <a href="{{ url_for('categ.index') }}" class="card-item" style="text-decoration:none;color:inherit;margin-bottom:12px">
+    <div class="card-item-icone">🏷️</div>
+    <div class="card-item-corpo"><div class="card-item-titulo">{{ sem_categoria.pct_sem|string|replace('.', ',') }}% do cartão está sem categoria</div>
+      <div class="card-item-sub" style="white-space:normal">R$ {{ sem_categoria.sem|brl }} em {{ sem_categoria.n_sem }} compra(s). Em poucos minutos dá para categorizar os maiores fornecedores de uma vez. Toque para começar.</div></div>
+  </a>
+  {% endif %}
+
   {% if caixa_negativo %}
   <a href="{{ url_for('fin.fluxo') }}" class="card-item" style="text-decoration:none;color:inherit;margin-bottom:12px;border:1px solid var(--danger-dark)">
     <div class="card-item-icone">⚠️</div>

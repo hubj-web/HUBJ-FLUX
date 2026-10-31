@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Categorizar compras do cartão · HUB-J FLUX{% endblock %}
+{% block content %}
+<div class="content" style="max-width:760px;margin:0 auto">
+  <header class="panel-head"><h1>🏷️ Categorizar compras do cartão</h1>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p></header>
+  {% if cob.n == 0 %}
+    <div class="summary-cell" style="padding:16px">Ainda não há compras de cartão. Importe uma fatura primeiro em <a href="{{ url_for('cartao.importar') }}">Cartão → Importar fatura</a>.</div>
+  {% elif cob.sem == 0 %}
+    <div class="summary-cell" style="padding:16px">✅ Todas as compras do cartão têm categoria. 🎉</div>
+  {% else %}
+  <div class="summary-cell" style="padding:14px;margin-bottom:14px">
+    <span class="label">Sem categoria</span>
+    <span class="value" style="font-size:20px;display:block">R$ {{ cob.sem|brl }} <span style="font-size:13px;color:var(--graphite)">({{ cob.pct_sem|string|replace('.', ',') }}% do gasto no cartão)</span></span>
+    <span style="font-size:12.5px;color:var(--graphite)">em {{ cob.n_sem }} compra(s). Os {{ linhas|length }} fornecedores abaixo cobrem <strong>{{ cobertura_lista|string|replace('.', ',') }}%</strong> disso.</span>
+  </div>
+  <p style="font-size:12.5px;color:var(--graphite)">Escolha a categoria de cada fornecedor (já deixei a mais provável marcada) e toque em <strong>Categorizar</strong>. Quem você deixar em branco fica para depois. Cada escolha vira uma regra: as próximas faturas já entram categorizadas.</p>
+  <form method="get" style="margin:8px 0"><label style="font-size:12px;color:var(--graphite)">Mostrar os </label>
+    <select name="n" onchange="this.form.submit()" style="padding:5px 8px;border:1px solid var(--line);border-radius:8px">{% for t in tamanhos %}<option value="{{ t }}" {{ 'selected' if t == n }}>{{ t }} maiores</option>{% endfor %}</select></form>
+  <form method="post" action="{{ url_for('categ.aplicar') }}">
+    <div class="card-lista">
+      {% for l in linhas %}
+      <div class="card-item" style="align-items:center;padding:10px 12px">
+        <input type="hidden" name="forn" value="{{ l.fornecedor }}">
+        <div class="card-item-corpo"><div class="card-item-titulo" style="font-size:13px;white-space:normal">{{ l.fornecedor }}</div>
+          <div class="card-item-sub">{{ l.n }} compra(s) · R$ {{ l.total|brl }} · acumulado {{ l.acumulado_pct|string|replace('.', ',') }}%</div></div>
+        <select name="cat" style="max-width:150px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:12.5px"><option value="">— depois —</option>
+          {% for c in categorias %}<option value="{{ c.id }}" {{ 'selected' if l.sugerida == c.id }}>{{ c.nome }}</option>{% endfor %}</select>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary" style="margin-top:14px">Categorizar</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

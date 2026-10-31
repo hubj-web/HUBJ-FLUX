@@ -3,9 +3,12 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 from flask import Blueprint, render_template, g, request
 
+import avisos_contas
+import categorizacao_db
 import contas_db
 from cartao_analise import rotulo_mes
 from financeiro import alerta_caixa
+from trilha import estado as estado_trilha
 import db
 import modulos
 import empresa as empresa_mod
@@ -58,6 +61,34 @@ def index():
     if mes_referencia >= date.today().strftime("%Y-%m"):
         comprometido = next((m for m in carregar_planejamento(org_id, 12)["meses"] if m["mes"] == mes_referencia and m["comprometido"] > 0), None)
 
+    try:
+        avisos_contas.disparar(org_id)
+    except Exception:  # um aviso a mais nunca pode derrubar o Mês
+        try:
+            db.get_conn().rollback()
+        except Exception:
+            pass
+    sem_categoria = None
+    if usuario["papel"] in ("super_admin", "admin_cliente"):
+        try:
+            cob = categorizacao_db.cobertura(org_id)
+            if cob["pct_sem"] >= 20 and cob["sem"] >= 100:
+                sem_categoria = cob
+        except Exception:
+            try:
+                db.get_conn().rollback()
+            except Exception:
+                pass
+    trilha = None
+    if usuario["papel"] in ("super_admin", "admin_cliente") and modulos.modulo_ativo(org_id, "trilha"):
+        try:
+            t, _ = estado_trilha(org_id)
+            trilha = t if t["total"] and t["feitos"] < t["total"] else None
+        except Exception:
+            try:
+                db.get_conn().rollback()
+            except Exception:
+                pass
     caixa_negativo = None
     if usuario["papel"] in ("super_admin", "admin_cliente") and modulos.modulo_ativo(org_id, "resultado_caixa"):
         try:
@@ -71,7 +102,7 @@ def index():
     contas_resumo = contas_db.resumo_titulos(org_id, date.today()) if modulos.modulo_ativo(org_id, "contas_pagar_receber") else None
 
     return render_template(
-        "inicio.html", caixa_negativo=caixa_negativo, contas_resumo=contas_resumo, usuario=usuario, organizacao=organizacao, quadro=quadro, renda_prevista=renda_prevista, comprometido=comprometido,
+        "inicio.html", trilha=trilha, sem_categoria=sem_categoria, caixa_negativo=caixa_negativo, contas_resumo=contas_resumo, usuario=usuario, organizacao=organizacao, quadro=quadro, renda_prevista=renda_prevista, comprometido=comprometido,
         mes_referencia=mes_referencia, mes_anterior=mes_anterior, mes_seguinte=mes_seguinte,
         totais=totais, ultimos=ultimos, frase_saldo=frase_saldo, setup_concluido=setup_concluido,
         reservado_metas=reservado_metas, saldo_livre=saldo_livre, acertos_empresas=acertos_empresas,
