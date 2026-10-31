@@ -4,6 +4,7 @@
 <div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
     <h1>🧮 Planejamento mensal</h1>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
     <p><a href="{{ url_for('mensal.fixos') }}" class="btn btn-primary" style="padding:6px 14px;font-size:12.5px">📌 Gastos fixos</a>
        <a href="{{ url_for('mensal.assistente') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12.5px">🤖 Assistente</a>
        <a href="{{ url_for('cartao.painel') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12.5px">💳 Cartão</a></p>
@@ -50,7 +51,7 @@
 
   <div class="filters" style="justify-content:center;margin-bottom:14px">
     {% for opcao in [3, 6, 12] %}
-    <a href="{{ url_for('mensal.index', n=opcao) }}" class="btn {{ 'btn-primary' if opcao == n else 'btn-ghost' }}" style="padding:5px 14px;font-size:12.5px">{{ opcao }} meses</a>
+    <a href="{{ url_for('mensal.index', n=opcao) }}" class="btn {{ 'btn-ativo' if opcao == n else 'btn-ghost' }}" style="padding:5px 14px;font-size:12.5px">{{ opcao }} meses</a>
     {% endfor %}
   </div>
 

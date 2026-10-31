@@ -4,8 +4,9 @@
 <div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
     <h1>💳 Cartão de crédito</h1>
-    <p><a href="{{ url_for('cartao.importar') }}" class="btn btn-primary" style="padding:6px 14px;font-size:12.5px">+ Importar fatura</a>
-       <a href="{{ url_for('cartao.faturas') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12.5px">🧾 Faturas</a>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
+    <p><a href="{{ url_for('cartao.importar') }}" class="btn btn-primary" style="padding:6px 14px;font-size:12.5px">+ Importar fatura</a></p>
+    <p><a href="{{ url_for('cartao.faturas') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12.5px">🧾 Faturas</a>
        <a href="{{ url_for('cartao.transacoes') }}" class="btn btn-ghost" style="padding:6px 14px;font-size:12.5px">🛍️ Compras</a></p>
   </header>
 
@@ -17,8 +18,8 @@
   {% else %}
 
   <div class="filters" style="justify-content:center;margin-bottom:12px">
-    <a href="{{ url_for('cartao.painel', mes=mes) }}" class="btn {{ 'btn-primary' if lente == 'fatura' else 'btn-ghost' }}" style="padding:5px 14px;font-size:12px">Por fatura (vencimento)</a>
-    <a href="{{ url_for('cartao.painel', mes=mes, lente='compra') }}" class="btn {{ 'btn-primary' if lente == 'compra' else 'btn-ghost' }}" style="padding:5px 14px;font-size:12px">Por data da compra</a>
+    <a href="{{ url_for('cartao.painel', mes=mes) }}" class="btn {{ 'btn-ativo' if lente == 'fatura' else 'btn-ghost' }}" style="padding:5px 14px;font-size:12px">Por fatura (vencimento)</a>
+    <a href="{{ url_for('cartao.painel', mes=mes, lente='compra') }}" class="btn {{ 'btn-ativo' if lente == 'compra' else 'btn-ghost' }}" style="padding:5px 14px;font-size:12px">Por data da compra</a>
   </div>
 
   <div class="filters" style="align-items:center;justify-content:center;margin-bottom:16px">
@@ -67,7 +68,7 @@
   {% endif %}
 
   <h3>📆 Já comprometido nos próximos meses</h3>
-  <p style="margin:2px 0 8px;font-size:12.5px"><a href="{{ url_for('cartao.compromissos') }}">+ Adicionar compra parcelada que ainda não está nas faturas</a></p>
+  <p style="margin:2px 0 8px;font-size:12.5px"><a href="{{ url_for('cartao.compromissos') }}" class="link-acao">+ Adicionar compra parcelada que ainda não está nas faturas</a></p>
   {% if proximos %}
   <div class="summary-cell" style="margin:10px 0 12px;text-align:center">
     <span class="label">Parcelas que ainda vão cair</span>

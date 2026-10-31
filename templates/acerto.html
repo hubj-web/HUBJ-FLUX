@@ -4,6 +4,7 @@
 <div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
     <h1>🏢 Acerto Família × Empresa</h1>
+    <p><a href="{{ url_for('mais.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
     <p style="color:var(--graphite);font-size:12.5px">Quando você paga com o seu dinheiro algo que é da empresa (ou o contrário), o saldo aparece aqui. Registre cada reembolso para ele sair do saldo.</p>
   </header>
 
@@ -16,7 +17,7 @@
 
   {% if empresas|length > 1 %}
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px">
-    {% for e in empresas %}<a href="{{ url_for('empresas.acerto', empresa_id=e.id) }}" class="btn {{ 'btn-primary' if e.id == sel.empresa_id else 'btn-ghost' }}" style="padding:6px 12px;font-size:12.5px">{{ e.nome }}</a>{% endfor %}
+    {% for e in empresas %}<a href="{{ url_for('empresas.acerto', empresa_id=e.id) }}" class="btn {{ 'btn-ativo' if e.id == sel.empresa_id else 'btn-ghost' }}" style="padding:6px 12px;font-size:12.5px">{{ e.nome }}</a>{% endfor %}
   </div>
   {% endif %}
 

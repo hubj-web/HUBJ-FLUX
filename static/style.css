@@ -326,3 +326,25 @@ body.com-nav-fixa{ padding-bottom:84px; }
 .espaco-bar.espaco-empresa{background:#0F4C5C;color:#fff}
 .espaco-bar .espaco-rotulo{font-weight:700;letter-spacing:.02em;white-space:nowrap}
 .espaco-bar select{flex:1;min-width:0;max-width:340px;padding:6px 10px;border-radius:8px;border:1px solid rgba(0,0,0,.15);font-size:13px;background:#fff;color:#2A2438}
+
+
+/* ---- Laranja = AÇÃO. Roxo = opção SELECIONADA (abas e alternadores). Pedido da primeira testadora: o laranja confundia ---- */
+.btn-ativo{ background:var(--roxo-estrategico); border-color:var(--roxo-estrategico); color:#fff; box-shadow:0 4px 12px rgba(62,0,123,.25); }
+.btn-ativo:hover{ color:#fff; border-color:var(--roxo-estrategico); }
+
+/* seta nos cartões que abrem e fecham (antes não havia nenhuma dica de que dava para tocar) */
+details.card-item-expandivel > summary{ list-style:none; position:relative; padding-right:36px; }
+details.card-item-expandivel > summary::-webkit-details-marker{ display:none; }
+details.card-item-expandivel > summary::after{ content:"▾"; position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--graphite); font-size:15px; }
+details.card-item-expandivel[open] > summary::after{ content:"▴"; }
+
+/* links dentro de texto com o estilo do aplicativo (antes saíam azuis e sublinhados, o padrão do navegador) */
+a.link-acao{ color:var(--roxo-estrategico); font-weight:600; text-decoration:underline; text-underline-offset:3px; }
+
+/* os avisos ficam no centro de cima, onde a pessoa está olhando (antes ficavam presos ao canto direito da tela larga) */
+.flash-wrap{ left:50%; right:auto; transform:translateX(-50%); width:calc(100% - 32px); max-width:520px; }
+
+.flash{ position:relative; padding-right:42px; }
+.flash-fechar{ position:absolute; right:10px; top:8px; background:none; border:0; font-size:22px; line-height:1; cursor:pointer; color:inherit; opacity:.65; padding:2px 6px; }
+.flash-fechar:hover{ opacity:1; }
+.flash.saindo{ opacity:0; transition:opacity .4s ease; }

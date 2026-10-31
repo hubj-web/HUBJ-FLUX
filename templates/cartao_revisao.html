@@ -4,6 +4,7 @@
 <div class="content" style="max-width:600px;margin:0 auto">
   <header class="panel-head">
     <h1>{{ 'Revisar prévia da fatura' if previa else 'Revisar fatura' }}</h1>
+    <p><a href="{{ url_for('cartao.importar') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
     <p>{{ arquivo }}{% if previa and data_referencia %} · parcial até {{ data_referencia }}{% endif %}</p>
     {% if previa %}<p style="color:var(--graphite);font-size:12.5px">Esta é uma <strong>prévia</strong> (fatura ainda aberta). Ela vale até você importar a fatura oficial do mesmo mês, que a substitui.</p>{% endif %}
   </header>

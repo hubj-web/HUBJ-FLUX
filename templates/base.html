@@ -19,7 +19,7 @@
   {% if messages %}
     <div class="flash-wrap" id="flash-wrap">
       {% for categoria, msg in messages %}
-        <div class="flash flash-{{ categoria }}">{{ msg }}</div>
+        <div class="flash flash-{{ categoria }}">{{ msg }}<button type="button" class="flash-fechar" aria-label="Fechar aviso">×</button></div>
       {% endfor %}
     </div>
   {% endif %}
@@ -79,8 +79,12 @@
     });
   }
 
-  var flashWrap = document.getElementById('flash-wrap');
-  if (flashWrap) { setTimeout(function () { flashWrap.classList.add('flash-saindo'); }, 4000); }
+  // Avisos: o de ERRO fica até a pessoa fechar (ela precisa ler e, às vezes, anotar); o de sucesso some em 9 segundos. Antes tudo sumia em 4.
+  document.querySelectorAll('#flash-wrap .flash').forEach(function (el) {
+    function sair() { el.classList.add('saindo'); setTimeout(function () { el.remove(); }, 450); }
+    var fechar = el.querySelector('.flash-fechar'); if (fechar) { fechar.addEventListener('click', sair); }
+    if (!el.classList.contains('flash-erro')) { setTimeout(sair, 9000); }
+  });
 
   var btnLancar = document.getElementById('btn-navbar-lancar');
   var popover = document.getElementById('navbar-popover');

@@ -5,6 +5,7 @@
 <div class="content" style="max-width:640px;margin:0 auto">
   <header class="panel-head">
     <h1>Revisar holerite</h1>
+    <p><a href="{{ url_for('folha.index') }}" class="btn btn-ghost" style="padding:4px 10px;font-size:12px">← Voltar</a></p>
     <p style="color:var(--graphite);font-size:12.5px">{{ h.fonte or 'Fonte pagadora' }} · {{ (h.tipo_folha or '')|lower }} · competência <strong>{{ h.competencia|mes_label }}</strong>{% if h.emitido_em %} · emitido em {{ h.emitido_em.strftime('%d/%m/%Y') }}{% endif %}. Nada foi gravado ainda.</p>
   </header>
 
